@@ -11,7 +11,7 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
-    "pdfjs-dist": "^5.1.91",
+    "pdfjs-dist": "^3.4.120",
     "pinia": "^3.0.1",
     "vue": "^3.5.13"
   },

@@ -3,9 +3,8 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 // 确保正确导入你的 API 服务文件路径
 import { performOcrRequest, getLanguageName } from '@/services/visionApi';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js';
 // 确保正确导入 pdfjs-dist
-import * as pdfjsLib from 'pdfjs-dist/build/pdf';
-
 // --- 确保 WorkerSrc 只设置一次 (可以放在 main.js 或这里，main.js 更常见) ---
 // if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
 //   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -232,6 +231,7 @@ export const useOcrStore = defineStore('ocr', () => {
 
   // 渲染当前 PDF 页面到 Data URL (用于预览和 OCR)
   async function renderCurrentPdfPageToPreview() {
+      console.log(pdfjsLib, pdfDocument.value)
       if (!pdfDocument.value || !isPdfFile.value) return;
 
       isLoading.value = true;

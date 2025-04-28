@@ -118,41 +118,19 @@ const yAxisLabels = computed(() => {
 // ***** START: 添加 console.log 到 symbolBlocksToDisplay *****
 
 // 添加缺失的 symbolBlocksToDisplay 计算属性
+// ... existing code ...
 const symbolBlocksToDisplay = computed(() => {
-  const symbols = [];
-  if (!store.fullTextAnnotation?.pages) return symbols;
-  
-  store.fullTextAnnotation.pages.forEach(page => {
-    page.blocks?.forEach(block => {
-      block.paragraphs?.forEach(paragraph => {
-        paragraph.words?.forEach(word => {
-          word.symbols?.forEach(symbol => {
-            // 确保 symbol 有 boundingBox 和 vertices
-            if (symbol.boundingBox?.vertices) {
-              const vertices = symbol.boundingBox.vertices;
-              // 计算边界框的左上角位置和尺寸
-              const x = Math.min(...vertices.map(v => v.x || 0));
-              const y = Math.min(...vertices.map(v => v.y || 0));
-              const width = Math.max(...vertices.map(v => v.x || 0)) - x;
-              const height = Math.max(...vertices.map(v => v.y || 0)) - y;
-              
-              symbols.push({
-                text: symbol.text || '',
-                x: x,
-                y: y,
-                width: width,
-                height: height,
-                fontSize: `${Math.max(12, height * 0.8)}px`  // 基于高度计算字体大小
-              });
-            }
-          });
-        });
-      });
-    });
-  });
-  
-  return symbols;
+  // 只显示通过过滤的符号
+  return store.filteredSymbolsData.filter(s => s.isFiltered).map(symbol => ({
+    text: symbol.text || '',
+    x: symbol.x,
+    y: symbol.y,
+    width: symbol.width,
+    height: symbol.height,
+    fontSize: `${Math.max(12, symbol.height * 0.8)}px`
+  }));
 });
+// ... existing code ...
 
 // SVG 边界框数据
 const blockBoundaries = computed(() => {
