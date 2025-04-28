@@ -43,7 +43,9 @@ const paragraphText = computed(() => {
                       console.log("Paragraph: Found symbolData:", symbolData ? { text: symbolData.text, isFiltered: symbolData.isFiltered, originalIndex: symbolData.originalIndex } : undefined);
 
                       if (symbolData?.isFiltered) { // Check if the symbol passed the filters
-                           currentParagraphText += symbol.text;
+                           currentParagraphText += (noSpaceLanguages.includes(store.detectedLanguageCode) && symbol.text === ',') 
+                              ? '，' 
+                              : symbol.text;
                            paragraphHasFilteredContent = true;
                            const breakType = symbolData.detectedBreak;
                            // Add space if needed and language uses spaces
