@@ -52,42 +52,29 @@
             @mouseenter="showTooltip($event, block.tooltip)"
             @mousemove="updateTooltipPosition"
             @mouseleave="hideTooltip"
-            @click="copyBlockText(block.text)"
             :style="{ display: showBounds ? 'block' : 'none' }"
           />
-        </svg>
+          </svg>
         <div
-          v-for="(symbol, index) in symbolBlocksToDisplay"
-          :key="`symbol-${index}`"
-          class="text-block"
-          :style="{
-            left: `${((symbol.x || 0) + 30)}px`,
-            top: `${(symbol.y || 0)}px`,
-            width: `${Math.max(symbol.width || 0, 20)}px`,
-            height: `${Math.max(symbol.height || 0, 20)}px`,
-            fontSize: symbol.fontSize || '12px'
-          }"
-          :data-tooltip="`字符: ${symbol.text}\nX: ${(symbol.x || 0).toFixed(1)}, Y: ${(symbol.y || 0).toFixed(1)}\nW: ${(symbol.width || 0).toFixed(1)}, H: ${(symbol.height || 0).toFixed(1)}`"
-          @mouseenter="showTooltip($event, `字符: ${symbol.text}\nX: ${(symbol.x || 0).toFixed(1)}, Y: ${(symbol.y || 0).toFixed(1)}\nW: ${(symbol.width || 0).toFixed(1)}, H: ${(symbol.height || 0).toFixed(1)}`)"
-          @mousemove="updateTooltipPosition"
-          @mouseleave="hideTooltip"
-        >
-          {{ symbol.text }}
-        </div>
-        
-        <!-- 复制成功提示 -->
-        <div v-if="showCopySuccess" class="copy-success-toast">
-          文本已复制
-        </div>
-      </div>
-    </div>
-  </div>
-  <div v-else class="coordinate-view-placeholder">
+    v-for="(symbol, index) in symbolBlocksToDisplay"
+    :key="`symbol-${index}`"
+    class="text-block"
+    :style="{
+      left: `${((symbol.x || 0) + 30)}px`,
+      top: `${(symbol.y || 0)}px`,
+      width: `${Math.max(symbol.width || 0, 20)}px`,
+      height: `${Math.max(symbol.height || 0, 20)}px`,
+      fontSize: symbol.fontSize || '12px'
+    }"
+    :data-tooltip="`字符: ${symbol.text}\nX: ${(symbol.x || 0).toFixed(1)}, Y: ${(symbol.y || 0).toFixed(1)}\nW: ${(symbol.width || 0).toFixed(1)}, H: ${(symbol.height || 0).toFixed(1)}`"
+    @mouseenter="showTooltip($event, `字符: ${symbol.text}\nX: ${(symbol.x || 0).toFixed(1)}, Y: ${(symbol.y || 0).toFixed(1)}\nW: ${(symbol.width || 0).toFixed(1)}, H: ${(symbol.height || 0).toFixed(1)}`)"
+    @mousemove="updateTooltipPosition"
+    @mouseleave="hideTooltip"
+  >
+    {{ symbol.text }}
+  </div> </div> </div> </div> <div v-else class="coordinate-view-placeholder">
     识别完成后将在此显示坐标视图。
-  </div>
-</template>
-
-<script setup>
+  </div> </template> <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
 
@@ -97,7 +84,6 @@ const coordSystemRef = ref(null);
 // --- Local State ---
 const showBounds = ref(true); // 控制 SVG 边界显隐
 const selectedBlockLevel = ref('blocks'); // 控制 SVG 边界级别
-const showCopySuccess = ref(false); // 添加复制成功状态
 
 // --- Computed Properties ---
 const systemWidth = computed(() => (store.imageDimensions.width || 0) + 30); // 加 30px 给 Y 轴标签留空
@@ -129,7 +115,10 @@ const yAxisLabels = computed(() => {
   return labels;
 });
 
+// ***** START: 添加 console.log 到 symbolBlocksToDisplay *****
+
 // 添加缺失的 symbolBlocksToDisplay 计算属性
+// ... existing code ...
 const symbolBlocksToDisplay = computed(() => {
   // 只显示通过过滤的符号
   return store.filteredSymbolsData.filter(s => s.isFiltered).map(symbol => ({
@@ -141,6 +130,7 @@ const symbolBlocksToDisplay = computed(() => {
     fontSize: `${Math.max(12, symbol.height * 0.8)}px`
   }));
 });
+// ... existing code ...
 
 // SVG 边界框数据
 const blockBoundaries = computed(() => {
@@ -150,118 +140,50 @@ const blockBoundaries = computed(() => {
   const offsetY = 0;
   let count = 1; // 用于标签计数
 
-  // 修改 addBoundary 函数，添加 text 参数
-  const addBoundary = (vertices, label, text = '') => {
-    if (!vertices || vertices.length < 3) return;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    const pointsString = vertices.map(v => {
-      const x = v?.x ?? 0; // Safely access x, default to 0
-      const y = v?.y ?? 0; // Safely access y, default to 0
-      minX = Math.min(minX, x); minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
-      return `${x + offsetX},${y + offsetY}`;
-    }).join(" ");
+  const addBoundary = (vertices, label) => {
+      if (!vertices || vertices.length < 3) return;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      const pointsString = vertices.map(v => {
+          const x = v?.x ?? 0; // Safely access x, default to 0
+          const y = v?.y ?? 0; // Safely access y, default to 0
+          minX = Math.min(minX, x); minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+          return `${x + offsetX},${y + offsetY}`;
+      }).join(" ");
 
-    if(!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) return; // Skip if bounds invalid
+       if(!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) return; // Skip if bounds invalid
 
-    const width = (maxX - minX).toFixed(1);
-    const height = (maxY - minY).toFixed(1);
-    // 生成 Tooltip 文本
-    const tooltipText = `${label}\nVertices: ${vertices.map(v => `(${(v?.x??0).toFixed(0)},${(v?.y??0).toFixed(0)})`).join(' ')}\nW:${width}, H:${height}`;
+      const width = (maxX - minX).toFixed(1);
+      const height = (maxY - minY).toFixed(1);
+      // 生成 Tooltip 文本
+      const tooltipText = `${label}\nVertices: ${vertices.map(v => `(${(v?.x??0).toFixed(0)},${(v?.y??0).toFixed(0)})`).join(' ')}\nW:${width}, H:${height}`;
 
-    boundaries.push({ 
-      points: pointsString, 
-      tooltip: tooltipText,
-      text: text // 添加文本内容用于复制
-    });
+      boundaries.push({ points: pointsString, tooltip: tooltipText });
   };
 
   // 根据 selectedBlockLevel 遍历不同层级
   store.fullTextAnnotation.pages.forEach(page => {
-    page.blocks?.forEach(block => {
-      if (selectedBlockLevel.value === 'blocks') {
-        // 收集区块文本
-        let blockText = '';
-        block.paragraphs?.forEach(para => {
-          para.words?.forEach(word => {
-            word.symbols?.forEach(symbol => {
-              const symbolData = store.filteredSymbolsData.find(fd =>
-                fd.isFiltered && fd.text === symbol.text &&
-                Math.abs(fd.x - (symbol.boundingBox?.vertices?.[0]?.x ?? -1)) < 2 &&
-                Math.abs(fd.y - (symbol.boundingBox?.vertices?.[0]?.y ?? -1)) < 2
-              );
-              
-              if (symbolData) {
-                blockText += symbol.text;
-                if (symbolData.detectedBreak === 'SPACE' || symbolData.detectedBreak === 'EOL_SURE_SPACE') {
-                  blockText += ' ';
-                } else if (symbolData.detectedBreak === 'LINE_BREAK') {
-                  blockText += '\n';
-                }
-              }
-            });
-          });
-        });
-        addBoundary(block.boundingBox?.vertices, `区块 ${count++}`, blockText);
-      } else {
-        block.paragraphs?.forEach(paragraph => {
-          if (selectedBlockLevel.value === 'paragraphs') {
-            // 收集段落文本
-            let paraText = '';
-            paragraph.words?.forEach(word => {
-              word.symbols?.forEach(symbol => {
-                const symbolData = store.filteredSymbolsData.find(fd =>
-                  fd.isFiltered && fd.text === symbol.text &&
-                  Math.abs(fd.x - (symbol.boundingBox?.vertices?.[0]?.x ?? -1)) < 2 &&
-                  Math.abs(fd.y - (symbol.boundingBox?.vertices?.[0]?.y ?? -1)) < 2
-                );
-                
-                if (symbolData) {
-                  paraText += symbol.text;
-                  if (symbolData.detectedBreak === 'SPACE' || symbolData.detectedBreak === 'EOL_SURE_SPACE') {
-                    paraText += ' ';
-                  } else if (symbolData.detectedBreak === 'LINE_BREAK') {
-                    paraText += '\n';
-                  }
-                }
-              });
-            });
-            addBoundary(paragraph.boundingBox?.vertices, `段落 ${count++}`, paraText);
+      page.blocks?.forEach(block => {
+          if (selectedBlockLevel.value === 'blocks') {
+              addBoundary(block.boundingBox?.vertices, `区块 ${count++}`);
           } else {
-            paragraph.words?.forEach(word => {
-              if (selectedBlockLevel.value === 'words') {
-                // 收集单词文本
-                let wordText = '';
-                word.symbols?.forEach(symbol => {
-                  const symbolData = store.filteredSymbolsData.find(fd =>
-                    fd.isFiltered && fd.text === symbol.text &&
-                    Math.abs(fd.x - (symbol.boundingBox?.vertices?.[0]?.x ?? -1)) < 2 &&
-                    Math.abs(fd.y - (symbol.boundingBox?.vertices?.[0]?.y ?? -1)) < 2
-                  );
-                  
-                  if (symbolData) {
-                    wordText += symbol.text;
+              block.paragraphs?.forEach(paragraph => {
+                  if (selectedBlockLevel.value === 'paragraphs') {
+                      addBoundary(paragraph.boundingBox?.vertices, `段落 ${count++}`);
+                  } else {
+                      paragraph.words?.forEach(word => {
+                          if (selectedBlockLevel.value === 'words') {
+                              addBoundary(word.boundingBox?.vertices, `单词 ${count++}`);
+                          } else if (selectedBlockLevel.value === 'symbols') {
+                              word.symbols?.forEach(symbol => {
+                                  addBoundary(symbol.boundingBox?.vertices, `符号: ${symbol.text}`);
+                              });
+                          }
+                      });
                   }
-                });
-                addBoundary(word.boundingBox?.vertices, `单词 ${count++}`, wordText);
-              } else if (selectedBlockLevel.value === 'symbols') {
-                word.symbols?.forEach(symbol => {
-                  const symbolData = store.filteredSymbolsData.find(fd =>
-                    fd.isFiltered && fd.text === symbol.text &&
-                    Math.abs(fd.x - (symbol.boundingBox?.vertices?.[0]?.x ?? -1)) < 2 &&
-                    Math.abs(fd.y - (symbol.boundingBox?.vertices?.[0]?.y ?? -1)) < 2
-                  );
-                  
-                  if (symbolData) {
-                    addBoundary(symbol.boundingBox?.vertices, `符号: ${symbol.text}`, symbol.text);
-                  }
-                });
-              }
-            });
+              });
           }
-        });
-      }
-    });
+      });
   });
 
   return boundaries;
@@ -272,74 +194,17 @@ const toggleBlockVisibility = () => {
   showBounds.value = !showBounds.value;
 };
 
-// 添加复制文本功能
-const copyBlockText = (text) => {
-  if (!text) {
-    console.log('没有文本可复制');
-    return;
-  }
-  
-  try {
-    // 方法1：使用 Clipboard API (现代浏览器)
-    navigator.clipboard.writeText(text)
-      .then(() => {
-        console.log('文本已复制：', text);
-        showCopySuccess.value = true;
-        setTimeout(() => {
-          showCopySuccess.value = false;
-        }, 2000);
-      })
-      .catch(err => {
-        console.error('复制失败:', err);
-        // 尝试备用方法
-        useAlternativeCopy(text);
-      });
-  } catch (e) {
-    console.error('复制出错，尝试备用方法', e);
-    useAlternativeCopy(text);
-  }
-};
-
-// 备用复制方法（处理 Clipboard API 不可用的情况）
-const useAlternativeCopy = (text) => {
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.style.position = 'fixed';
-  textarea.style.left = '-9999px';
-  textarea.style.top = '-9999px';
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-  
-  try {
-    const successful = document.execCommand('copy');
-    if (successful) {
-      console.log('使用备用方法复制成功');
-      showCopySuccess.value = true;
-      setTimeout(() => {
-        showCopySuccess.value = false;
-      }, 2000);
-    } else {
-      console.error('备用复制方法失败');
-    }
-  } catch (err) {
-    console.error('备用复制方法错误:', err);
-  }
-  
-  document.body.removeChild(textarea);
-};
-
 // Tooltip 相关方法
 const getTooltipElement = () => {
-  // 尝试获取，如果不存在则创建一个（更健壮的方式）
-  let tooltip = document.querySelector('.coordinate-tooltip');
-  if (!tooltip) {
-    console.log("Creating tooltip element.");
-    tooltip = document.createElement('div');
-    tooltip.className = 'coordinate-tooltip';
-    document.body.appendChild(tooltip);
-  }
-  return tooltip;
+    // 尝试获取，如果不存在则创建一个（更健壮的方式）
+    let tooltip = document.querySelector('.coordinate-tooltip');
+    if (!tooltip) {
+        console.log("Creating tooltip element.");
+        tooltip = document.createElement('div');
+        tooltip.className = 'coordinate-tooltip';
+        document.body.appendChild(tooltip);
+    }
+    return tooltip;
 };
 
 const showTooltip = (event, tooltipText) => {
@@ -358,8 +223,10 @@ const updateTooltipPosition = (event) => {
   const tooltip = getTooltipElement();
   // 检查 tooltip 是否仍然存在且可见
   if (!tooltip || tooltip.style.display === 'none') {
-    return;
-  }
+      // 如果 tooltip 不可见，可能需要移除监听器（虽然 mouseleave 也会移除）
+      // document.removeEventListener('mousemove', updateTooltipPosition);
+      return;
+  };
 
   const x = event.clientX;
   const y = event.clientY;
@@ -395,10 +262,38 @@ const hideTooltip = () => {
   document.removeEventListener('mousemove', updateTooltipPosition);
 };
 
+// ***** START: 新增 logSymbolRender 方法 *****
+const logSymbolRender = (symbol, index) => {
+  // 这个函数会在每个 symbol 的 div 渲染时被调用
+  // 同样，为了避免日志爆炸，可以加条件打印
+  if (index < 10 || index > symbolBlocksToDisplay.value.length - 10) { // 只打印开头和结尾的 10 个
+      console.log(
+        `Rendering symbol div #${index}:`,
+        `Text='${symbol.text}'`, // 检查文本
+        `Pos=(${(symbol.x ?? 0).toFixed(1)}, ${(symbol.y ?? 0).toFixed(1)})`, // 检查坐标
+        `Size=(${(symbol.width ?? 0).toFixed(1)} x ${(symbol.height ?? 0).toFixed(1)})`, // **检查宽高是否为 0 或过小**
+        `FontSize=${symbol.fontSize}` // 检查计算的字体大小
+      );
+  }
+  // 这个函数的返回值不重要，只是为了在模板中执行 log
+  return '';
+};
+// ***** END: 新增 logSymbolRender 方法 *****
+
 // --- Lifecycle Hooks ---
+// onMounted 和 onUnmounted 主要用于处理全局事件监听器或需要清理的资源
+// 在这个组件里，主要是 Tooltip 的 mousemove 监听器
+// 但因为是在 document 上添加/移除，所以严格来说不是必须在 onUnmounted 中移除
+// （因为 hideTooltip 会移除），但加上更保险
 onUnmounted(() => {
-  document.removeEventListener('mousemove', updateTooltipPosition);
+    document.removeEventListener('mousemove', updateTooltipPosition);
+    // 如果 tooltip 是在这个组件内创建的，也应该在这里移除
+    // const tooltip = document.querySelector('.coordinate-tooltip');
+    // if (tooltip && tooltip.parentElement === document.body) {
+    //    document.body.removeChild(tooltip);
+    // }
 });
+
 </script>
 
 <style scoped>
@@ -572,17 +467,6 @@ onUnmounted(() => {
   z-index: 101;
 }
 
-/* 复制成功提示 */
-.copy-success-toast {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 14px;
-  z-index: 1000;
-}
+/* Global tooltip style is in base.css or App.vue */
+
 </style>
