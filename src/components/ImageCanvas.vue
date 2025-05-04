@@ -30,7 +30,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['dimensions-known']);
+const emit = defineEmits(['dimensions-known', 'container-height-update']);
 
 const store = useOcrStore();
 const imageRef = ref(null);
@@ -44,6 +44,13 @@ const handleImageLoad = (event) => {
   if (img.naturalWidth && img.naturalHeight) {
     emit('dimensions-known', { width: img.naturalWidth, height: img.naturalHeight });
     adjustContainerHeight(img.naturalWidth, img.naturalHeight);
+    
+    // 图像加载完成后延迟发送容器高度更新事件
+    setTimeout(() => {
+      if (containerRef.value) {
+        emit('container-height-update', containerRef.value.clientHeight);
+      }
+    }, 100);
   }
 };
 
@@ -93,6 +100,11 @@ const adjustContainerHeight = (w, h) => {
     // Ensure a minimum height and reasonable maximum (e.g., 80% of viewport)
     const finalHeight = Math.max(300, Math.min(window.innerHeight * 0.8, calculatedHeight));
     containerRef.value.style.height = `${finalHeight}px`;
+    
+    // 添加延迟以确保样式已应用
+    setTimeout(() => {
+      emit('container-height-update', finalHeight);
+    }, 50);
 };
 
 // Handle resize to readjust height
@@ -101,6 +113,13 @@ onMounted(() => {
   // Adjust height if src is already present (e.g., PDF first page rendered)
   if (props.src && store.imageDimensions.width && store.imageDimensions.height) {
        adjustContainerHeight(store.imageDimensions.width, store.imageDimensions.height);
+       
+       // 延迟一会儿后发送容器高度更新事件
+       setTimeout(() => {
+         if (containerRef.value) {
+           emit('container-height-update', containerRef.value.clientHeight);
+         }
+       }, 300);
   }
 
   if (containerRef.value && window.ResizeObserver) {
@@ -110,6 +129,9 @@ onMounted(() => {
           if (entry.contentRect.width > 0) {
                // Re-calculate height based on new width and STORED dimensions
                adjustContainerHeight(store.imageDimensions.width, store.imageDimensions.height);
+               
+               // 在容器大小变化时发送高度更新事件
+               emit('container-height-update', entry.contentRect.height);
           }
       });
       resizeObserver.observe(containerRef.value);

@@ -1,5 +1,5 @@
 <template>
-  <div class="text-output-manager">
+  <div class="text-output-manager" ref="textManagerRef">
     <div class="info-header">
        <div><strong>尺寸:</strong> {{ store.imageDimensions.width || '?' }}×{{ store.imageDimensions.height || '?' }}px</div>
        <div><strong>语言:</strong> {{ store.detectedLanguageName || '未确定' }} ({{ store.detectedLanguageCode }})</div>
@@ -29,7 +29,7 @@
 
     <hr class="divider">
 
-    <div class="text-content-area">
+    <div class="text-content-area" :style="contentAreaStyle">
        <div v-if="!store.hasOcrResult && store.currentFiles.length > 0" class="text-placeholder">
            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
            <p>请点击"开始识别"</p>
@@ -49,7 +49,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
 
 // Import the four specialized text components
@@ -58,9 +58,57 @@ import TextHorizontalParagraph from './TextHorizontalParagraph.vue';
 import TextVerticalParallel from './TextVerticalParallel.vue';
 import TextVerticalParagraph from './TextVerticalParagraph.vue';
 
+const props = defineProps({
+  containerHeight: {
+    type: Number,
+    default: 0
+  }
+});
+
 const store = useOcrStore();
 const textComponent = ref(null);
+const textManagerRef = ref(null);
 const copyStatus = ref('idle'); // 'idle', 'success', 'error'
+const contentAreaHeight = ref(0); // 用于计算文本内容区域的高度
+
+// 监听容器高度变化
+watch(() => props.containerHeight, (newHeight) => {
+  if (newHeight > 0) {
+    updateContentAreaHeight(newHeight);
+  }
+}, { immediate: true });
+
+// 计算文本内容区域高度
+function updateContentAreaHeight(containerHeight) {
+  if (!textManagerRef.value) return;
+  
+  // 获取其他元素的高度
+  const headerElement = textManagerRef.value.querySelector('.info-header');
+  const toggleElement = textManagerRef.value.querySelector('.text-display-toggle');
+  const dividerElement = textManagerRef.value.querySelector('.divider');
+  
+  // 计算这些元素的高度和内边距
+  const headerHeight = headerElement ? headerElement.offsetHeight : 0;
+  const toggleHeight = toggleElement ? toggleElement.offsetHeight : 0;
+  const dividerHeight = dividerElement ? dividerElement.offsetHeight : 0;
+  const containerPadding = 32; // 容器的上下内边距总和 (1rem * 2 = 32px)
+  
+  // 计算剩余高度给内容区域
+  const totalReservedHeight = headerHeight + toggleHeight + dividerHeight + containerPadding;
+  const newContentHeight = Math.max(50, containerHeight - totalReservedHeight);
+  
+  // 更新内容区域高度
+  contentAreaHeight.value = newContentHeight;
+  console.log('文本内容区域高度更新:', contentAreaHeight.value);
+}
+
+// 在组件挂载后初始化高度
+onMounted(() => {
+  // 如果已经有传入的容器高度，立即更新
+  if (props.containerHeight > 0) {
+    updateContentAreaHeight(props.containerHeight);
+  }
+});
 
 // Determine which component to render dynamically
 const activeTextComponent = computed(() => {
@@ -72,6 +120,17 @@ const activeTextComponent = computed(() => {
   } else { // Default to horizontal
     return displayMode === 'parallel' ? TextHorizontalParallel : TextHorizontalParagraph;
   }
+});
+
+// 计算文本内容区域样式
+const contentAreaStyle = computed(() => {
+  if (contentAreaHeight.value > 0) {
+    return {
+      height: `${contentAreaHeight.value}px`,
+      overflowY: 'auto'
+    };
+  }
+  return {};
 });
 
 const updateDisplayMode = (mode) => {
@@ -170,26 +229,22 @@ const copyText = async () => {
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     padding: 1rem;
-    overflow-y: auto; /* Allow scrolling if content overflows */
-    min-height: 300px; /* Ensure minimum height like original */
+    /* overflow-y已移至text-content-area */
+    min-height: 300px; /* 最小高度保持不变 */
     display: flex;
     flex-direction: column;
 }
 
 .info-header {
     margin-bottom: 15px;
-    padding: 10px 0; /* Remove side padding if full width */
+    padding: 10px 15px;
     background-color: var(--secondary-color);
     border-radius: 8px;
     display: flex;
     flex-direction: column; /* Stack info items */
     gap: 8px;
-    padding: 10px 15px;
     font-size: 14px;
     color: var(--text-color);
-}
-.info-header div {
-    /* Style for each info line */
 }
 .info-header strong {
     font-weight: 600;
@@ -258,14 +313,14 @@ const copyText = async () => {
 }
 
 .text-content-area {
-    flex-grow: 1; /* Take remaining space */
+    flex-grow: 1; /* 扩展填充剩余空间 */
     white-space: pre-wrap;
     word-break: break-word;
     font-family: 'Inter', sans-serif;
     font-size: 16px;
     line-height: 1.6;
-    min-height: 50px; /* Minimum height for text */
-    overflow-y: auto; /* Scroll text area if it overflows */
+    min-height: 50px; /* 最小高度 */
+    overflow-y: auto; /* 内容溢出时显示滚动条 */
 }
 
 .text-placeholder {
