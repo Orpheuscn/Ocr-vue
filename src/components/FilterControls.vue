@@ -1,5 +1,6 @@
 <template>
   <div class="filter-controls-main filter-controls-fixed">
+    <div class="filter-title">文本过滤控制</div>
     <div class="filter-controls-row">
       <div class="filter-container">
         <label>字符宽度: <span>{{ formatRange(currentFilters.minWidth, currentFilters.maxWidth) }}</span></label>
@@ -119,33 +120,45 @@ const formatRange = (min, max) => {
 <style scoped>
 /* Styles adapted from .filter-controls-main etc */
 .filter-controls-main {
-    background-color: rgba(80, 80, 80, 0.9); /* Darker, slightly less transparent */
-    padding: 0.75rem 1.25rem;
-    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2); /* Shadow on top */
-    border-radius: 10px 10px 0 0; /* Round top corners only */
-    color: #f0f0f0; /* Light text */
+    background-color: rgba(80, 80, 80, 0.9); /* 深色半透明背景 */
+    padding: 0.85rem 1.5rem; /* 增加内边距 */
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2), 0 0 10px rgba(0, 0, 0, 0.1); /* 增强阴影效果 */
+    border-radius: 16px; /* 四个角都是圆角 */
+    color: #f0f0f0; /* 浅色文字 */
 }
 
-/* Fixed positioning */
+/* 标题样式 */
+.filter-title {
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 12px;
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    letter-spacing: 0.5px;
+}
+
+/* 固定定位 */
 .filter-controls-fixed {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%; /* Full width */
-    border-radius: 0; /* Override individual radius */
+    bottom: 20px; /* 距离底部20px */
+    left: 50%; /* 居中定位 */
+    transform: translateX(-50%); /* 水平居中 */
+    width: 90%; /* 宽度为视口的90% */
+    max-width: 1200px; /* 最大宽度 */
     z-index: 100;
     box-sizing: border-box;
+    backdrop-filter: blur(5px); /* 添加模糊背景效果 */
+    -webkit-backdrop-filter: blur(5px); /* Safari兼容 */
 }
 
 .filter-controls-row {
     display: flex;
-    justify-content: space-around; /* Space out more evenly */
-    align-items: flex-start; /* Align items top */
-    gap: 25px; /* Increase gap */
-    max-width: 1200px; /* Max width matching main content */
-    margin: 0 auto; /* Center the row */
-    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    justify-content: space-around; /* 均匀分布 */
+    align-items: flex-start; /* 顶部对齐 */
+    gap: 25px; /* 元素间隔 */
+    margin: 0 auto; /* 居中 */
+    flex-wrap: wrap; /* 允许换行 */
 }
 
 .filter-container {
@@ -159,41 +172,49 @@ const formatRange = (min, max) => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px; /* More space */
+    margin-bottom: 8px;
     font-weight: 500;
-    font-size: 13px; /* Slightly smaller */
-    color: #e0e0e0; /* Lighter gray */
+    font-size: 13px;
+    color: #e0e0e0;
 }
 
-.filter-container label span { /* The value part */
+.filter-container label span { /* 值部分 */
      color: #ffffff;
      font-weight: bold;
-     background-color: rgba(0,0,0,0.2);
-     padding: 1px 5px;
-     border-radius: 3px;
+     background-color: rgba(255, 255, 255, 0.15);
+     padding: 2px 8px;
+     border-radius: 12px;
      font-size: 12px;
 }
 
-/* Responsive adjustments */
+/* 响应式调整 */
 @media (max-width: 900px) {
     .filter-container {
         min-width: 200px;
     }
+    .filter-controls-fixed {
+        width: 95%; /* 小屏幕上稍宽一些 */
+        bottom: 15px; /* 距底部更近 */
+    }
 }
+
 @media (max-width: 600px) {
-     .filter-controls-row {
+    .filter-controls-row {
         flex-direction: column;
-        align-items: stretch; /* Stretch items full width */
+        align-items: stretch; /* 拉伸元素填满宽度 */
         gap: 15px;
-        padding: 0 10px; /* Add some padding */
-     }
-     .filter-container {
-         min-width: unset;
-         width: 100%;
-     }
-     .filter-controls-main {
-         padding: 0.5rem 0.8rem;
-     }
+    }
+    .filter-container {
+        min-width: unset;
+        width: 100%;
+    }
+    .filter-controls-main {
+        padding: 0.7rem 1rem;
+    }
+    .filter-controls-fixed {
+        width: 95%; /* 更小屏幕上更宽 */
+        bottom: 10px; /* 距底部更近 */
+    }
 }
 
 </style>

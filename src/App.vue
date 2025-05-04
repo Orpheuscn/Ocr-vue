@@ -113,8 +113,8 @@ const handleDimensionsKnown = ({ width, height }) => {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  padding-bottom: 120px; /* Space for fixed FilterControls */
-  position: relative; /* Needed for fixed positioning context? */
+  padding-bottom: 140px; /* 增加底部填充，为浮动滑块留出空间 */
+  position: relative;
 }
 
 main#main-content {
