@@ -1,48 +1,62 @@
 <template>
-  <div class="filter-controls-main filter-controls-fixed">
-    <div class="filter-title">文本过滤控制</div>
-    <div class="filter-controls-row">
-      <div class="filter-container">
-        <label>字符宽度: <span>{{ formatRange(currentFilters.minWidth, currentFilters.maxWidth) }}</span></label>
-        <RangeSlider
-          :min="bounds.width.min"
-          :max="bounds.width.max"
-          :min-value="currentFilters.minWidth"
-          :max-value="currentFilters.maxWidth"
-          @update:min-value="updateFilter('minWidth', $event)"
-          @update:max-value="updateFilter('maxWidth', $event)"
-        />
-      </div>
-
-      <div class="filter-container">
-        <label>X坐标: <span>{{ formatRange(currentFilters.minX, currentFilters.maxX) }}</span></label>
-         <RangeSlider
-          :min="bounds.x.min"
-          :max="bounds.x.max"
-          :min-value="currentFilters.minX"
-          :max-value="currentFilters.maxX"
-          @update:min-value="updateFilter('minX', $event)"
-          @update:max-value="updateFilter('maxX', $event)"
-        />
-      </div>
-
-      <div class="filter-container">
-        <label>Y坐标: <span>{{ formatRange(currentFilters.minY, currentFilters.maxY) }}</span></label>
-         <RangeSlider
-          :min="bounds.y.min"
-          :max="bounds.y.max"
-          :min-value="currentFilters.minY"
-          :max-value="currentFilters.maxY"
-          @update:min-value="updateFilter('minY', $event)"
-          @update:max-value="updateFilter('maxY', $event)"
-        />
-      </div>
+  <div>
+    <!-- 悬浮显示/隐藏按钮 -->
+    <div 
+      class="filter-toggle-button" 
+      @click="toggleVisibility"
+      :class="{ 'filter-hidden': !isVisible }"
+    >
+      <span>{{ isVisible ? '隐藏' : '显示' }}过滤器</span>
     </div>
+    
+    <!-- 滑块控制面板 -->
+    <transition name="slide-fade">
+      <div v-show="isVisible" class="filter-controls-main filter-controls-fixed">
+        <div class="filter-title">文本过滤控制</div>
+        <div class="filter-controls-row">
+          <div class="filter-container">
+            <label>字符宽度: <span>{{ formatRange(currentFilters.minWidth, currentFilters.maxWidth) }}</span></label>
+            <RangeSlider
+              :min="bounds.width.min"
+              :max="bounds.width.max"
+              :min-value="currentFilters.minWidth"
+              :max-value="currentFilters.maxWidth"
+              @update:min-value="updateFilter('minWidth', $event)"
+              @update:max-value="updateFilter('maxWidth', $event)"
+            />
+          </div>
+
+          <div class="filter-container">
+            <label>X坐标: <span>{{ formatRange(currentFilters.minX, currentFilters.maxX) }}</span></label>
+             <RangeSlider
+              :min="bounds.x.min"
+              :max="bounds.x.max"
+              :min-value="currentFilters.minX"
+              :max-value="currentFilters.maxX"
+              @update:min-value="updateFilter('minX', $event)"
+              @update:max-value="updateFilter('maxX', $event)"
+            />
+          </div>
+
+          <div class="filter-container">
+            <label>Y坐标: <span>{{ formatRange(currentFilters.minY, currentFilters.maxY) }}</span></label>
+             <RangeSlider
+              :min="bounds.y.min"
+              :max="bounds.y.max"
+              :min-value="currentFilters.minY"
+              :max-value="currentFilters.maxY"
+              @update:min-value="updateFilter('minY', $event)"
+              @update:max-value="updateFilter('maxY', $event)"
+            />
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, reactive, computed } from 'vue';
+import { ref, watch, reactive, computed, onMounted } from 'vue';
 import RangeSlider from './RangeSlider.vue'; // Import the reusable slider
 
 const props = defineProps({
@@ -67,6 +81,33 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['filters-changed']);
+
+// 控制面板显示状态
+const isVisible = ref(false); // 默认隐藏
+
+// 切换显示/隐藏状态
+const toggleVisibility = () => {
+  isVisible.value = !isVisible.value;
+  
+  // 尝试保存到本地存储，下次打开时记住状态
+  try {
+    localStorage.setItem('filterControlsVisible', isVisible.value ? 'true' : 'false');
+  } catch (e) {
+    console.warn('无法保存过滤器显示状态', e);
+  }
+};
+
+// 在组件挂载时从本地存储读取显示状态
+onMounted(() => {
+  try {
+    const savedState = localStorage.getItem('filterControlsVisible');
+    if (savedState !== null) {
+      isVisible.value = savedState === 'true';
+    }
+  } catch (e) {
+    console.warn('无法读取过滤器显示状态', e);
+  }
+});
 
 // Use local reactive state synced with props to manage slider values
 // This prevents direct mutation of props and allows debouncing/throttling
@@ -118,6 +159,46 @@ const formatRange = (min, max) => {
 </script>
 
 <style scoped>
+/* 切换按钮样式 */
+.filter-toggle-button {
+  position: fixed;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(80, 80, 80, 0.9);
+  color: white;
+  border-radius: 20px;
+  padding: 6px 15px;
+  cursor: pointer;
+  z-index: 101;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.filter-toggle-button:hover {
+  background-color: rgba(100, 100, 100, 0.95);
+}
+
+.filter-toggle-button.filter-hidden {
+  border-radius: 20px;
+}
+
+/* 过渡动画 */
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateY(20px) translateX(-50%);
+  opacity: 0;
+}
+
 /* Styles adapted from .filter-controls-main etc */
 .filter-controls-main {
     background-color: rgba(80, 80, 80, 0.9); /* 深色半透明背景 */
@@ -215,5 +296,4 @@ const formatRange = (min, max) => {
         bottom: 8px; /* 距底部更近 */
     }
 }
-
 </style>

@@ -233,6 +233,10 @@ const copyText = async () => {
     min-height: 300px; /* 最小高度保持不变 */
     display: flex;
     flex-direction: column;
+    box-sizing: border-box; /* 确保padding包含在高度内 */
+    width: 100%; /* 使用100%宽度填充父容器 */
+    height: 100%; /* 确保使用100%高度 */
+    overflow: hidden; /* 防止内容溢出导致滚动条出现 */
 }
 
 .info-header {
@@ -321,6 +325,8 @@ const copyText = async () => {
     line-height: 1.6;
     min-height: 50px; /* 最小高度 */
     overflow-y: auto; /* 内容溢出时显示滚动条 */
+    /* 确保内容区域能够正确伸展 */
+    flex: 1; /* 使用flex: 1使其填充剩余空间 */
 }
 
 .text-placeholder {
