@@ -3,17 +3,10 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 // 确保正确导入你的 API 服务文件路径
 import { performOcrRequest, getLanguageName } from '@/services/visionApi';
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js';
-// 确保正确导入 pdfjs-dist
-// --- 确保 WorkerSrc 只设置一次 (可以放在 main.js 或这里，main.js 更常见) ---
-// if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-//   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-//     'pdfjs-dist/build/pdf.worker.min.js',
-//     import.meta.url
-//   ).toString();
-//   console.log("PDF.js Worker Source set in store (ensure it's set only once, preferably in main.js)");
-// }
-// --- ----------------------------------------------------------------- ---
+// 导入PDF适配器
+import { renderPdfPage, getPdfPageCount } from '@/utils/pdfAdapter';
+// 不再需要导入PDF.js，使用全局对象
+// worker设置已经在main.js中完成
 
 export const useOcrStore = defineStore('ocr', () => {
   // --- 私有辅助函数 ---
@@ -49,7 +42,7 @@ export const useOcrStore = defineStore('ocr', () => {
   const currentFiles = ref([]); // 存储 File 对象数组 (虽然目前只处理第一个)
   const filePreviewUrl = ref(''); // 用于 <img> src (Blob URL 或 Data URL)
   const isPdfFile = ref(false);
-  const pdfDocument = ref(null); // PDF.js 文档代理对象
+  const pdfDataArray = ref(null); // 存储PDF文件的Uint8Array
   const currentPage = ref(1);
   const totalPages = ref(0);
 
@@ -126,10 +119,8 @@ export const useOcrStore = defineStore('ocr', () => {
 
   // 重置 PDF 相关状态
   const resetPdfState = () => {
-      if (pdfDocument.value && typeof pdfDocument.value.destroy === 'function') {
-          pdfDocument.value.destroy(); // 清理 PDF.js 对象
-      }
-      pdfDocument.value = null;
+      // 清理PDF资源
+      pdfDataArray.value = null;
       currentPage.value = 1;
       totalPages.value = 0;
       isPdfFile.value = false;
@@ -175,14 +166,7 @@ export const useOcrStore = defineStore('ocr', () => {
   // 加载用户选择的文件
   async function loadFiles(files) {
       if (!files || files.length === 0) return;
-      // 检查 API Key (允许在没有 Key 时加载文件，但在识别前检查)
-      // if (!hasApiKey.value && !localStorage.getItem('googleVisionApiKey')) {
-      //     _showNotification('请先设置 API Key', 'error');
-      //     showApiSettings.value = true;
-      //     return;
-      // }
-      // if (!apiKey.value) apiKey.value = localStorage.getItem('googleVisionApiKey') || '';
-
+      
       resetUIState(); // 重置状态
 
       const file = files[0]; // 只处理第一个文件
@@ -194,15 +178,30 @@ export const useOcrStore = defineStore('ocr', () => {
       try {
           if (file.type === 'application/pdf') {
               isPdfFile.value = true;
-              const arrayBuffer = await file.arrayBuffer();
-              // 销毁旧的 PDF 文档（如果存在）
-              if (pdfDocument.value && typeof pdfDocument.value.destroy === 'function') {
-                  await pdfDocument.value.destroy();
+              
+              try {
+                  // 读取文件数据为ArrayBuffer
+                  const buffer = await file.arrayBuffer();
+                  
+                  // 创建ArrayBuffer数据的独立副本
+                  const tempArray = new Uint8Array(buffer);
+                  const bufferCopy = new Uint8Array(tempArray.length);
+                  bufferCopy.set(tempArray);
+                  
+                  // 存储数据副本
+                  pdfDataArray.value = bufferCopy;
+                  
+                  // 获取PDF页数
+                  totalPages.value = await getPdfPageCount(pdfDataArray.value);
+                  currentPage.value = 1;
+                  
+                  // 渲染第一页
+                  await renderCurrentPdfPageToPreview();
+              } catch (pdfError) {
+                  console.error("PDF处理错误:", pdfError);
+                  throw new Error(`PDF文件处理失败: ${pdfError.message}`);
               }
-              pdfDocument.value = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-              totalPages.value = pdfDocument.value.numPages;
-              currentPage.value = 1;
-              await renderCurrentPdfPageToPreview(); // 渲染第一页
+              
           } else if (file.type.startsWith('image/')) {
               isPdfFile.value = false;
               // 释放之前可能存在的 Blob URL
@@ -231,27 +230,19 @@ export const useOcrStore = defineStore('ocr', () => {
 
   // 渲染当前 PDF 页面到 Data URL (用于预览和 OCR)
   async function renderCurrentPdfPageToPreview() {
-      console.log(pdfjsLib, pdfDocument.value)
-      if (!pdfDocument.value || !isPdfFile.value) return;
+      if (!pdfDataArray.value || !isPdfFile.value) return;
 
       isLoading.value = true;
       loadingMessage.value = `渲染 PDF 第 ${currentPage.value} 页...`;
       isDimensionsKnown.value = false; // 渲染新页面时，尺寸暂时未知
 
       try {
-          const page = await pdfDocument.value.getPage(currentPage.value);
-          const viewport = page.getViewport({ scale: 1.5 }); // 可以调整缩放比例
-          const canvas = document.createElement('canvas');
-          const context = canvas.getContext('2d');
-          if (!context) throw new Error("无法获取 Canvas Context");
-
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-
-          await page.render({ canvasContext: context, viewport: viewport }).promise;
-
+          // 直接传递原始数据，不要在这里创建Uint8Array副本
+          // 让pdfAdapter处理数据副本的创建
+          const result = await renderPdfPage(pdfDataArray.value, currentPage.value, 1.5);
+          
           // 设置尺寸已知状态
-          imageDimensions.value = { width: canvas.width, height: canvas.height };
+          imageDimensions.value = { width: result.width, height: result.height };
           isDimensionsKnown.value = true;
 
           // 释放旧的 URL
@@ -261,7 +252,9 @@ export const useOcrStore = defineStore('ocr', () => {
              URL.revokeObjectURL(filePreviewUrl.value);
           }
 
-          filePreviewUrl.value = canvas.toDataURL('image/png'); // 更新预览 URL
+          // 使用适配器返回的数据URL
+          filePreviewUrl.value = result.dataUrl;
+          
           resetOcrData(); // 清除旧 OCR 结果
           _showNotification(`PDF 第 ${currentPage.value} 页渲染完成`, 'success');
 
@@ -283,7 +276,7 @@ export const useOcrStore = defineStore('ocr', () => {
       if (newPage !== currentPage.value) {
           currentPage.value = newPage;
           await renderCurrentPdfPageToPreview(); // 重新渲染页面
-          // 注意：切换页面后需要用户再次点击“开始识别”
+          // 注意：切换页面后需要用户再次点击"开始识别"
       }
   }
 
@@ -556,7 +549,7 @@ export const useOcrStore = defineStore('ocr', () => {
   // --- 返回 Store 的 state, getters, actions ---
   return {
     // State
-    apiKey, showApiSettings, currentFiles, filePreviewUrl, isPdfFile, pdfDocument, currentPage, totalPages, isLoading, loadingMessage, ocrRawResult, fullTextAnnotation, originalFullText, imageDimensions, detectedLanguageCode, detectedLanguageName, filterSettings, filterBounds, filteredSymbolsData, initialTextDirection, textDisplayMode, notification, isDimensionsKnown,
+    apiKey, showApiSettings, currentFiles, filePreviewUrl, isPdfFile, pdfDataArray, currentPage, totalPages, isLoading, loadingMessage, ocrRawResult, fullTextAnnotation, originalFullText, imageDimensions, detectedLanguageCode, detectedLanguageName, filterSettings, filterBounds, filteredSymbolsData, initialTextDirection, textDisplayMode, notification, isDimensionsKnown,
     // Getters
     hasApiKey, canStartOcr, textStats, hasOcrResult,
     // Actions
