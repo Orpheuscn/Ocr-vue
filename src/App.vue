@@ -113,7 +113,7 @@ const handleDimensionsKnown = ({ width, height }) => {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  padding-bottom: 140px; /* 增加底部填充，为浮动滑块留出空间 */
+  padding-bottom: 120px; /* 减小底部填充 */
   position: relative;
 }
 

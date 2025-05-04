@@ -92,10 +92,10 @@ const highlightStyle = computed(() => {
 <style scoped>
 .range-slider-container {
     position: relative;
-    height: 20px; /* Increased height for easier interaction */
+    height: 16px; /* 减小容器高度 */
     display: flex;
     align-items: center;
-    margin: 0.8rem 0; /* Adjusted margin */
+    margin: 0.5rem 0; /* 减小上下边距 */
 }
 
 .track, .track-highlight {
@@ -104,9 +104,9 @@ const highlightStyle = computed(() => {
     right: 0;
     top: 50%;
     transform: translateY(-50%);
-    height: 6px; /* 增加轨道高度 */
-    border-radius: 3px; /* 对应增加圆角 */
-    background-color: rgba(255, 255, 255, 0.3); /* 更明显的轨道颜色 */
+    height: 4px; /* 减小轨道高度 */
+    border-radius: 2px; /* 相应减小圆角 */
+    background-color: rgba(255, 255, 255, 0.3);
     z-index: 1;
 }
 
@@ -133,39 +133,39 @@ const highlightStyle = computed(() => {
 .slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    height: 20px; /* 增大滑块大小 */
-    width: 20px;
-    border-radius: 50%;
-    background: var(--slider-color, #5436DA);
-    border: 2px solid white; /* 白色边框提高对比度 */
-    cursor: pointer;
-    pointer-events: auto; /* 确保滑块捕获事件 */
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4); /* 增强阴影 */
-    margin-top: -7px; /* 调整垂直对齐 */
-    transition: transform 0.1s, box-shadow 0.1s; /* 添加过渡效果 */
-}
-
-.slider::-moz-range-thumb {
-    height: 20px;
-    width: 20px;
+    height: 16px; /* 减小滑块大小 */
+    width: 16px;
     border-radius: 50%;
     background: var(--slider-color, #5436DA);
     border: 2px solid white;
     cursor: pointer;
     pointer-events: auto;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    margin-top: -6px; /* 调整垂直对齐 */
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.slider::-moz-range-thumb {
+    height: 16px; /* 减小滑块大小 */
+    width: 16px;
+    border-radius: 50%;
+    background: var(--slider-color, #5436DA);
+    border: 2px solid white;
+    cursor: pointer;
+    pointer-events: auto;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
     transition: transform 0.1s, box-shadow 0.1s;
 }
 
 /* 悬停效果 */
 .slider::-webkit-slider-thumb:hover {
-    transform: scale(1.1); /* 悬停时稍微放大 */
-    box-shadow: 0 0 8px rgba(84, 54, 218, 0.6); /* 悬停时增加发光效果 */
+    transform: scale(1.08); /* 减小放大比例 */
+    box-shadow: 0 0 6px rgba(84, 54, 218, 0.6); /* 减小发光效果 */
 }
 
 .slider::-moz-range-thumb:hover {
-    transform: scale(1.1);
-    box-shadow: 0 0 8px rgba(84, 54, 218, 0.6);
+    transform: scale(1.08);
+    box-shadow: 0 0 6px rgba(84, 54, 218, 0.6);
 }
 
 /* Focus styles for accessibility */
@@ -173,9 +173,9 @@ const highlightStyle = computed(() => {
     outline: none; /* Remove default outline */
 }
 .slider:focus::-webkit-slider-thumb {
-    box-shadow: 0 0 0 3px rgba(84, 54, 218, 0.4); /* Focus ring */
+    box-shadow: 0 0 0 2px rgba(84, 54, 218, 0.4); /* 减小聚焦环大小 */
 }
 .slider:focus::-moz-range-thumb {
-     box-shadow: 0 0 0 3px rgba(84, 54, 218, 0.4); /* Focus ring */
+     box-shadow: 0 0 0 2px rgba(84, 54, 218, 0.4);
 }
 </style>
