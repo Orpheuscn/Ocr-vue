@@ -4,15 +4,11 @@ import './assets/base.css' // Import global styles first
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
-
 import App from './App.vue'
 
-// --- PDF.js Worker Setup (if using npm package) ---
-// Important: Adjust the path based on your Vite config and pdfjs-dist version
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js';
-import PdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.js?url';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = PdfjsWorker;
+// --- PDF.js Worker Setup (using global object) ---
+// PDF.js is now included via script tags in index.html
+// No need to import here
 // ---------------------------------------------
 
 const app = createApp(App)
