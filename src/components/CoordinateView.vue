@@ -273,14 +273,24 @@ const blockBoundaries = computed(() => {
                 addBoundary(word.boundingBox?.vertices, `单词 ${count++}`, wordText);
               } else if (selectedBlockLevel.value === 'symbols') {
                 word.symbols?.forEach(symbol => {
-                  const symbolData = store.filteredSymbolsData.find(fd =>
-                    fd.isFiltered && fd.text === symbol.text &&
-                    Math.abs(fd.x - (symbol.boundingBox?.vertices?.[0]?.x ?? -1)) < 2 &&
-                    Math.abs(fd.y - (symbol.boundingBox?.vertices?.[0]?.y ?? -1)) < 2
-                  );
+                  // 修改匹配逻辑，放宽匹配条件以支持倾斜文字
+                  const symbolData = store.filteredSymbolsData.find(fd => {
+                    if (!fd.isFiltered || fd.text !== symbol.text) return false;
+                    
+                    // 获取符号边界框的第一个顶点（左上角）
+                    const symbolX = symbol.boundingBox?.vertices?.[0]?.x ?? -999;
+                    const symbolY = symbol.boundingBox?.vertices?.[0]?.y ?? -999;
+                    
+                    // 放宽匹配标准，增加匹配半径，特别是对于倾斜文本
+                    return Math.abs(fd.x - symbolX) < 10 && Math.abs(fd.y - symbolY) < 10;
+                  });
                   
                   if (symbolData) {
                     addBoundary(symbol.boundingBox?.vertices, `符号: ${symbol.text}`, symbol.text);
+                  } else if (symbol.text && symbol.boundingBox?.vertices?.length >= 3) {
+                    // 即使没有匹配到filteredSymbolsData，如果有文本和边界框仍然添加
+                    // 这对倾斜文本特别有用
+                    addBoundary(symbol.boundingBox.vertices, `符号: ${symbol.text}`, symbol.text);
                   }
                 });
               }
