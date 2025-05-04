@@ -78,17 +78,34 @@ const updateDisplayMode = (mode) => {
   store.setTextDisplayMode(mode);
 };
 
-// 获取当前可复制的文本
-const copyableText = computed(() => {
-  if (store.hasOcrResult) {
-    if (store.textDisplayMode === 'parallel') {
-      return store.fullTextAnnotation?.text || '';
-    } else {
-      // 对于段落模式，使用过滤后的文本
-      return store.originalFullText || '';
+// 在组件挂载后获取格式化文本
+const getFormattedText = () => {
+  // 从DOM获取文本内容是最可靠的方法
+  if (textComponent.value && textComponent.value.$el) {
+    // 获取文本节点内容，跳过可能存在的HTML标签
+    const text = textComponent.value.$el.textContent || '';
+    if (text.trim()) {
+      console.log('从组件DOM获取文本内容');
+      return text.trim();
     }
   }
-  return '';
+  
+  // 回退方案：根据当前显示模式返回合适的原始文本
+  console.log('使用回退方案获取文本');
+  if (store.textDisplayMode === 'parallel') {
+    // 原排版模式
+    return store.fullTextAnnotation?.text || '';
+  } else {
+    // 分段模式，将连续空行合并为一个空行
+    const originalText = store.originalFullText || '';
+    return originalText.replace(/\n+/g, '\n\n').trim();
+  }
+};
+
+// 获取当前可复制的文本
+const copyableText = computed(() => {
+  if (!store.hasOcrResult) return '';
+  return getFormattedText();
 });
 
 // 复制按钮文本
@@ -116,6 +133,9 @@ const copyButtonTooltip = computed(() => {
 // 复制文本方法
 const copyText = async () => {
   if (!copyableText.value) return;
+  
+  console.log('正在复制文本, 排版模式:', store.textDisplayMode);
+  console.log('文本组件类型:', activeTextComponent.value.name || '未知组件');
   
   try {
     await navigator.clipboard.writeText(copyableText.value);
