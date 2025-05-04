@@ -43,11 +43,12 @@
         </div>
 
         <svg class="block-svg" :viewBox="`0 0 ${systemWidth} ${systemHeight}`" preserveAspectRatio="none">
-          <!-- 可见边界 - 用于显示 -->
+          <!-- 可见边界 - 用于显示，具有交互效果 -->
           <polygon
             v-for="(block, index) in visibleBlockBoundaries"
             :key="`poly-${selectedBlockLevel}-${index}`"
             class="block-polygon"
+            :class="{ 'polygon-hover': index === activePolygonIndex }"
             :points="block.points"
             :data-tooltip="block.tooltip"
             @mouseenter="showTooltip($event, block.tooltip)"
@@ -64,6 +65,9 @@
             class="block-polygon-click-layer"
             :points="block.points"
             @click="copyBlockText(block.text)"
+            @mouseenter="showPolygonHover(index, $event, block.tooltip)"
+            @mousemove="updateTooltipPosition"
+            @mouseleave="hidePolygonHover"
           />
         </svg>
         <div
@@ -530,6 +534,19 @@ const _showNotification = (message, type = 'info') => {
     console.log(`[${type}] ${message}`);
   }
 };
+
+// 添加多边形悬停效果处理
+const activePolygonIndex = ref(-1);
+
+const showPolygonHover = (index, event, tooltipText) => {
+  activePolygonIndex.value = index;
+  showTooltip(event, tooltipText);
+};
+
+const hidePolygonHover = () => {
+  activePolygonIndex.value = -1;
+  hideTooltip();
+};
 </script>
 
 <style scoped>
@@ -666,9 +683,11 @@ const _showNotification = (message, type = 'info') => {
     transition: fill 0.2s, stroke 0.2s, stroke-width 0.2s;
     cursor: pointer;
     pointer-events: all; /* Polygons are interactive */
+    will-change: stroke, fill; /* 优化渲染性能 */
 }
 
-.block-polygon:hover {
+.block-polygon:hover,
+.polygon-hover {
     fill: rgba(255, 0, 0, 0.2);
     stroke: #ff0000;
     stroke-width: 2px;
@@ -739,6 +758,13 @@ body .coordinate-tooltip {
   cursor: pointer;
   pointer-events: all; /* 保持对点击事件的响应 */
   opacity: 0; /* 完全透明 */
-  z-index: 90; /* 低于可视多边形的z-index */
+  z-index: 80; /* 低于可视多边形的z-index */
+}
+
+.block-polygon-click-layer:hover + .block-polygon {
+  fill: rgba(255, 0, 0, 0.2);
+  stroke: #ff0000;
+  stroke-width: 2px;
+  stroke-dasharray: none;
 }
 </style>
