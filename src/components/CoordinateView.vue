@@ -67,10 +67,6 @@
             height: `${Math.max(symbol.height || 0, 20)}px`,
             fontSize: symbol.fontSize || '12px'
           }"
-          :data-tooltip="`字符: ${symbol.text}\nX: ${(symbol.x || 0).toFixed(1)}, Y: ${(symbol.y || 0).toFixed(1)}\nW: ${(symbol.width || 0).toFixed(1)}, H: ${(symbol.height || 0).toFixed(1)}`"
-          @mouseenter="showTooltip($event, `字符: ${symbol.text}\nX: ${(symbol.x || 0).toFixed(1)}, Y: ${(symbol.y || 0).toFixed(1)}\nW: ${(symbol.width || 0).toFixed(1)}, H: ${(symbol.height || 0).toFixed(1)}`)"
-          @mousemove="updateTooltipPosition"
-          @mouseleave="hideTooltip"
         >
           {{ symbol.text }}
         </div>
@@ -547,29 +543,29 @@ onUnmounted(() => {
 
 .text-block {
   position: absolute;
-  overflow: visible;  /* 改为 visible */
+  overflow: visible;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #333;
-  font-family: 'Arial', sans-serif;  /* 使用更具体的字体 */
+  color: #333; /* 保留文字颜色 */
+  font-family: 'Arial', sans-serif;
   line-height: 1;
   text-align: center;
   white-space: nowrap;
   z-index: 50;
   cursor: default;
   user-select: none;
-  pointer-events: auto;
+  pointer-events: none; /* 修改为 none，使鼠标事件穿透该元素 */
   padding: 0;
   box-sizing: border-box;
-  border: 1px solid rgba(0, 0, 255, 0.3);  /* 添加边框帮助调试 */
-  background-color: rgba(0, 0, 255, 0.05);  /* 添加背景帮助调试 */
+  /* 设置边框和背景为透明 */
+  border: 1px solid transparent;
+  background-color: transparent;
 }
 
 .text-block:hover {
-  background-color: rgba(0, 0, 255, 0.1);
-  border-color: blue;
-  z-index: 101;
+  /* 完全移除悬停样式，因为现在字符元素不接收鼠标事件 */
+  /* z-index: 101; */
 }
 
 /* 复制成功提示 */
@@ -584,5 +580,21 @@ onUnmounted(() => {
   border-radius: 4px;
   font-size: 14px;
   z-index: 1000;
+}
+
+/* 全局 Tooltip 样式 (如果需要的话，保持不变) */
+body .coordinate-tooltip {
+  position: fixed;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: pre-wrap; /* 让 \n 生效 */
+  z-index: 1001; /* 比其他元素高 */
+  pointer-events: none; /* Tooltip 本身不响应鼠标事件 */
+  display: none; /* 初始隐藏 */
+  line-height: 1.4;
+  max-width: 300px; /* 限制最大宽度 */
 }
 </style>
