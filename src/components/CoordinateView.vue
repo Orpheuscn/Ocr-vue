@@ -16,7 +16,7 @@
       </div>
     </h3>
 
-    <div class="coordinate-system-wrapper">
+    <div class="coordinate-system-wrapper" ref="coordSystemWrapper">
       <div
         class="coordinate-system"
         ref="coordSystemRef"
@@ -43,8 +43,9 @@
         </div>
 
         <svg class="block-svg" :viewBox="`0 0 ${systemWidth} ${systemHeight}`" preserveAspectRatio="none">
+          <!-- 可见边界 - 用于显示 -->
           <polygon
-            v-for="(block, index) in blockBoundaries"
+            v-for="(block, index) in visibleBlockBoundaries"
             :key="`poly-${selectedBlockLevel}-${index}`"
             class="block-polygon"
             :points="block.points"
@@ -54,6 +55,15 @@
             @mouseleave="hideTooltip"
             @click="copyBlockText(block.text)"
             :style="{ display: showBounds ? 'block' : 'none' }"
+          />
+          
+          <!-- 始终存在的点击层 - 确保所有区域都可以被点击 -->
+          <polygon
+            v-for="(block, index) in blockBoundaries"
+            :key="`click-${selectedBlockLevel}-${index}`"
+            class="block-polygon-click-layer"
+            :points="block.points"
+            @click="copyBlockText(block.text)"
           />
         </svg>
         <div
@@ -84,16 +94,23 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
 
 const store = useOcrStore();
 const coordSystemRef = ref(null);
+const coordSystemWrapper = ref(null);
 
 // --- Local State ---
 const showBounds = ref(true); // 控制 SVG 边界显隐
 const selectedBlockLevel = ref('blocks'); // 控制 SVG 边界级别
 const showCopySuccess = ref(false); // 添加复制成功状态
+
+// 虚拟滚动相关状态
+const viewportRect = ref({ top: 0, bottom: 0, left: 0, right: 0 });
+const scrollTop = ref(0);
+const scrollLeft = ref(0);
+const viewportPadding = ref(500); // 增加可视区域外的padding，确保用户能点击到边界附近的block
 
 // --- Computed Properties ---
 const systemWidth = computed(() => (store.imageDimensions.width || 0) + 30); // 加 30px 给 Y 轴标签留空
@@ -125,7 +142,7 @@ const yAxisLabels = computed(() => {
   return labels;
 });
 
-// 添加缺失的 symbolBlocksToDisplay 计算属性
+// 符号数据（带缓存）
 const symbolBlocksToDisplay = computed(() => {
   // 只显示通过过滤的符号
   return store.filteredSymbolsData.filter(s => s.isFiltered).map(symbol => ({
@@ -138,8 +155,14 @@ const symbolBlocksToDisplay = computed(() => {
   }));
 });
 
-// SVG 边界框数据
+// SVG 边界框数据（带缓存）
+let blockBoundariesCache = null;
 const blockBoundaries = computed(() => {
+  // 检查selectedBlockLevel是否变化，如果没有变化且已有缓存，直接返回缓存
+  if (blockBoundariesCache && blockBoundariesCache.level === selectedBlockLevel.value) {
+    return blockBoundariesCache.data;
+  }
+  
   const boundaries = [];
   if (!store.fullTextAnnotation?.pages) return boundaries;
   const offsetX = 30; // Y-axis label offset
@@ -168,7 +191,11 @@ const blockBoundaries = computed(() => {
     boundaries.push({ 
       points: pointsString, 
       tooltip: tooltipText,
-      text: text // 添加文本内容用于复制
+      text: text, // 添加文本内容用于复制
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY
     });
   };
 
@@ -260,7 +287,36 @@ const blockBoundaries = computed(() => {
     });
   });
 
+  // 更新缓存
+  blockBoundariesCache = {
+    level: selectedBlockLevel.value,
+    data: boundaries
+  };
+  
   return boundaries;
+});
+
+// 只显示视口内的边界多边形（优化渲染性能）
+const visibleBlockBoundaries = computed(() => {
+  if (!showBounds.value) return []; // 如果不显示边界，返回空数组
+  
+  const { top, bottom, left, right } = viewportRect.value;
+  
+  // 扩展视口区域
+  const extendedTop = top - viewportPadding.value;
+  const extendedBottom = bottom + viewportPadding.value;
+  const extendedLeft = left - viewportPadding.value;
+  const extendedRight = right + viewportPadding.value;
+  
+  return blockBoundaries.value.filter(block => {
+    // 检查边界是否与扩展视口重叠
+    return !(
+      (block.x + block.width + 30) < extendedLeft || // 30 是 Y 轴的偏移
+      (block.x + 30) > extendedRight ||
+      (block.y + block.height) < extendedTop ||
+      block.y > extendedBottom
+    );
+  });
 });
 
 // --- Methods ---
@@ -272,6 +328,7 @@ const toggleBlockVisibility = () => {
 const copyBlockText = (text) => {
   if (!text) {
     console.log('没有文本可复制');
+    _showNotification('没有可复制的文本', 'warning');
     return;
   }
   
@@ -391,10 +448,88 @@ const hideTooltip = () => {
   document.removeEventListener('mousemove', updateTooltipPosition);
 };
 
+// 更新可视区域信息
+const updateViewportRect = () => {
+  if (!coordSystemWrapper.value) return;
+  
+  const wrapperRect = coordSystemWrapper.value.getBoundingClientRect();
+  const scrollInfo = coordSystemWrapper.value;
+  
+  scrollTop.value = scrollInfo.scrollTop;
+  scrollLeft.value = scrollInfo.scrollLeft;
+  
+  // 计算可视区域的边界
+  viewportRect.value = {
+    top: scrollTop.value,
+    left: scrollLeft.value,
+    bottom: scrollTop.value + wrapperRect.height,
+    right: scrollLeft.value + wrapperRect.width
+  };
+};
+
+// 优化的滚动处理函数
+const handleScroll = () => {
+  // 立即更新可视区域，不再使用requestAnimationFrame延迟，避免点击操作延迟
+  updateViewportRect();
+  
+  // 仍然使用requestAnimationFrame来限制额外的更新
+  if (!window._scrollRequestPending) {
+    window._scrollRequestPending = true;
+    requestAnimationFrame(() => {
+      updateViewportRect();
+      window._scrollRequestPending = false;
+    });
+  }
+};
+
 // --- Lifecycle Hooks ---
-onUnmounted(() => {
-  document.removeEventListener('mousemove', updateTooltipPosition);
+onMounted(() => {
+  // 初始化视口信息
+  nextTick(() => {
+    updateViewportRect();
+    
+    // 添加滚动事件监听
+    if (coordSystemWrapper.value) {
+      coordSystemWrapper.value.addEventListener('scroll', handleScroll);
+    }
+    
+    // 添加窗口大小变化监听
+    window.addEventListener('resize', updateViewportRect);
+  });
 });
+
+onUnmounted(() => {
+  // 移除事件监听器
+  document.removeEventListener('mousemove', updateTooltipPosition);
+  
+  if (coordSystemWrapper.value) {
+    coordSystemWrapper.value.removeEventListener('scroll', handleScroll);
+  }
+  
+  window.removeEventListener('resize', updateViewportRect);
+});
+
+// 监听过滤器变化，更新可视区域
+watch(() => store.filteredSymbolsData, () => {
+  nextTick(updateViewportRect);
+}, { deep: true });
+
+// 监听区块级别变化，更新缓存
+watch(() => selectedBlockLevel.value, () => {
+  // 清除缓存，强制重新计算
+  blockBoundariesCache = null;
+});
+
+// 添加一个简单的通知提示函数
+const _showNotification = (message, type = 'info') => {
+  // 如果store中有通知函数就使用它
+  if (typeof store._showNotification === 'function') {
+    store._showNotification(message, type);
+  } else {
+    // 否则直接使用控制台
+    console.log(`[${type}] ${message}`);
+  }
+};
 </script>
 
 <style scoped>
@@ -596,5 +731,14 @@ body .coordinate-tooltip {
   display: none; /* 初始隐藏 */
   line-height: 1.4;
   max-width: 300px; /* 限制最大宽度 */
+}
+
+.block-polygon-click-layer {
+  fill: transparent;
+  stroke: transparent;
+  cursor: pointer;
+  pointer-events: all; /* 保持对点击事件的响应 */
+  opacity: 0; /* 完全透明 */
+  z-index: 90; /* 低于可视多边形的z-index */
 }
 </style>
