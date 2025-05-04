@@ -209,68 +209,120 @@ const blockBoundaries = computed(() => {
       if (selectedBlockLevel.value === 'blocks') {
         // 收集区块文本
         let blockText = '';
+        let hasAnyText = false; // 跟踪是否收集到任何文本
         block.paragraphs?.forEach(para => {
           para.words?.forEach(word => {
             word.symbols?.forEach(symbol => {
-              const symbolData = store.filteredSymbolsData.find(fd =>
-                fd.isFiltered && fd.text === symbol.text &&
-                Math.abs(fd.x - (symbol.boundingBox?.vertices?.[0]?.x ?? -1)) < 2 &&
-                Math.abs(fd.y - (symbol.boundingBox?.vertices?.[0]?.y ?? -1)) < 2
-              );
+              // 放宽匹配条件，增加匹配半径
+              const symbolData = store.filteredSymbolsData.find(fd => {
+                if (!fd.isFiltered || fd.text !== symbol.text) return false;
+                
+                // 获取符号边界框的第一个顶点（左上角）
+                const symbolX = symbol.boundingBox?.vertices?.[0]?.x ?? -999;
+                const symbolY = symbol.boundingBox?.vertices?.[0]?.y ?? -999;
+                
+                // 增加匹配半径
+                return Math.abs(fd.x - symbolX) < 10 && Math.abs(fd.y - symbolY) < 10;
+              });
               
               if (symbolData) {
+                hasAnyText = true;
                 blockText += symbol.text;
                 if (symbolData.detectedBreak === 'SPACE' || symbolData.detectedBreak === 'EOL_SURE_SPACE') {
                   blockText += ' ';
                 } else if (symbolData.detectedBreak === 'LINE_BREAK') {
                   blockText += '\n';
                 }
+              } else if (symbol.text) {
+                // 处理倾斜文本，即使没有匹配到filteredSymbolsData
+                hasAnyText = true;
+                blockText += symbol.text;
+                // 假设添加一个空格作为分隔符
+                blockText += ' ';
               }
             });
           });
         });
-        addBoundary(block.boundingBox?.vertices, `区块 ${count++}`, blockText);
+        
+        // 如果收集到任何文本，则添加边界
+        if (hasAnyText && block.boundingBox?.vertices?.length >= 3) {
+          addBoundary(block.boundingBox.vertices, `区块 ${count++}`, blockText);
+        }
       } else {
         block.paragraphs?.forEach(paragraph => {
           if (selectedBlockLevel.value === 'paragraphs') {
             // 收集段落文本
             let paraText = '';
+            let hasAnyText = false;
             paragraph.words?.forEach(word => {
               word.symbols?.forEach(symbol => {
-                const symbolData = store.filteredSymbolsData.find(fd =>
-                  fd.isFiltered && fd.text === symbol.text &&
-                  Math.abs(fd.x - (symbol.boundingBox?.vertices?.[0]?.x ?? -1)) < 2 &&
-                  Math.abs(fd.y - (symbol.boundingBox?.vertices?.[0]?.y ?? -1)) < 2
-                );
+                // 放宽匹配条件，增加匹配半径
+                const symbolData = store.filteredSymbolsData.find(fd => {
+                  if (!fd.isFiltered || fd.text !== symbol.text) return false;
+                  
+                  // 获取符号边界框的第一个顶点（左上角）
+                  const symbolX = symbol.boundingBox?.vertices?.[0]?.x ?? -999;
+                  const symbolY = symbol.boundingBox?.vertices?.[0]?.y ?? -999;
+                  
+                  // 增加匹配半径
+                  return Math.abs(fd.x - symbolX) < 10 && Math.abs(fd.y - symbolY) < 10;
+                });
                 
                 if (symbolData) {
+                  hasAnyText = true;
                   paraText += symbol.text;
                   if (symbolData.detectedBreak === 'SPACE' || symbolData.detectedBreak === 'EOL_SURE_SPACE') {
                     paraText += ' ';
                   } else if (symbolData.detectedBreak === 'LINE_BREAK') {
                     paraText += '\n';
                   }
+                } else if (symbol.text) {
+                  // 处理倾斜文本，即使没有匹配到filteredSymbolsData
+                  hasAnyText = true;
+                  paraText += symbol.text;
+                  // 假设添加一个空格作为分隔符
+                  paraText += ' ';
                 }
               });
             });
-            addBoundary(paragraph.boundingBox?.vertices, `段落 ${count++}`, paraText);
+            
+            // 如果收集到任何文本，则添加边界
+            if (hasAnyText && paragraph.boundingBox?.vertices?.length >= 3) {
+              addBoundary(paragraph.boundingBox.vertices, `段落 ${count++}`, paraText);
+            }
           } else {
             paragraph.words?.forEach(word => {
               if (selectedBlockLevel.value === 'words') {
                 // 收集单词文本
                 let wordText = '';
+                let hasAnyText = false;
                 word.symbols?.forEach(symbol => {
-                  const symbolData = store.filteredSymbolsData.find(fd =>
-                    fd.isFiltered && fd.text === symbol.text &&
-                    Math.abs(fd.x - (symbol.boundingBox?.vertices?.[0]?.x ?? -1)) < 2 &&
-                    Math.abs(fd.y - (symbol.boundingBox?.vertices?.[0]?.y ?? -1)) < 2
-                  );
+                  // 放宽匹配条件，增加匹配半径
+                  const symbolData = store.filteredSymbolsData.find(fd => {
+                    if (!fd.isFiltered || fd.text !== symbol.text) return false;
+                    
+                    // 获取符号边界框的第一个顶点（左上角）
+                    const symbolX = symbol.boundingBox?.vertices?.[0]?.x ?? -999;
+                    const symbolY = symbol.boundingBox?.vertices?.[0]?.y ?? -999;
+                    
+                    // 增加匹配半径
+                    return Math.abs(fd.x - symbolX) < 10 && Math.abs(fd.y - symbolY) < 10;
+                  });
                   
                   if (symbolData) {
+                    hasAnyText = true;
+                    wordText += symbol.text;
+                  } else if (symbol.text) {
+                    // 处理倾斜文本，即使没有匹配到filteredSymbolsData
+                    hasAnyText = true;
                     wordText += symbol.text;
                   }
                 });
-                addBoundary(word.boundingBox?.vertices, `单词 ${count++}`, wordText);
+                
+                // 如果收集到任何文本，则添加边界
+                if (hasAnyText && word.boundingBox?.vertices?.length >= 3) {
+                  addBoundary(word.boundingBox.vertices, `单词 ${count++}`, wordText);
+                }
               } else if (selectedBlockLevel.value === 'symbols') {
                 word.symbols?.forEach(symbol => {
                   // 修改匹配逻辑，放宽匹配条件以支持倾斜文字
