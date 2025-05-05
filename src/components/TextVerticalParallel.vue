@@ -6,6 +6,8 @@
 <script setup>
 import { computed } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
+// 导入RTL支持，但要注意垂直排版通常不与RTL混用
+// 如需之后扩展，可以增加垂直RTL的特殊处理逻辑
 const store = useOcrStore();
 
 // Helper function (can be moved to composable or utils if reused)

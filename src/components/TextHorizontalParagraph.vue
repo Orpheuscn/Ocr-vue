@@ -1,5 +1,5 @@
 <template>
-  <div class="text-output">
+  <div class="text-output" :class="{ 'rtl-text': isRtl }">
     {{ paragraphText }}
   </div>
 </template>
@@ -7,6 +7,13 @@
 <script setup>
 import { computed } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
+
+const props = defineProps({
+  isRtl: {
+    type: Boolean,
+    default: false
+  }
+});
 
 const store = useOcrStore();
 
@@ -93,5 +100,13 @@ const paragraphText = computed(() => {
   word-break: break-word;
   color: var(--bc, inherit); /* 使用主题颜色变量 */
   background-color: transparent; /* 透明背景 */
+}
+
+/* RTL文本样式 */
+.rtl-text {
+  text-align: right;
+  direction: rtl;
+  font-family: 'Arial', 'Tahoma', 'Noto Sans Arabic', 'Noto Sans Hebrew', sans-serif;
+  /* 使用更适合阿拉伯文和希伯来文显示的字体 */
 }
 </style>

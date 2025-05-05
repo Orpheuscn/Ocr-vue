@@ -1,5 +1,5 @@
 <template>
-  <div class="text-output">
+  <div class="text-output" :class="{ 'rtl-text': isRtl }">
     <pre v-if="fullText">{{ fullText }}</pre>
     <p v-else>{{ noResultsMessage }}</p>
   </div>
@@ -8,6 +8,13 @@
 <script setup>
 import { computed } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
+
+const props = defineProps({
+  isRtl: {
+    type: Boolean,
+    default: false
+  }
+});
 
 const store = useOcrStore();
 
@@ -90,5 +97,13 @@ pre {
   margin: 0;
   font-family: inherit; /* 使用普通字体而不是等宽字体 */
   color: var(--bc, inherit); /* 使用主题颜色变量 */
+}
+
+/* RTL文本样式 */
+.rtl-text {
+  text-align: right;
+  direction: rtl;
+  font-family: 'Arial', 'Tahoma', 'Noto Sans Arabic', 'Noto Sans Hebrew', sans-serif;
+  /* 使用更适合阿拉伯文和希伯来文显示的字体 */
 }
 </style>

@@ -62,7 +62,8 @@
                   :key="lang.code"
                   :class="[
                     'form-control flex-row items-center px-2 py-1 rounded hover:bg-base-200 cursor-pointer',
-                    selectedLanguages.includes(lang.code) ? 'bg-base-200' : ''
+                    selectedLanguages.includes(lang.code) ? 'bg-base-200' : '',
+                    lang.isCustom ? 'border-l-2 border-primary' : ''
                   ]"
                   @click="toggleLanguage(lang.code, $event)"
                 >
@@ -77,6 +78,11 @@
                     <span class="label-text">{{ lang.name }}</span>
                   </label>
                 </div>
+              </div>
+              
+              <!-- 自定义语言管理 -->
+              <div class="mt-3 pt-3 border-t border-base-300">
+                <CustomLanguageManager @language-changed="handleLanguageListChanged" />
               </div>
             </div>
           </div>
@@ -102,6 +108,7 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
 import { getAllLanguages } from '@/services/visionApi';
+import CustomLanguageManager from './CustomLanguageManager.vue';
 
 const props = defineProps({
   canStart: { type: Boolean, default: false },
@@ -151,6 +158,11 @@ const handleClickOutside = (event) => {
   if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
     showDropdown.value = false;
   }
+};
+
+// 处理语言列表变化
+const handleLanguageListChanged = (newLanguageList) => {
+  availableLanguages.value = newLanguageList;
 };
 
 // 显示当前选择的语言

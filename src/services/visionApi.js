@@ -1,5 +1,18 @@
 // src/services/visionApi.js
+import languageData from '@/assets/languages.json';
+
 const API_URL = 'https://vision.googleapis.com/v1/images:annotate';
+
+// 从右向左书写的RTL语言列表
+const RTL_LANGUAGES = ['ar', 'fa', 'he', 'iw', 'ur', 'dv', 'ps'];
+
+// 判断是否为RTL语言
+export function isRtlLanguage(code) {
+    if (!code) return false;
+    // 处理可能的子标记，如 'ar-EG'
+    const baseCode = code.split('-')[0].toLowerCase();
+    return RTL_LANGUAGES.includes(baseCode);
+}
 
 /**
  * Performs OCR using Google Cloud Vision API.
@@ -58,37 +71,108 @@ export async function performOcrRequest(base64Image, apiKey, languageHints = [])
   }
 }
 
-// 语言代码映射表
-const LANGUAGE_MAP = {
-  'zh': '中文', 'en': '英语', 'ja': '日语', 'ko': '韩语', 'fr': '法语',
-  'de': '德语', 'es': '西班牙语', 'ru': '俄语', 'ar': '阿拉伯语',
-  'hi': '印地语', 'pt': '葡萄牙语', 'it': '意大利语', 'th': '泰语',
-  'vi': '越南语', 'tr': '土耳其语', 'id': '印尼语', 'ms': '马来语',
-  'fa': '波斯语', 'nl': '荷兰语', 'el': '希腊语', 'he': '希伯来语',
-  'uk': '乌克兰语', 'pl': '波兰语', 'ro': '罗马尼亚语', 'sv': '瑞典语',
-  'hu': '匈牙利语', 'cs': '捷克语', 'da': '丹麦语', 'fi': '芬兰语',
-  'no': '挪威语', 'sk': '斯洛伐克语', 'bg': '保加利亚语', 'hr': '克罗地亚语',
-  'sr': '塞尔维亚语', 'sl': '斯洛文尼亚语', 'et': '爱沙尼亚语', 'lv': '拉脱维亚语',
-  'lt': '立陶宛语', 'zh-Hans': '简体中文', 'zh-Hant': '繁体中文', 'und': '未确定'
-  // 可按需添加更多语言
-};
+// 从本地存储加载自定义语言
+function loadCustomLanguages() {
+  try {
+    const customLanguages = localStorage.getItem('customLanguages');
+    return customLanguages ? JSON.parse(customLanguages) : {};
+  } catch (e) {
+    console.error('Failed to load custom languages:', e);
+    return {};
+  }
+}
+
+// 保存自定义语言到本地存储
+export function saveCustomLanguage(code, name) {
+  try {
+    // 验证语言代码格式
+    if (!code || typeof code !== 'string' || code.length < 2 || code.length > 10) {
+      throw new Error('无效的语言代码');
+    }
+    
+    // 验证语言名称
+    if (!name || typeof name !== 'string' || name.length < 1) {
+      throw new Error('无效的语言名称');
+    }
+    
+    // 加载现有自定义语言
+    const customLanguages = loadCustomLanguages();
+    
+    // 添加或更新语言
+    customLanguages[code] = name;
+    
+    // 保存到本地存储
+    localStorage.setItem('customLanguages', JSON.stringify(customLanguages));
+    
+    // 更新内存中的语言映射
+    CUSTOM_LANGUAGE_MAP[code] = name;
+    
+    return true;
+  } catch (e) {
+    console.error('保存自定义语言失败:', e);
+    throw e;
+  }
+}
+
+// 删除自定义语言
+export function deleteCustomLanguage(code) {
+  try {
+    // 加载现有自定义语言
+    const customLanguages = loadCustomLanguages();
+    
+    // 检查语言是否存在
+    if (!customLanguages[code]) {
+      throw new Error('找不到指定的自定义语言');
+    }
+    
+    // 删除语言
+    delete customLanguages[code];
+    delete CUSTOM_LANGUAGE_MAP[code];
+    
+    // 保存到本地存储
+    localStorage.setItem('customLanguages', JSON.stringify(customLanguages));
+    
+    return true;
+  } catch (e) {
+    console.error('删除自定义语言失败:', e);
+    throw e;
+  }
+}
+
+// 语言代码映射表 - 从JSON文件导入
+const LANGUAGE_MAP = languageData;
+
+// 自定义语言映射 - 从本地存储加载
+const CUSTOM_LANGUAGE_MAP = loadCustomLanguages();
 
 // Helper function to get language name
 export function getLanguageName(code) {
+    if (CUSTOM_LANGUAGE_MAP[code]) return CUSTOM_LANGUAGE_MAP[code];
     if (LANGUAGE_MAP[code]) return LANGUAGE_MAP[code];
     const baseCode = code?.split('-')[0];
+    if (CUSTOM_LANGUAGE_MAP[baseCode]) return CUSTOM_LANGUAGE_MAP[baseCode];
     return LANGUAGE_MAP[baseCode] || code || '未知'; // Fallback
 }
 
 // 获取所有可用语言的列表，用于多选组件
 export function getAllLanguages() {
     const result = [];
+    
+    // 添加内置语言
     for (const [code, name] of Object.entries(LANGUAGE_MAP)) {
         // 排除一些特殊值
         if (code !== 'und' && !code.includes('-')) {
-            result.push({ code, name });
+            result.push({ code, name, isCustom: false });
         }
     }
+    
+    // 添加自定义语言
+    for (const [code, name] of Object.entries(CUSTOM_LANGUAGE_MAP)) {
+        if (!code.includes('-')) {
+            result.push({ code, name, isCustom: true });
+        }
+    }
+    
     // 按照语言名称排序
     return result.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
 }

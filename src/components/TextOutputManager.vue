@@ -4,7 +4,10 @@
       <!-- 信息标题区 -->
       <div class="flex flex-wrap justify-between text-xs text-opacity-70 mb-2 flex-shrink-0">
         <div class="badge badge-neutral">尺寸: {{ store.imageDimensions.width || '?' }}×{{ store.imageDimensions.height || '?' }}px</div>
-        <div class="badge badge-neutral">语言: {{ store.detectedLanguageName || '未确定' }} ({{ store.detectedLanguageCode }})</div>
+        <div class="badge badge-neutral">
+          语言: {{ store.detectedLanguageName || '未确定' }} ({{ store.detectedLanguageCode }})
+          <span v-if="isRtlText" class="ml-1">🔄</span>
+        </div>
         <div class="badge badge-neutral">统计: {{ store.textStats.words }} 词, {{ store.textStats.chars }} 字</div>
       </div>
 
@@ -47,7 +50,10 @@
       <div class="divider my-0 flex-shrink-0"></div>
 
       <!-- 文本内容区 -->
-      <div class="flex-1 overflow-y-auto p-2 text-content-area bg-base-100">
+      <div 
+        class="flex-1 overflow-y-auto p-2 text-content-area bg-base-100"
+        :dir="textDirection"
+      >
         <div v-if="!store.hasOcrResult && store.currentFiles.length > 0" class="flex flex-col items-center justify-center h-full text-center opacity-70">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -61,7 +67,7 @@
         </div>
         
         <div v-else-if="store.hasOcrResult">
-          <component :is="activeTextComponent" ref="textComponent" />
+          <component :is="activeTextComponent" ref="textComponent" :is-rtl="isRtlText" />
         </div>
         
         <div v-else class="flex flex-col items-center justify-center h-full text-center opacity-70">
@@ -78,6 +84,7 @@
 <script setup>
 import { computed, ref, watch, onMounted } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
+import { isRtlLanguage } from '@/services/visionApi';
 
 // Import the four specialized text components
 import TextHorizontalParallel from './TextHorizontalParallel.vue';
@@ -96,6 +103,45 @@ const store = useOcrStore();
 const textComponent = ref(null);
 const textManagerRef = ref(null);
 const copyStatus = ref('idle'); // 'idle', 'success', 'error'
+
+// 判断是否为RTL文本
+const isRtlText = computed(() => {
+  // 首先检查识别的主要语言是否为RTL语言
+  const isRtlLanguageDetected = isRtlLanguage(store.detectedLanguageCode);
+  
+  // 如果检测到的主要语言是RTL语言，再根据文本内容确认是否需要RTL方向
+  if (isRtlLanguageDetected) {
+    // 当文本很短或没有文本时，直接使用语言判断结果
+    if (!store.originalFullText || store.originalFullText.length < 10) {
+      return true;
+    }
+    
+    // 对于较长文本，分析文本内容确认是否真的需要RTL方向
+    return rtlDirectionNeeded(store.originalFullText);
+  }
+  
+  return false;
+});
+
+// 分析文本内容，判断是否需要RTL方向
+function rtlDirectionNeeded(text) {
+  if (!text) return false;
+  
+  // RTL字符范围（阿拉伯文、希伯来文等）的Unicode正则表达式
+  const rtlCharsRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0590-\u05FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
+  
+  // 统计RTL字符数量
+  const rtlCharMatches = text.match(rtlCharsRegex);
+  const rtlCharCount = rtlCharMatches ? rtlCharMatches.length : 0;
+  
+  // 如果RTL字符占比超过30%，则认为需要RTL方向
+  return rtlCharCount > text.length * 0.3;
+}
+
+// 设置文本方向
+const textDirection = computed(() => {
+  return isRtlText.value ? 'rtl' : 'ltr';
+});
 
 // 监听容器高度变化
 watch(() => props.containerHeight, (newHeight) => {

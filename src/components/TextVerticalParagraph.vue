@@ -142,6 +142,14 @@ const verticalParagraphText = computed(() => {
   return resultText.length > 0 ? resultText : '(无符合当前过滤条件的文本)';
 });
 
+// 添加isRtl属性以保持组件接口一致性
+defineProps({
+  isRtl: {
+    type: Boolean,
+    default: false
+    // 注意：垂直排版模式下RTL通常不适用
+  }
+});
 
 </script>
 
