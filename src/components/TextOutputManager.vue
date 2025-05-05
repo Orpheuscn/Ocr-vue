@@ -6,7 +6,7 @@
         <div class="badge badge-neutral">尺寸: {{ store.imageDimensions.width || '?' }}×{{ store.imageDimensions.height || '?' }}px</div>
         <div class="badge badge-neutral">
           语言: {{ store.detectedLanguageName || '未确定' }} ({{ store.detectedLanguageCode }})
-          <span v-if="isRtlText" class="ml-1">🔄</span>
+          <span v-if="isRtlText" class="ml-1">←</span>
         </div>
         <div class="badge badge-neutral">统计: {{ store.textStats.words }} 词, {{ store.textStats.chars }} 字</div>
       </div>
@@ -17,7 +17,7 @@
           <button 
             :class="[
               'btn btn-xs',
-              store.textDisplayMode === 'parallel' ? 'btn-primary' : 'btn-outline'
+              store.textDisplayMode === 'parallel' ? 'btn-accent' : 'btn-outline'
             ]"
             @click="updateDisplayMode('parallel')"
           >
@@ -26,7 +26,7 @@
           <button 
             :class="[
               'btn btn-xs',
-              store.textDisplayMode === 'paragraph' ? 'btn-primary' : 'btn-outline'
+              store.textDisplayMode === 'paragraph' ? 'btn-accent' : 'btn-outline'
             ]"
             @click="updateDisplayMode('paragraph')"
           >

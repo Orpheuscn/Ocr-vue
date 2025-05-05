@@ -4,11 +4,11 @@
 
     <!-- API 设置页面，当没有API Key时显示或手动触发显示 -->
     <transition name="fade" mode="out-in">
-      <ApiSettings
-        v-if="store.showApiSettings"
-        :initial-api-key="store.apiKey"
-        @save-api-key="store.setApiKey"
-      />
+    <ApiSettings
+      v-if="store.showApiSettings"
+      :initial-api-key="store.apiKey"
+      @save-api-key="store.setApiKey"
+    />
     </transition>
 
     <!-- 主要内容区域 -->
@@ -16,17 +16,17 @@
       <main v-if="!store.showApiSettings" class="container mx-auto p-2 sm:p-4 flex-1 flex flex-col">
         <div class="flex-1 flex flex-col space-y-4">
           <!-- 文件上传区 -->
-          <FileUpload @files-selected="handleFilesSelected" />
+        <FileUpload @files-selected="handleFilesSelected" />
 
           <!-- 操作控制区，当有文件上传后显示 -->
           <transition name="slide-up" mode="out-in">
-            <ActionControls
-              v-if="store.currentFiles.length > 0"
-              :can-start="store.canStartOcr"
-              :is-processing="store.isLoading"
-              :initial-direction="store.initialTextDirection"
-              @start-ocr="store.startOcrProcess"
-            />
+        <ActionControls
+          v-if="store.currentFiles.length > 0"
+          :can-start="store.canStartOcr"
+          :is-processing="store.isLoading"
+          :initial-direction="store.initialTextDirection"
+          @start-ocr="store.startOcrProcess"
+        />
           </transition>
 
           <!-- 结果展示区 -->
@@ -35,34 +35,34 @@
               <!-- 图像显示区域 -->
               <div class="flex flex-col h-full relative" ref="imageCanvasRef">
                 <transition name="slide-up" mode="out-in">
-                  <PdfControls
-                    v-if="store.isPdfFile"
-                    :current-page="store.currentPage"
-                    :total-pages="store.totalPages"
-                    :is-loading="store.isLoading"
-                    @page-change="store.changePdfPage"
+                 <PdfControls
+                   v-if="store.isPdfFile"
+                   :current-page="store.currentPage"
+                   :total-pages="store.totalPages"
+                   :is-loading="store.isLoading"
+                   @page-change="store.changePdfPage"
                     @height-change="handlePdfControlsHeightChange"
-                  />
+                 />
                 </transition>
-                <ImageCanvas
-                  :src="store.filePreviewUrl"
-                  :is-pdf="store.isPdfFile"
-                  @dimensions-known="handleDimensionsKnown"
-                  @container-height-update="updateImageContainerHeight"
-                />
+                 <ImageCanvas
+                    :src="store.filePreviewUrl"
+                    :is-pdf="store.isPdfFile"
+                    @dimensions-known="handleDimensionsKnown"
+                    @container-height-update="updateImageContainerHeight"
+                 />
               </div>
 
               <!-- 文本输出区 -->
               <div class="flex flex-col h-full">
-                <TextOutputManager 
-                  v-if="store.hasOcrResult || store.currentFiles.length > 0" 
-                  :container-height="imageContainerHeight"
-                />
-              </div>
-            </div>
-          </transition>
+              <TextOutputManager 
+                v-if="store.hasOcrResult || store.currentFiles.length > 0" 
+                :container-height="imageContainerHeight"
+              />
+           </div>
         </div>
-      </main>
+          </transition>
+      </div>
+    </main>
     </transition>
 
     <!-- 遮挡工具组件 -->
@@ -82,11 +82,14 @@
 
     <!-- 通知栏 -->
     <NotificationBar
-      :key="store.notification.key"
-      :message="store.notification.message"
-      :type="store.notification.type"
-      :visible="store.notification.visible"
-    />
+       :key="store.notification.key"
+       :message="store.notification.message"
+       :type="store.notification.type"
+       :visible="store.notification.visible"
+     />
+     
+    <!-- 页脚 -->
+    <TheFooter />
   </div>
 </template>
 
@@ -107,6 +110,7 @@ import FilterControls from './components/FilterControls.vue';
 import LoadingOverlay from './components/LoadingOverlay.vue';
 import NotificationBar from './components/NotificationBar.vue';
 import MaskingTool from './components/MaskingTool.vue';
+import TheFooter from './components/TheFooter.vue';
 
 const store = useOcrStore();
 const imageCanvasRef = ref(null);
@@ -136,7 +140,7 @@ const updateImageContainerHeight = (height) => {
         const pdfControlsHeight = pdfControls.offsetHeight;
         totalHeight += pdfControlsHeight;
         debugLog(`PDF控件高度: ${pdfControlsHeight}px, 总高度: ${totalHeight}px`);
-      }
+        }
     }
     
     // 更新存储的高度值，并立即同步到文本区
@@ -338,7 +342,7 @@ watch(() => store.currentPage, (newPage, oldPage) => {
         debugLog(`使用PDF尺寸: ${width}x${height}`);
         
         // 重新触发图片容器高度调整，会连带更新文本区高度
-        if (imageCanvasRef.value) {
+      if (imageCanvasRef.value) {
           // 模拟一个resize事件触发容器重新计算高度
           window.dispatchEvent(new Event('resize'));
           

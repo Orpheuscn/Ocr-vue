@@ -6,20 +6,20 @@
         <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        <p>请先上传文件</p>
-      </div>
+      <p>请先上传文件</p>
+    </div>
 
       <!-- 图片或PDF预览 -->
       <div v-else class="image-container w-full h-full flex items-center justify-center" :style="imageContainerStyle">
-        <img
-          :key="src"
-          :src="src"
+    <img
+      :key="src"
+      :src="src"
           alt="预览"
-          @load="handleImageLoad"
-          ref="imageRef"
+      @load="handleImageLoad"
+      ref="imageRef"
           class="object-contain rounded-md"
           :style="imageStyle"
-        />
+    />
       </div>
     </div>
   </div>
@@ -135,16 +135,16 @@ let resizeObserver;
 onMounted(() => {
   // 设置窗口大小变化的监听
   window.addEventListener('resize', calculateContainerHeight);
-  
+       
   // 启用ResizeObserver以监听容器大小变化
   if (window.ResizeObserver) {
     resizeObserver = new ResizeObserver(() => {
       calculateContainerHeight();
     });
     
-    if (containerRef.value) {
+         if (containerRef.value) {
       resizeObserver.observe(containerRef.value);
-    }
+         }
   }
   
   // 如果已有尺寸信息，立即计算
@@ -153,7 +153,7 @@ onMounted(() => {
       width: store.imageDimensions.width,
       height: store.imageDimensions.height
     };
-    
+               
     // 延迟一下，确保DOM已完全渲染
     nextTick(() => {
       calculateContainerHeight();
@@ -223,18 +223,18 @@ watch(() => [store.imageDimensions.width, store.imageDimensions.height],
 <style scoped>
 .image-container {
   transition: height 0.3s ease;
-  display: flex;
+    display: flex;
   align-items: center;
-  justify-content: center;
+    justify-content: center;
   width: 100%;
   position: relative;
 }
 
 /* 添加样式以确保PDF在容器中正确显示 */
 :deep(canvas.pdf-page) {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+   max-width: 100%;
+   max-height: 100%;
+   object-fit: contain;
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }

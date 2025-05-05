@@ -31,8 +31,8 @@
           
           <span>{{ message }}</span>
         </div>
-      </div>
-    </Transition>
+    </div>
+  </Transition>
   </div>
 </template>
 

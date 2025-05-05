@@ -3,7 +3,7 @@
     <!-- 悬浮显示/隐藏按钮 -->
     <div class="fixed left-4 bottom-4 z-40" v-if="store.hasOcrResult">
       <button 
-        class="btn btn-circle btn-info shadow-lg"
+        class="btn btn-circle btn-info shadow-lg hover-effect"
         @click="toggleVisibility"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -29,53 +29,53 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-        </div>
-        
+    </div>
+    
         <div class="card-body p-3">
           <div class="flex flex-col gap-3">
             <div class="form-control">
               <label class="label py-0">
                 <span class="label-text text-xs">字符宽度: {{ formatRange(currentFilters.minWidth, currentFilters.maxWidth) }}</span>
               </label>
-              <RangeSlider
-                :min="bounds.width.min"
-                :max="bounds.width.max"
-                :min-value="currentFilters.minWidth"
-                :max-value="currentFilters.maxWidth"
-                @update:min-value="updateFilter('minWidth', $event)"
-                @update:max-value="updateFilter('maxWidth', $event)"
+            <RangeSlider
+              :min="bounds.width.min"
+              :max="bounds.width.max"
+              :min-value="currentFilters.minWidth"
+              :max-value="currentFilters.maxWidth"
+              @update:min-value="updateFilter('minWidth', $event)"
+              @update:max-value="updateFilter('maxWidth', $event)"
                 small
-              />
-            </div>
+            />
+          </div>
 
             <div class="form-control">
               <label class="label py-0">
                 <span class="label-text text-xs">X坐标: {{ formatRange(currentFilters.minX, currentFilters.maxX) }}</span>
               </label>
-              <RangeSlider
-                :min="bounds.x.min"
-                :max="bounds.x.max"
-                :min-value="currentFilters.minX"
-                :max-value="currentFilters.maxX"
-                @update:min-value="updateFilter('minX', $event)"
-                @update:max-value="updateFilter('maxX', $event)"
+             <RangeSlider
+              :min="bounds.x.min"
+              :max="bounds.x.max"
+              :min-value="currentFilters.minX"
+              :max-value="currentFilters.maxX"
+              @update:min-value="updateFilter('minX', $event)"
+              @update:max-value="updateFilter('maxX', $event)"
                 small
-              />
-            </div>
+            />
+          </div>
 
             <div class="form-control">
               <label class="label py-0">
                 <span class="label-text text-xs">Y坐标: {{ formatRange(currentFilters.minY, currentFilters.maxY) }}</span>
               </label>
-              <RangeSlider
-                :min="bounds.y.min"
-                :max="bounds.y.max"
-                :min-value="currentFilters.minY"
-                :max-value="currentFilters.maxY"
-                @update:min-value="updateFilter('minY', $event)"
-                @update:max-value="updateFilter('maxY', $event)"
+             <RangeSlider
+              :min="bounds.y.min"
+              :max="bounds.y.max"
+              :min-value="currentFilters.minY"
+              :max-value="currentFilters.maxY"
+              @update:min-value="updateFilter('minY', $event)"
+              @update:max-value="updateFilter('maxY', $event)"
                 small
-              />
+            />
             </div>
           </div>
         </div>
@@ -194,5 +194,31 @@ const formatRange = (min, max) => {
 .slide-fade-leave-to {
   transform: translateY(20px);
   opacity: 0;
+}
+
+/* 悬停按钮效果 */
+.hover-effect {
+  transition: all 0.3s ease;
+}
+
+.hover-effect:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+  background-color: #4aa8d8; /* 悬停时加深蓝色 */
+  color: white;
+}
+
+.hover-effect:active {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* 小按钮悬停效果 */
+.btn-xs {
+  transition: all 0.2s ease;
+}
+
+.btn-xs:hover {
+  transform: scale(1.1);
 }
 </style>

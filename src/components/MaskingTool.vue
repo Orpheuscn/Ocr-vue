@@ -3,13 +3,15 @@
     <!-- 悬浮按钮 -->
     <div class="fixed left-4 bottom-24 z-40" v-if="store.hasOcrResult || store.currentFiles.length > 0">
       <button 
-        class="btn btn-circle btn-warning shadow-lg"
+        class="btn btn-circle btn-warning shadow-lg hover-btn"
         @click="toggleMaskingMode"
         :class="{'btn-active': isMaskingActive}"
         :title="isMaskingActive ? '退出遮挡模式' : '添加遮挡区域'"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11h2m-2 4v3a2 2 0 01-2 2H5a2 2 0 01-2-2v-3m0-4h2m12-4V5a2 2 0 00-2-2H9a2 2 0 00-2 2v3" />
+          <circle cx="9" cy="13" r="2" />
+          <circle cx="15" cy="13" r="2" />
         </svg>
       </button>
     </div>
@@ -144,7 +146,7 @@ const updateImageContainerInfo = () => {
   const origHeight = store.imageDimensions.height || 0;
   
   if (origWidth <= 0 || origHeight <= 0) {
-    console.error('图像尺寸无效:', origWidth, origHeight);
+    // console.error('图像尺寸无效:', origWidth, origHeight);
     return false;
   }
   
@@ -164,7 +166,7 @@ const updateImageContainerInfo = () => {
   imageContainerInfo.value = newInfo;
   lastImageInfo.value = { ...newInfo };
   
-  console.log('图像容器信息已更新:', newInfo);
+  // console.log('图像容器信息已更新:', newInfo);
   return true;
 };
 
@@ -179,8 +181,8 @@ const visibleMaskedAreas = computed(() => {
   
   const { left, top, scale } = imageContainerInfo.value;
   
-  // 强制使用console.log而非console.warn以避免黄色警告
-  console.log(`计算遮挡区域显示，当前有${store.maskedAreas.length}个区域`);
+  // 不再输出每次计算的日志
+  // console.log(`计算遮挡区域显示，当前有${store.maskedAreas.length}个区域`);
   
   return store.maskedAreas.map((area, index) => {
     const displayArea = {
@@ -191,7 +193,8 @@ const visibleMaskedAreas = computed(() => {
       displayHeight: area.height / scale
     };
     
-    console.log(`区域#${index}: 显示坐标(${Math.round(displayArea.displayX)}, ${Math.round(displayArea.displayY)}, ${Math.round(displayArea.displayWidth)}, ${Math.round(displayArea.displayHeight)})`);
+    // 不再输出每个区域的详细信息
+    // console.log(`区域#${index}: 显示坐标(${Math.round(displayArea.displayX)}, ${Math.round(displayArea.displayY)}, ${Math.round(displayArea.displayWidth)}, ${Math.round(displayArea.displayHeight)})`);
     
     return displayArea;
   });
@@ -201,7 +204,7 @@ const visibleMaskedAreas = computed(() => {
 const toggleMaskingMode = () => {
   isMaskingActive.value = !isMaskingActive.value;
   showDebug.value = isMaskingActive.value; // 开启遮挡模式时显示调试信息
-  console.log('遮挡模式:', isMaskingActive.value ? '开启' : '关闭');
+  // console.log('遮挡模式:', isMaskingActive.value ? '开启' : '关闭');
   
   if (isMaskingActive.value) {
     // 更新图像信息
@@ -230,7 +233,7 @@ const forceUpdate = () => {
 const startDrawing = (e) => {
   // 更新图像容器信息
   if (!updateImageContainerInfo()) {
-    console.error('无法获取图像信息，取消绘制');
+    // console.error('无法获取图像信息，取消绘制');
     return;
   }
   
@@ -240,7 +243,7 @@ const startDrawing = (e) => {
   currentX.value = startX.value;
   currentY.value = startY.value;
   
-  console.log(`开始绘制，起点: (${startX.value}, ${startY.value})`);
+  // console.log(`开始绘制，起点: (${startX.value}, ${startY.value})`);
   e.preventDefault();
 };
 
@@ -271,7 +274,7 @@ const finishDrawing = (e) => {
   
   // 忽略太小的区域
   if (width < 10 || height < 10) {
-    console.log('绘制区域太小，已忽略');
+    // console.log('绘制区域太小，已忽略');
     isDrawing.value = false;
     return;
   }
@@ -284,7 +287,7 @@ const finishDrawing = (e) => {
   
   // 检查是否有交集
   if (overlapRight <= overlapLeft || overlapBottom <= overlapTop) {
-    console.log('绘制区域与图像无交集，已忽略');
+    // console.log('绘制区域与图像无交集，已忽略');
     isDrawing.value = false;
     return;
   }
@@ -303,7 +306,7 @@ const finishDrawing = (e) => {
     height: Math.round(imageHeight)
   };
   
-  console.log('添加遮挡区域:', maskArea);
+  // console.log('添加遮挡区域:', maskArea);
   
   // 更新store - 使用直接推送
   store.maskedAreas.push(maskArea);
@@ -321,29 +324,23 @@ const finishDrawing = (e) => {
 // 取消绘制
 const cancelDrawing = () => {
   if (isDrawing.value) {
-    console.log('取消绘制');
+    // console.log('取消绘制');
     isDrawing.value = false;
   }
 };
 
 // 处理删除遮挡区域按钮点击
 const handleDeleteMask = (index) => {
-  console.log(`尝试删除遮挡区域 #${index}，当前数量:`, store.maskedAreas.length);
+  // console.log(`尝试删除遮挡区域 #${index}，当前数量:`, store.maskedAreas.length);
   
   try {
     if (index >= 0 && index < store.maskedAreas.length) {
-      // 弹出确认
-      console.log(`确认删除遮挡区域 #${index}`);
-      
       // 执行删除
       store.maskedAreas.splice(index, 1);
-      
-      console.log('删除后数量:', store.maskedAreas.length);
       
       // 强制更新视图
       nextTick(() => {
         forceUpdate();
-        console.log('更新后数量:', store.maskedAreas.length);
       });
     } else {
       console.error('索引超出范围:', index, '当前数量:', store.maskedAreas.length);
@@ -355,13 +352,13 @@ const handleDeleteMask = (index) => {
 
 // 清除所有遮挡区域
 const clearAllMasks = () => {
-  console.log('清除所有遮挡区域');
+  // console.log('清除所有遮挡区域');
   try {
     const count = store.maskedAreas.length;
     
     // 清空数组
     store.maskedAreas.splice(0, count);
-    console.log(`已清除${count}个遮挡区域`);
+    // console.log(`已清除${count}个遮挡区域`);
     
     // 强制更新视图
     nextTick(() => {
@@ -400,7 +397,7 @@ watch(() => store.currentPage, () => {
 
 // 组件生命周期
 onMounted(() => {
-  console.log('MaskingTool 组件已挂载');
+  // console.log('MaskingTool 组件已挂载');
   
   // 添加快捷键切换调试信息
   const handleKeyDown = (e) => {
@@ -487,12 +484,30 @@ onMounted(() => {
   padding: 0;
   font-size: 16px;
   transform: translate(-50%, -50%);
+  transition: all 0.3s ease;
 }
 
 /* 按钮悬停效果 */
 .delete-mask-btn:hover {
   background-color: #f00;
   transform: translate(-50%, -50%) scale(1.1);
+}
+
+/* 悬停按钮效果 */
+.hover-btn {
+  transition: all 0.3s ease;
+}
+
+.hover-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  background-color: #ffaa00; /* 悬停时加深黄色 */
+  color: white;
+}
+
+.hover-btn:active {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* 动画效果 */

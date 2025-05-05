@@ -1,13 +1,13 @@
 <template>
   <div class="fixed bottom-4 right-4 z-40" v-if="store.hasOcrResult">
     <button 
-      class="btn btn-circle btn-primary shadow-lg"
+      class="btn btn-circle btn-secondary shadow-lg hover-effect"
       @click="toggleCoordinateView"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 svg-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
       </svg>
-    </button>
+        </button>
   </div>
 
   <div 
@@ -60,16 +60,15 @@
           <div class="flex items-center gap-2">
             <span class="text-sm">区块级别:</span>
             <select v-model="selectedBlockLevel" class="select select-sm select-bordered">
-              <option value="blocks">区块</option>
-              <option value="paragraphs">段落</option>
-              <option value="words">单词</option>
-              <option value="symbols">字符</option>
-            </select>
-          </div>
+          <option value="blocks">区块</option>
+          <option value="paragraphs">段落</option>
+          <option value="words">单词</option>
+          <option value="symbols">字符</option>
+        </select>
+      </div>
           
           <button 
             class="btn btn-sm" 
-            :class="showBounds ? 'btn-primary' : 'btn-outline'"
             @click="toggleBlockVisibility"
           >
             {{ showBounds ? '隐藏' : '显示' }}区块
@@ -87,77 +86,77 @@
       </div>
       
       <div class="card-body p-4 overflow-auto">
-        <div class="coordinate-system-wrapper" ref="coordSystemWrapper">
-          <div
-            class="coordinate-system"
-            ref="coordSystemRef"
+    <div class="coordinate-system-wrapper" ref="coordSystemWrapper">
+      <div
+        class="coordinate-system"
+        ref="coordSystemRef"
             :style="{ 
               width: systemWidth + 'px', 
               height: systemHeight + 'px',
               transform: `scale(${zoomLevel})`,
               transformOrigin: 'top left'
             }"
-          >
-            <div class="y-axis" :style="{ height: store.imageDimensions.height + 'px' }"></div>
-            <div class="x-axis" :style="{ width: store.imageDimensions.width + 'px' }"></div>
+      >
+        <div class="y-axis" :style="{ height: store.imageDimensions.height + 'px' }"></div>
+        <div class="x-axis" :style="{ width: store.imageDimensions.width + 'px' }"></div>
 
-            <div
-              v-for="label in xAxisLabels"
-              :key="'x'+label.pos"
-              class="axis-label x-label"
-              :style="{ left: label.pos + 'px' }"
-            >
-              {{ label.text }}
-            </div>
-            <div
-              v-for="label in yAxisLabels"
-              :key="'y'+label.pos"
-              class="axis-label y-label"
-              :style="{ top: label.pos + 'px' }"
-            >
-              {{ label.text }}
-            </div>
+        <div
+          v-for="label in xAxisLabels"
+          :key="'x'+label.pos"
+          class="axis-label x-label"
+          :style="{ left: label.pos + 'px' }"
+        >
+          {{ label.text }}
+        </div>
+        <div
+          v-for="label in yAxisLabels"
+          :key="'y'+label.pos"
+          class="axis-label y-label"
+          :style="{ top: label.pos + 'px' }"
+        >
+          {{ label.text }}
+        </div>
 
-            <svg class="block-svg" :viewBox="`0 0 ${systemWidth} ${systemHeight}`" preserveAspectRatio="none">
+        <svg class="block-svg" :viewBox="`0 0 ${systemWidth} ${systemHeight}`" preserveAspectRatio="none">
               <!-- 单层多边形设计 - 添加一个始终可点击的透明层 -->
               <g v-for="(block, index) in visibleBlockBoundaries" :key="`block-${selectedBlockLevel}-${index}`">
                 <!-- 可见边界 -->
-                <polygon
-                  class="block-polygon"
-                  :class="{ 'polygon-hover': index === activePolygonIndex }"
-                  :points="block.points"
+          <polygon
+            class="block-polygon"
+            :class="{ 'polygon-hover': index === activePolygonIndex }"
+            :points="block.points"
                   :data-index="index"
-                  :data-tooltip="block.tooltip"
+            :data-tooltip="block.tooltip"
                   @click="copyBlockText(block.text, $event)"
-                  :style="{ display: showBounds ? 'block' : 'none' }"
-                />
-                
+            :style="{ display: showBounds ? 'block' : 'none' }"
+          />
+          
                 <!-- 始终存在的隐形点击层 -->
-                <polygon
-                  class="block-polygon-click-layer"
-                  :points="block.points"
-                  @mouseenter="showPolygonHover(index, $event, block.tooltip)"
-                  @mousemove="updateTooltipPosition"
-                  @mouseleave="hidePolygonHover"
+          <polygon
+            class="block-polygon-click-layer"
+            :points="block.points"
+            @mouseenter="showPolygonHover(index, $event, block.tooltip)"
+            @mousemove="updateTooltipPosition"
+            @mouseleave="hidePolygonHover"
                   @click="copyBlockText(block.text, $event)"
-                />
+          />
               </g>
-            </svg>
-            <div
-              v-for="(symbol, index) in symbolBlocksToDisplay"
-              :key="`symbol-${index}`"
-              class="text-block"
-              :style="{
-                left: `${((symbol.x || 0) + 30)}px`,
-                top: `${(symbol.y || 0)}px`,
-                width: `${Math.max(symbol.width || 0, 20)}px`,
-                height: `${Math.max(symbol.height || 0, 20)}px`,
-                fontSize: symbol.fontSize || '12px'
-              }"
-            >
-              {{ symbol.text }}
-            </div>
-            
+        </svg>
+        <div
+          v-for="(symbol, index) in symbolBlocksToDisplay"
+          :key="`symbol-${index}`"
+          class="text-block"
+          :style="{
+            left: `${((symbol.x || 0) + 30)}px`,
+            top: `${(symbol.y || 0)}px`,
+            width: `${Math.max(symbol.width || 0, 20)}px`,
+            height: `${Math.max(symbol.height || 0, 20)}px`,
+            fontSize: symbol.fontSize || '12px'
+          }"
+        >
+          {{ symbol.text }}
+        </div>
+        
             <!-- 复制成功的通知将紧贴鼠标位置显示 -->
             <div v-if="showCopySuccess" class="mouse-follow-toast" :style="copyToastPosition">
               <div class="alert alert-success shadow-lg p-2 text-sm">
@@ -171,9 +170,6 @@
         </div>
       </div>
     </div>
-  </div>
-  <div v-else class="coordinate-view-placeholder">
-    ©OCR识别工具2025
   </div>
 </template>
 
@@ -1012,5 +1008,160 @@ body .coordinate-tooltip {
 @keyframes toast-fade {
   0% { opacity: 0; transform: translate(-50%, -90%); }
   100% { opacity: 1; transform: translate(-50%, -100%); }
+}
+
+/* 坐标系整体容器 */
+.coordinate-system-wrapper {
+  position: relative;
+  overflow: auto;
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  user-select: none;
+}
+
+/* 坐标系主体 */
+.coordinate-system {
+  position: relative;
+  transition: transform 0.2s ease;
+  background-color: var(--base-100);
+  user-select: none;
+}
+
+/* 坐标轴 */
+.y-axis, .x-axis {
+  position: absolute;
+  background-color: #ddd;
+  opacity: 0.5;
+}
+
+.x-axis {
+  height: 1px;
+  top: 0;
+  left: 30px;
+}
+
+.y-axis {
+  width: 1px;
+  top: 0;
+  left: 30px;
+}
+
+/* 坐标轴标签 */
+.axis-label {
+  position: absolute;
+  color: var(--base-content);
+  opacity: 0.6;
+  font-size: 10px;
+  user-select: none;
+  pointer-events: none;
+}
+
+.x-label {
+  top: 5px;
+  transform: translateX(-50%);
+}
+
+.y-label {
+  left: 5px;
+  transform: translateY(-50%);
+}
+
+/* 文本块样式 */
+.text-block {
+  position: absolute;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background-color: rgba(255, 255, 255, 0.8);
+  color: #333;
+  word-break: break-all;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+/* SVG相关样式 */
+.block-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.block-polygon {
+  fill: rgba(100, 149, 237, 0.2);
+  stroke: cornflowerblue;
+  stroke-width: 1px;
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+.block-polygon-click-layer {
+  fill: transparent;
+  stroke: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.polygon-hover {
+  fill: rgba(100, 149, 237, 0.4);
+  stroke: rgb(65, 105, 225);
+  stroke-width: 2px;
+}
+
+/* 鼠标跟随的Toast通知 */
+.mouse-follow-toast {
+  position: absolute;
+  z-index: 50;
+  pointer-events: none;
+  animation: fadeInOut 1s ease-in-out;
+  transform: translate(-50%, -100%);
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, -80%); }
+  20% { opacity: 1; transform: translate(-50%, -100%); }
+  80% { opacity: 1; transform: translate(-50%, -100%); }
+  100% { opacity: 0; transform: translate(-50%, -80%); }
+}
+
+/* 悬停效果 */
+.hover-effect {
+  transition: all 0.3s ease;
+}
+
+.hover-effect:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+  filter: brightness(0.85); /* 使用亮度滤镜代替固定颜色值，保持原色系 */
+  color: white;
+}
+
+.hover-effect:active {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* 图标颜色过渡 */
+.svg-icon {
+  stroke: black; /* 默认为黑色 */
+  transition: stroke 0.3s ease;
+}
+
+.hover-effect:hover .svg-icon {
+  stroke: white; /* 悬停时为白色 */
+}
+
+.btn-sm {
+  transition: all 0.2s ease;
+}
+
+.btn-sm:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
 }
 </style>

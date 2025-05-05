@@ -42,7 +42,7 @@
         </div>
         
         <div class="card-actions justify-end mt-4">
-          <button type="submit" class="btn btn-primary">开始使用</button>
+          <button type="submit" class="btn btn-accent">开始使用</button>
         </div>
       </form>
     </div>

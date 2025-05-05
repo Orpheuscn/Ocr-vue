@@ -6,7 +6,7 @@
     <div class="flex-none gap-2">
       <ThemeToggle />
       <button 
-        class="btn btn-sm btn-primary" 
+        class="btn btn-sm btn-accent" 
         @click="emitToggle">
         {{ store.showApiSettings ? '隐藏' : '设置' }} API
       </button>

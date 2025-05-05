@@ -7,7 +7,7 @@
           <button 
             :class="[
               'btn btn-sm',
-              selectedDirection === 'horizontal' ? 'btn-primary' : 'btn-outline'
+              selectedDirection === 'horizontal' ? 'btn-accent' : 'btn-outline'
             ]"
             :disabled="isProcessing"
             @click="updateDirection('horizontal')"
@@ -17,7 +17,7 @@
           <button 
             :class="[
               'btn btn-sm',
-              selectedDirection === 'vertical' ? 'btn-primary' : 'btn-outline'
+              selectedDirection === 'vertical' ? 'btn-accent' : 'btn-outline'
             ]"
             :disabled="isProcessing" 
             @click="updateDirection('vertical')"
@@ -99,7 +99,7 @@
       </div>
 
       <button
-        class="btn btn-primary w-full md:w-auto"
+        class="btn btn-accent w-full md:w-auto"
         :class="{'btn-disabled': !canStart || isProcessing, 'loading': isProcessing}"
         :disabled="!canStart || isProcessing"
         @click="startOcr"
