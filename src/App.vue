@@ -33,7 +33,7 @@
           <transition name="slide-up" mode="out-in">
             <div v-if="store.currentFiles.length > 0 || store.hasOcrResult" class="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1">
               <!-- 图像显示区域 -->
-              <div class="flex flex-col h-full" ref="imageCanvasRef">
+              <div class="flex flex-col h-full relative" ref="imageCanvasRef">
                 <transition name="slide-up" mode="out-in">
                   <PdfControls
                     v-if="store.isPdfFile"
@@ -64,6 +64,9 @@
         </div>
       </main>
     </transition>
+
+    <!-- 遮挡工具组件 -->
+    <MaskingTool />
 
     <!-- 坐标查看和过滤控制浮动按钮 -->
     <CoordinateView v-if="store.hasOcrResult" />
@@ -103,6 +106,7 @@ import CoordinateView from './components/CoordinateView.vue';
 import FilterControls from './components/FilterControls.vue';
 import LoadingOverlay from './components/LoadingOverlay.vue';
 import NotificationBar from './components/NotificationBar.vue';
+import MaskingTool from './components/MaskingTool.vue';
 
 const store = useOcrStore();
 const imageCanvasRef = ref(null);

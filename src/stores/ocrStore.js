@@ -81,6 +81,9 @@ export const useOcrStore = defineStore('ocr', () => {
   const initialTextDirection = ref('horizontal'); // 'horizontal' 或 'vertical'
   const textDisplayMode = ref('parallel'); // 'parallel' 或 'paragraph'
 
+  // 遮挡区域 - 添加到store中
+  const maskedAreas = ref([]);
+
   // --- 计算属性 (Getters / Computed) ---
   const hasApiKey = computed(() => !!apiKey.value);
   // **重要：** 确保可以开始 OCR 的条件包含 isDimensionsKnown
@@ -139,6 +142,8 @@ export const useOcrStore = defineStore('ocr', () => {
       isDimensionsKnown.value = false; // **重要：重置尺寸已知状态**
       isLoading.value = false;
       loadingMessage.value = '处理中...';
+      // 清空遮挡区域
+      maskedAreas.value = [];
       // 可以选择是否重置 API 设置显示状态
       // showApiSettings.value = !hasApiKey.value;
       // 重置过滤器到最大范围（如果需要）
@@ -345,7 +350,7 @@ export const useOcrStore = defineStore('ocr', () => {
     }
   }
 
-  // 开始OCR识别过程
+  // 开始OCR识别过程，添加对遮挡区域的支持
   async function startOcrProcess(direction) {
       // 再次检查是否可以开始 (防御性编程)
       if (!canStartOcr.value || !currentFiles.value[0]) {
@@ -380,6 +385,16 @@ export const useOcrStore = defineStore('ocr', () => {
               base64Image = await fileToBase64(currentFiles.value[0]);
           }
 
+          // 如果有遮挡区域，先处理图像
+          console.log(`遮挡区域数量: ${maskedAreas.value.length}`);
+          if (maskedAreas.value.length > 0) {
+              console.log(`准备应用${maskedAreas.value.length}个遮挡区域:`);
+              console.log(JSON.stringify(maskedAreas.value));
+              loadingMessage.value = `正在处理图像遮挡(${maskedAreas.value.length}个区域)...`;
+              base64Image = await applyMasksToImage(base64Image, processDimensions);
+              loadingMessage.value = '正在识别文本...';
+          }
+
           // 调用 API 服务，传递语言提示
           const languageHints = selectedLanguages.value.length > 0 ? selectedLanguages.value : [];
           const result = await performOcrRequest(base64Image, apiKey.value, languageHints);
@@ -412,6 +427,124 @@ export const useOcrStore = defineStore('ocr', () => {
       } finally {
           isLoading.value = false;
       }
+  }
+
+  // 应用遮挡到图像
+  async function applyMasksToImage(base64Image, dimensions) {
+    console.log("开始应用遮挡到图像...");
+    
+    // 创建一个Promise，以便我们可以等待图像处理完成
+    return new Promise((resolve, reject) => {
+      try {
+        // 检查遮挡区域
+        if (!maskedAreas.value || maskedAreas.value.length === 0) {
+          console.log("没有发现有效的遮挡区域，返回原始图像");
+          return resolve(base64Image);
+        }
+        
+        // 创建新的图像对象
+        const img = new Image();
+        
+        // 图像加载完成后处理
+        img.onload = () => {
+          try {
+            // 创建Canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            
+            // 绘制原始图像
+            ctx.drawImage(img, 0, 0);
+            
+            // 计算缩放比例 - 调整计算方式
+            const scaleX = img.width / dimensions.width;
+            const scaleY = img.height / dimensions.height;
+            
+            console.log(`图像尺寸: ${img.width}x${img.height}`);
+            console.log(`原始尺寸: ${dimensions.width}x${dimensions.height}`);
+            console.log(`缩放比例: X=${scaleX}, Y=${scaleY}`);
+            
+            // 遍历所有遮挡区域
+            maskedAreas.value.forEach((area, index) => {
+              // 将遮挡区域坐标转换为图像坐标 - 确保坐标和尺寸计算正确
+              const x = Math.round(area.x * scaleX);
+              const y = Math.round(area.y * scaleY);
+              const width = Math.round(area.width * scaleX);
+              const height = Math.round(area.height * scaleY);
+              
+              console.log(`应用遮挡区域 #${index}:`);
+              console.log(`原始坐标: (${area.x}, ${area.y}, ${area.width}, ${area.height})`);
+              console.log(`缩放后坐标: (${x}, ${y}, ${width}, ${height})`);
+              
+              // 使用纯白色填充区域，确保100%不透明度
+              ctx.fillStyle = '#FFFFFF';
+              ctx.globalAlpha = 1.0; // 确保完全不透明
+              ctx.fillRect(x, y, width, height);
+            });
+            
+            // 将处理后的图像转换回Base64
+            const processedImageData = canvas.toDataURL('image/png');
+            const processedBase64 = processedImageData.split(',')[1];
+            
+            console.log("图像处理完成，返回处理后的图像");
+            
+            // 增加调试，在页面上创建一个元素显示处理前后的图像
+            if (process.env.NODE_ENV === 'development') {
+              const debugDiv = document.createElement('div');
+              debugDiv.style.position = 'fixed';
+              debugDiv.style.bottom = '0';
+              debugDiv.style.right = '0';
+              debugDiv.style.zIndex = '9999';
+              debugDiv.style.background = 'rgba(0,0,0,0.5)';
+              debugDiv.style.padding = '5px';
+              debugDiv.style.display = 'none'; // 默认隐藏，通过点击特定键组合显示
+              
+              debugDiv.innerHTML = `
+                <div style="font-size:10px;color:white;margin-bottom:5px;">原始图像与遮挡后图像对比(仅用于调试)</div>
+                <img src="data:image/png;base64,${base64Image}" style="max-width:200px;max-height:150px;margin:3px;">
+                <img src="${processedImageData}" style="max-width:200px;max-height:150px;margin:3px;">
+              `;
+              
+              document.body.appendChild(debugDiv);
+              
+              // 添加键盘快捷键监听，按Ctrl+Shift+D显示/隐藏调试信息
+              const debugKeyHandler = (e) => {
+                if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                  debugDiv.style.display = debugDiv.style.display === 'none' ? 'block' : 'none';
+                }
+              };
+              
+              document.addEventListener('keydown', debugKeyHandler);
+              
+              // 5分钟后自动移除
+              setTimeout(() => {
+                document.removeEventListener('keydown', debugKeyHandler);
+                debugDiv.remove();
+              }, 300000);
+            }
+            
+            resolve(processedBase64);
+          } catch (error) {
+            console.error("Canvas处理图像失败:", error);
+            reject(error);
+          }
+        };
+        
+        // 处理图像加载错误
+        img.onerror = (error) => {
+          console.error("图像加载失败:", error);
+          reject(new Error("图像加载失败"));
+        };
+        
+        // 加载图像
+        img.src = `data:image/png;base64,${base64Image}`;
+        
+      } catch (error) {
+        console.error("应用遮挡过程中发生错误:", error);
+        reject(error);
+      }
+    });
   }
 
   // 设置过滤器边界（滑块范围）
@@ -578,11 +711,10 @@ export const useOcrStore = defineStore('ocr', () => {
   // --- 返回 Store 的 state, getters, actions ---
   return {
     // State
-    apiKey, showApiSettings, currentFiles, filePreviewUrl, isPdfFile, pdfDataArray, currentPage, totalPages, selectedLanguages, isLoading, loadingMessage, ocrRawResult, fullTextAnnotation, originalFullText, imageDimensions, detectedLanguageCode, detectedLanguageName, filterSettings, filterBounds, filteredSymbolsData, initialTextDirection, textDisplayMode, notification, isDimensionsKnown,
+    apiKey, showApiSettings, currentFiles, filePreviewUrl, isPdfFile, pdfDataArray, currentPage, totalPages, selectedLanguages, isLoading, loadingMessage, ocrRawResult, fullTextAnnotation, originalFullText, imageDimensions, detectedLanguageCode, detectedLanguageName, filterSettings, filterBounds, filteredSymbolsData, initialTextDirection, textDisplayMode, notification, isDimensionsKnown, maskedAreas,
     // Getters
     hasApiKey, canStartOcr, textStats, hasOcrResult,
     // Actions
-    setApiKey, toggleApiSettings, resetUIState, loadFiles, changePdfPage, setImageDimension, startOcrProcess, applyFilters, setTextDisplayMode, _showNotification, updateSelectedLanguages, initSelectedLanguages,
-    // setupFilterBounds // 暴露 setupFilterBounds 可能不是必需的，除非想手动触发
+    setApiKey, toggleApiSettings, resetUIState, loadFiles, changePdfPage, setImageDimension, startOcrProcess, applyFilters, setTextDisplayMode, _showNotification, updateSelectedLanguages, initSelectedLanguages, applyMasksToImage,
   };
 });
