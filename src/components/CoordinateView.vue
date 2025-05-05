@@ -173,7 +173,7 @@
     </div>
   </div>
   <div v-else class="coordinate-view-placeholder">
-    OCR识别工具2025.05.05
+    ©OCR识别工具2025
   </div>
 </template>
 

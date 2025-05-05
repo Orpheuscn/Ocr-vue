@@ -56,14 +56,24 @@
             @click.stop
           >
             <div class="p-2">
+              <!-- 添加搜索框 -->
+              <div class="mb-2">
+                <input 
+                  type="text" 
+                  v-model="languageSearch" 
+                  placeholder="搜索语言名称或代码..." 
+                  class="input input-sm input-bordered w-full"
+                  @input="filterLanguages"
+                />
+              </div>
+              
               <div class="grid grid-cols-2 gap-1">
                 <div
-                  v-for="lang in availableLanguages"
+                  v-for="lang in filteredLanguages"
                   :key="lang.code"
                   :class="[
                     'form-control flex-row items-center px-2 py-1 rounded hover:bg-base-200 cursor-pointer',
-                    selectedLanguages.includes(lang.code) ? 'bg-base-200' : '',
-                    lang.isCustom ? 'border-l-2 border-primary' : ''
+                    selectedLanguages.includes(lang.code) ? 'bg-base-200' : ''
                   ]"
                   @click="toggleLanguage(lang.code, $event)"
                 >
@@ -76,13 +86,9 @@
                       @change="toggleLanguage(lang.code, $event)"
                     />
                     <span class="label-text">{{ lang.name }}</span>
+                    <span class="text-xs opacity-60">({{ lang.code }})</span>
                   </label>
                 </div>
-              </div>
-              
-              <!-- 自定义语言管理 -->
-              <div class="mt-3 pt-3 border-t border-base-300">
-                <CustomLanguageManager @language-changed="handleLanguageListChanged" />
               </div>
             </div>
           </div>
@@ -108,7 +114,6 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
 import { getAllLanguages } from '@/services/visionApi';
-import CustomLanguageManager from './CustomLanguageManager.vue';
 
 const props = defineProps({
   canStart: { type: Boolean, default: false },
@@ -122,6 +127,8 @@ const store = useOcrStore();
 const selectedDirection = ref(props.initialDirection);
 const availableLanguages = ref(getAllLanguages());
 const selectedLanguages = ref([]);
+const languageSearch = ref(''); // 用于语言搜索
+const filteredLanguages = ref([]); // 经过搜索过滤后的语言列表
 
 // 初始化组件时从store获取语言设置
 onMounted(() => {
@@ -132,6 +139,9 @@ onMounted(() => {
   
   // 从store复制当前选择的语言
   selectedLanguages.value = [...store.selectedLanguages];
+  
+  // 初始化过滤后的语言列表
+  filteredLanguages.value = [...availableLanguages.value];
   
   // 添加点击外部关闭下拉菜单的事件监听
   document.addEventListener('click', handleClickOutside);
@@ -146,10 +156,30 @@ onUnmounted(() => {
 const showDropdown = ref(false);
 const dropdownRef = ref(null);
 
+// 根据搜索关键词过滤语言
+const filterLanguages = () => {
+  if (!languageSearch.value.trim()) {
+    // 如果搜索框为空，显示所有语言
+    filteredLanguages.value = [...availableLanguages.value];
+    return;
+  }
+  
+  const searchTerm = languageSearch.value.toLowerCase();
+  filteredLanguages.value = availableLanguages.value.filter(lang => 
+    lang.name.toLowerCase().includes(searchTerm) || 
+    lang.code.toLowerCase().includes(searchTerm)
+  );
+};
+
 // 切换下拉菜单显示状态
 const toggleDropdown = () => {
   if (!props.isProcessing) {
     showDropdown.value = !showDropdown.value;
+    if (showDropdown.value) {
+      // 在显示下拉菜单时，重置搜索状态
+      languageSearch.value = '';
+      filterLanguages();
+    }
   }
 };
 
@@ -158,11 +188,6 @@ const handleClickOutside = (event) => {
   if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
     showDropdown.value = false;
   }
-};
-
-// 处理语言列表变化
-const handleLanguageListChanged = (newLanguageList) => {
-  availableLanguages.value = newLanguageList;
 };
 
 // 显示当前选择的语言

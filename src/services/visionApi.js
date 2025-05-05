@@ -71,86 +71,13 @@ export async function performOcrRequest(base64Image, apiKey, languageHints = [])
   }
 }
 
-// 从本地存储加载自定义语言
-function loadCustomLanguages() {
-  try {
-    const customLanguages = localStorage.getItem('customLanguages');
-    return customLanguages ? JSON.parse(customLanguages) : {};
-  } catch (e) {
-    console.error('Failed to load custom languages:', e);
-    return {};
-  }
-}
-
-// 保存自定义语言到本地存储
-export function saveCustomLanguage(code, name) {
-  try {
-    // 验证语言代码格式
-    if (!code || typeof code !== 'string' || code.length < 2 || code.length > 10) {
-      throw new Error('无效的语言代码');
-    }
-    
-    // 验证语言名称
-    if (!name || typeof name !== 'string' || name.length < 1) {
-      throw new Error('无效的语言名称');
-    }
-    
-    // 加载现有自定义语言
-    const customLanguages = loadCustomLanguages();
-    
-    // 添加或更新语言
-    customLanguages[code] = name;
-    
-    // 保存到本地存储
-    localStorage.setItem('customLanguages', JSON.stringify(customLanguages));
-    
-    // 更新内存中的语言映射
-    CUSTOM_LANGUAGE_MAP[code] = name;
-    
-    return true;
-  } catch (e) {
-    console.error('保存自定义语言失败:', e);
-    throw e;
-  }
-}
-
-// 删除自定义语言
-export function deleteCustomLanguage(code) {
-  try {
-    // 加载现有自定义语言
-    const customLanguages = loadCustomLanguages();
-    
-    // 检查语言是否存在
-    if (!customLanguages[code]) {
-      throw new Error('找不到指定的自定义语言');
-    }
-    
-    // 删除语言
-    delete customLanguages[code];
-    delete CUSTOM_LANGUAGE_MAP[code];
-    
-    // 保存到本地存储
-    localStorage.setItem('customLanguages', JSON.stringify(customLanguages));
-    
-    return true;
-  } catch (e) {
-    console.error('删除自定义语言失败:', e);
-    throw e;
-  }
-}
-
 // 语言代码映射表 - 从JSON文件导入
 const LANGUAGE_MAP = languageData;
 
-// 自定义语言映射 - 从本地存储加载
-const CUSTOM_LANGUAGE_MAP = loadCustomLanguages();
-
 // Helper function to get language name
 export function getLanguageName(code) {
-    if (CUSTOM_LANGUAGE_MAP[code]) return CUSTOM_LANGUAGE_MAP[code];
     if (LANGUAGE_MAP[code]) return LANGUAGE_MAP[code];
     const baseCode = code?.split('-')[0];
-    if (CUSTOM_LANGUAGE_MAP[baseCode]) return CUSTOM_LANGUAGE_MAP[baseCode];
     return LANGUAGE_MAP[baseCode] || code || '未知'; // Fallback
 }
 
@@ -158,18 +85,11 @@ export function getLanguageName(code) {
 export function getAllLanguages() {
     const result = [];
     
-    // 添加内置语言
+    // 添加所有语言
     for (const [code, name] of Object.entries(LANGUAGE_MAP)) {
         // 排除一些特殊值
         if (code !== 'und' && !code.includes('-')) {
-            result.push({ code, name, isCustom: false });
-        }
-    }
-    
-    // 添加自定义语言
-    for (const [code, name] of Object.entries(CUSTOM_LANGUAGE_MAP)) {
-        if (!code.includes('-')) {
-            result.push({ code, name, isCustom: true });
+            result.push({ code, name });
         }
     }
     
