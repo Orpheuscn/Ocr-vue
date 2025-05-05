@@ -265,6 +265,9 @@ function syncComponentHeights() {
 }
 
 onMounted(() => {
+  // 初始化语言设置
+  store.initSelectedLanguages();
+  
   // 在组件挂载后设置ResizeObserver
   setTimeout(setupResizeObserver, 500); // 给一些时间让DOM渲染完成
   // 初始加载后

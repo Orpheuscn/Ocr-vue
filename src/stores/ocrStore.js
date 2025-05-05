@@ -46,6 +46,9 @@ export const useOcrStore = defineStore('ocr', () => {
   const currentPage = ref(1);
   const totalPages = ref(0);
 
+  // 语言设置
+  const selectedLanguages = ref([]); // 存储选中的语言代码数组: ['zh', 'en', ...]
+
   // UI 状态
   const isLoading = ref(false);
   const loadingMessage = ref('处理中...');
@@ -318,7 +321,31 @@ export const useOcrStore = defineStore('ocr', () => {
       }
   }
 
-  // 开始 OCR 处理
+  // 更新选中的语言数组
+  function updateSelectedLanguages(languages) {
+    selectedLanguages.value = [...languages]; // 使用副本以确保反应性
+    
+    // 可以选择保存到localStorage
+    try {
+      localStorage.setItem('selectedLanguages', JSON.stringify(selectedLanguages.value));
+    } catch (e) {
+      console.warn('无法保存语言设置', e);
+    }
+  }
+
+  // 初始化语言设置（从localStorage加载）
+  function initSelectedLanguages() {
+    try {
+      const saved = localStorage.getItem('selectedLanguages');
+      if (saved) {
+        selectedLanguages.value = JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('加载语言设置失败', e);
+    }
+  }
+
+  // 开始OCR识别过程
   async function startOcrProcess(direction) {
       // 再次检查是否可以开始 (防御性编程)
       if (!canStartOcr.value || !currentFiles.value[0]) {
@@ -353,8 +380,9 @@ export const useOcrStore = defineStore('ocr', () => {
               base64Image = await fileToBase64(currentFiles.value[0]);
           }
 
-          // 调用 API 服务
-          const result = await performOcrRequest(base64Image, apiKey.value);
+          // 调用 API 服务，传递语言提示
+          const languageHints = selectedLanguages.value.length > 0 ? selectedLanguages.value : [];
+          const result = await performOcrRequest(base64Image, apiKey.value, languageHints);
           ocrRawResult.value = result; // 存储原始结果
 
           // 解析和处理结果
@@ -374,7 +402,8 @@ export const useOcrStore = defineStore('ocr', () => {
           // 应用过滤器（使用重置后的最大范围）
           applyFilters(filterSettings.value);
 
-          _showNotification('识别完成', 'success');
+          const langHint = languageHints.length > 0 ? '（使用语言提示：' + languageHints.map(code => getLanguageName(code)).join(', ') + '）' : '';
+          _showNotification(`识别完成${langHint}`, 'success');
 
       } catch (error) {
           console.error("OCR 处理错误:", error);
@@ -549,11 +578,11 @@ export const useOcrStore = defineStore('ocr', () => {
   // --- 返回 Store 的 state, getters, actions ---
   return {
     // State
-    apiKey, showApiSettings, currentFiles, filePreviewUrl, isPdfFile, pdfDataArray, currentPage, totalPages, isLoading, loadingMessage, ocrRawResult, fullTextAnnotation, originalFullText, imageDimensions, detectedLanguageCode, detectedLanguageName, filterSettings, filterBounds, filteredSymbolsData, initialTextDirection, textDisplayMode, notification, isDimensionsKnown,
+    apiKey, showApiSettings, currentFiles, filePreviewUrl, isPdfFile, pdfDataArray, currentPage, totalPages, selectedLanguages, isLoading, loadingMessage, ocrRawResult, fullTextAnnotation, originalFullText, imageDimensions, detectedLanguageCode, detectedLanguageName, filterSettings, filterBounds, filteredSymbolsData, initialTextDirection, textDisplayMode, notification, isDimensionsKnown,
     // Getters
     hasApiKey, canStartOcr, textStats, hasOcrResult,
     // Actions
-    setApiKey, toggleApiSettings, resetUIState, loadFiles, changePdfPage, setImageDimension, startOcrProcess, applyFilters, setTextDisplayMode, _showNotification,
+    setApiKey, toggleApiSettings, resetUIState, loadFiles, changePdfPage, setImageDimension, startOcrProcess, applyFilters, setTextDisplayMode, _showNotification, updateSelectedLanguages, initSelectedLanguages,
     // setupFilterBounds // 暴露 setupFilterBounds 可能不是必需的，除非想手动触发
   };
 });
