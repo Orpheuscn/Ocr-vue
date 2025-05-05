@@ -34,17 +34,21 @@
           </button>
         </div>
         
-        <button 
-          class="btn btn-xs btn-outline gap-1"
-          @click="copyText" 
-          :disabled="!copyableText"
-          :class="{'btn-success': copyStatus === 'success'}"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          {{ copyButtonText }}
-        </button>
+        <!-- 复制按钮和下拉菜单 -->
+        <div class="dropdown dropdown-end">
+          <div tabindex="0" role="button" class="btn btn-xs btn-outline gap-1 m-1"
+            :class="{'btn-success': copyStatus === 'success'}"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            {{ copyButtonText }}
+          </div>
+          <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+            <li><a @click="copyText('original')">复制原始文本</a></li>
+            <li><a @click="copyText('filtered')">复制过滤后文本</a></li>
+          </ul>
+        </div>
       </div>
 
       <div class="divider my-0 flex-shrink-0"></div>
@@ -53,6 +57,7 @@
       <div 
         class="flex-1 overflow-y-auto p-2 text-content-area bg-base-100"
         :dir="textDirection"
+        ref="textContentRef"
       >
         <div v-if="!store.hasOcrResult && store.currentFiles.length > 0" class="flex flex-col items-center justify-center h-full text-center opacity-70">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -102,7 +107,9 @@ const props = defineProps({
 const store = useOcrStore();
 const textComponent = ref(null);
 const textManagerRef = ref(null);
+const textContentRef = ref(null); // 添加对文本内容区域的引用
 const copyStatus = ref('idle'); // 'idle', 'success', 'error'
+const lastCopyType = ref('original'); // 记录上次复制的类型，默认为原始文本
 
 // 判断是否为RTL文本
 const isRtlText = computed(() => {
@@ -174,18 +181,9 @@ const updateDisplayMode = (mode) => {
   store.setTextDisplayMode(mode);
 };
 
-// 在组件挂载后获取格式化文本
-const getFormattedText = () => {
-  // 从DOM获取文本内容是最可靠的方法
-  if (textComponent.value && textComponent.value.$el) {
-    // 获取文本节点内容，跳过可能存在的HTML标签
-    const text = textComponent.value.$el.textContent || '';
-    if (text.trim()) {
-      return text.trim();
-    }
-  }
-  
-  // 回退方案：根据当前显示模式返回合适的原始文本
+// 获取原始文本
+const getOriginalText = () => {
+  // 根据当前显示模式返回合适的原始文本
   if (store.textDisplayMode === 'parallel') {
     // 原排版模式
     return store.fullTextAnnotation?.text || '';
@@ -196,11 +194,42 @@ const getFormattedText = () => {
   }
 };
 
-// 获取当前可复制的文本
-const copyableText = computed(() => {
-  if (!store.hasOcrResult) return '';
-  return getFormattedText();
-});
+// 获取过滤后的文本
+const getFilteredText = () => {
+  // 从DOM中获取当前显示的文本
+  if (textComponent.value && textComponent.value.$el) {
+    const text = textComponent.value.$el.textContent || '';
+    if (text.trim()) {
+      return text.trim();
+    }
+  }
+  
+  // 如果无法从DOM获取，则使用fallback生成过滤后的文本
+  return generateFilteredText();
+};
+
+// 生成过滤后的文本（fallback方法）
+const generateFilteredText = () => {
+  const symbolsToProcess = store.filteredSymbolsData;
+  if (!symbolsToProcess || symbolsToProcess.length === 0) {
+    return '';
+  }
+  
+  let text = '';
+  symbolsToProcess.forEach(symbol => {
+    if (symbol.isFiltered) {
+      text += symbol.text;
+      const breakType = symbol.detectedBreak;
+      if (breakType === 'SPACE' || breakType === 'EOL_SURE_SPACE') {
+        text += ' ';
+      } else if (breakType === 'LINE_BREAK' || breakType === 'HYPHEN') {
+        text += '\n';
+      }
+    }
+  });
+  
+  return text.replace(/ +/g, ' ').replace(/\n+/g, '\n').trim();
+};
 
 // 复制按钮文本
 const copyButtonText = computed(() => {
@@ -211,12 +240,30 @@ const copyButtonText = computed(() => {
   }
 });
 
-// 复制文本方法
-const copyText = async () => {
-  if (!copyableText.value) return;
+// 复制文本方法，根据类型选择复制内容
+const copyText = async (type = '') => {
+  if (!store.hasOcrResult) return;
+  
+  // 如果没有指定类型，使用上次的类型
+  if (!type) {
+    type = lastCopyType.value;
+  } else {
+    // 保存当前使用的类型
+    lastCopyType.value = type;
+  }
+  
+  // 根据类型获取要复制的文本
+  let textToCopy = '';
+  if (type === 'original') {
+    textToCopy = getOriginalText();
+  } else if (type === 'filtered') {
+    textToCopy = getFilteredText();
+  }
+  
+  if (!textToCopy) return;
   
   try {
-    await navigator.clipboard.writeText(copyableText.value);
+    await navigator.clipboard.writeText(textToCopy);
     copyStatus.value = 'success';
     
     // 3秒后重置状态
