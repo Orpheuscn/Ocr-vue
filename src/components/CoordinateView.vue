@@ -807,59 +807,69 @@ const closeCoordinateView = () => {
 
 .coordinate-system-wrapper {
     position: relative;
+    overflow: auto;
     width: 100%;
     height: 100%;
-    overflow: auto;
-    border-radius: 0.5rem;
-    border: 1px solid var(--b3, #ddd);
-    background-color: var(--b2, #f9f9f9);
-    padding: 0;
-    margin-top: 0.5rem;
-    min-height: 400px;
-    position: relative;
-    box-sizing: border-box; /* Ensure border is included in size */
+    min-height: 500px;
+    user-select: none;
 }
 
 .coordinate-system {
     position: relative;
-    transform-origin: top left;
-    transition: transform 0.3s ease; /* 添加平滑过渡效果 */
-    box-sizing: border-box; /* Ensure padding/border included if any */
+    transition: transform 0.2s ease;
+    background-color: var(--base-100);
+    user-select: none;
 }
 
-.y-axis {
+.y-axis, .x-axis {
     position: absolute;
-    left: 30px;
-    top: 0;
-    width: 1px;
-    background-color: var(--bc, #aaa);
-    /* height set dynamically */
+    background-color: #ddd;
+    opacity: 0.5;
 }
 
 .x-axis {
-    position: absolute;
-    left: 30px;
-    bottom: 30px;
     height: 1px;
-    background-color: var(--bc, #aaa);
-     /* width set dynamically */
+    top: 0;
+    left: 30px;
+}
+
+.y-axis {
+    width: 1px;
+    top: 0;
+    left: 30px;
 }
 
 .axis-label {
     position: absolute;
+    color: var(--base-content);
+    opacity: 0.6;
     font-size: 10px;
-    color: var(--bc, #555);
     user-select: none;
+    pointer-events: none;
 }
 
 .x-label {
-    bottom: 10px;
+    top: 5px;
     transform: translateX(-50%);
 }
 
 .y-label {
     left: 5px;
-     transform: translateY(-50%);
+    transform: translateY(-50%);
+}
+
+.text-block {
+    position: absolute;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    background-color: rgba(255, 255, 255, 0.8);
+    color: #333;
+    word-break: break-all;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    transition: all 0.2s ease;
 }
 
 .block-svg {
@@ -873,20 +883,17 @@ const closeCoordinateView = () => {
 }
 
 .block-polygon {
-    stroke: var(--error, red);
-    stroke-width: 1.5px;
-    stroke-dasharray: 4, 4;
-    fill: var(--error-content, rgba(255, 0, 0, 0.05));
-    transition: fill 0.2s, stroke 0.2s, stroke-width 0.2s;
-    cursor: pointer;
-    pointer-events: all; /* 多边形可交互 */
-    will-change: stroke, fill; /* 优化渲染性能 */
+    fill: rgba(100, 149, 237, 0.2);
+    stroke: rgba(100, 149, 237, 0.8);
+    stroke-width: 1px;
+    pointer-events: none;
+    transition: all 0.2s ease;
 }
 
 .block-polygon:hover,
 .polygon-hover {
-    fill: var(--error-content, rgba(255, 0, 0, 0.2));
-    stroke: var(--error, #ff0000);
+    fill: rgba(100, 149, 237, 0.4);
+    stroke: rgba(65, 105, 225, 1);
     stroke-width: 2px;
     stroke-dasharray: none;
     z-index: 100; /* 确保悬停时可见 */
@@ -970,26 +977,30 @@ body .coordinate-tooltip {
   fill: transparent;
   stroke: transparent;
   cursor: pointer;
-  pointer-events: all; /* 保持对点击事件的响应 */
-  opacity: 0; /* 完全透明 */
+  pointer-events: auto;
 }
 
 .block-polygon-click-layer:hover + .block-polygon {
-  fill: rgba(255, 0, 0, 0.2);
-  stroke: #ff0000;
+  /* 根据亮暗模式使用相应的悬停样式 */
+  fill: rgba(100, 149, 237, 0.4); /* 亮色模式 */
+  stroke: rgba(65, 105, 225, 1);
   stroke-width: 2px;
-  stroke-dasharray: none;
+}
+
+[data-theme="dark"] .block-polygon-click-layer:hover + .block-polygon {
+  fill: rgba(135, 206, 250, 0.3); /* 暗色模式 */
+  stroke: rgba(0, 191, 255, 1);
+  stroke-width: 2px;
 }
 
 /* 跟随鼠标的通知样式 */
 .mouse-follow-toast {
   position: absolute;
-  z-index: 999;
+  z-index: 50;
   pointer-events: none;
-  animation: toast-fade 0.3s ease;
-  white-space: nowrap;
   transform: translate(-50%, -100%);
   margin-top: -10px;
+  animation: fadeInOut 1s ease-in-out;
 }
 
 .mouse-follow-toast .alert {
@@ -1003,123 +1014,6 @@ body .coordinate-tooltip {
   white-space: nowrap;
   font-weight: 500;
   font-size: 0.875rem;
-}
-
-@keyframes toast-fade {
-  0% { opacity: 0; transform: translate(-50%, -90%); }
-  100% { opacity: 1; transform: translate(-50%, -100%); }
-}
-
-/* 坐标系整体容器 */
-.coordinate-system-wrapper {
-  position: relative;
-  overflow: auto;
-  width: 100%;
-  height: 100%;
-  min-height: 500px;
-  user-select: none;
-}
-
-/* 坐标系主体 */
-.coordinate-system {
-  position: relative;
-  transition: transform 0.2s ease;
-  background-color: var(--base-100);
-  user-select: none;
-}
-
-/* 坐标轴 */
-.y-axis, .x-axis {
-  position: absolute;
-  background-color: #ddd;
-  opacity: 0.5;
-}
-
-.x-axis {
-  height: 1px;
-  top: 0;
-  left: 30px;
-}
-
-.y-axis {
-  width: 1px;
-  top: 0;
-  left: 30px;
-}
-
-/* 坐标轴标签 */
-.axis-label {
-  position: absolute;
-  color: var(--base-content);
-  opacity: 0.6;
-  font-size: 10px;
-  user-select: none;
-  pointer-events: none;
-}
-
-.x-label {
-  top: 5px;
-  transform: translateX(-50%);
-}
-
-.y-label {
-  left: 5px;
-  transform: translateY(-50%);
-}
-
-/* 文本块样式 */
-.text-block {
-  position: absolute;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  background-color: rgba(255, 255, 255, 0.8);
-  color: #333;
-  word-break: break-all;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-  transition: all 0.2s ease;
-}
-
-/* SVG相关样式 */
-.block-svg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.block-polygon {
-  fill: rgba(100, 149, 237, 0.2);
-  stroke: cornflowerblue;
-  stroke-width: 1px;
-  pointer-events: none;
-  transition: all 0.2s ease;
-}
-
-.block-polygon-click-layer {
-  fill: transparent;
-  stroke: transparent;
-  cursor: pointer;
-  pointer-events: auto;
-}
-
-.polygon-hover {
-  fill: rgba(100, 149, 237, 0.4);
-  stroke: rgb(65, 105, 225);
-  stroke-width: 2px;
-}
-
-/* 鼠标跟随的Toast通知 */
-.mouse-follow-toast {
-  position: absolute;
-  z-index: 50;
-  pointer-events: none;
-  animation: fadeInOut 1s ease-in-out;
-  transform: translate(-50%, -100%);
 }
 
 @keyframes fadeInOut {
