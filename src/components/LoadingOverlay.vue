@@ -1,8 +1,10 @@
 <template>
   <Transition name="fade">
-    <div v-if="isLoading" class="loading-overlay">
-      <div class="spinner"></div>
-      <p>{{ message || '处理中...' }}</p>
+    <div v-if="isLoading" class="fixed inset-0 bg-black/70 flex flex-col items-center justify-center z-50">
+      <div class="card bg-base-100 p-8 max-w-sm text-center shadow-xl">
+        <span class="loading loading-spinner loading-lg text-primary mb-4"></span>
+        <p class="text-lg font-medium">{{ message || '处理中...' }}</p>
+      </div>
     </div>
   </Transition>
 </template>

@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* 暗色模式下文字颜色调整 */
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --text-color: #ffffff;
+    --text-color-secondary: #dddddd;
+  }
+
+  body[data-theme="dark"] {
+    color: var(--text-color);
+  }
+}
+
+@layer components {
+  .custom-btn-primary {
+    @apply bg-primary text-primary-content hover:bg-primary-focus rounded-md px-4 py-2;
+  }
+  .custom-card {
+    @apply bg-base-100 shadow-xl rounded-xl;
+  }
+  .custom-input {
+    @apply bg-base-100 border border-base-300 rounded-md px-3 py-2 w-full;
+  }
+}
+
+/* 自定义过渡效果 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(20px);
+  opacity: 0;
+}
+
+/* 确保PDF渲染区域的样式 */
+canvas.pdf-page {
+  width: 100%;
+  height: auto;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-radius: 0.5rem;
+} 

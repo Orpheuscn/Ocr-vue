@@ -86,6 +86,12 @@ const paragraphText = computed(() => {
 
 <style scoped>
 .text-output {
-  /* Inherits styles, specific styles if needed */
+  font-size: 1rem;
+  line-height: 1.5;
+  padding: 1rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--bc, inherit); /* 使用主题颜色变量 */
+  background-color: transparent; /* 透明背景 */
 }
 </style>

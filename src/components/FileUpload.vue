@@ -1,29 +1,43 @@
 <template>
-  <div class="upload-section">
+  <div class="card bg-base-100 shadow-sm w-full">
     <div
       ref="dropZoneRef"
-      class="drop-area"
-      :class="{ 'drag-over': isDragOver }"
+      class="card-body flex flex-col items-center justify-center py-10 px-4 cursor-pointer border-2 border-dashed rounded-xl transition-all"
+      :class="{ 'border-primary bg-primary/5': isDragOver, 'border-base-300': !isDragOver }"
       @dragenter.prevent.stop="onDragEnter"
       @dragover.prevent.stop="onDragOver"
       @dragleave.prevent.stop="onDragLeave"
       @drop.prevent.stop="onDrop"
       @click="triggerFileInput"
     >
-      <p>拖放图片或 PDF 到此处</p>
-      <p>或</p>
-      <input
-        ref="fileInputRef"
-        type="file"
-        id="fileInput"
-        accept="image/*,.pdf"
-        multiple
-        @change="onFileSelected"
-        style="display: none;"
-      />
-      <label for="fileInput" class="file-input-label" @click.stop>选择文件</label>
-      <p>或</p>
-      <p>按 <kbd>Ctrl+V</kbd> / <kbd>Cmd+V</kbd> 粘贴图片</p>
+      <div class="text-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-3 text-primary mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
+        
+        <h3 class="text-lg font-medium mb-2">上传文件</h3>
+        <p class="text-sm opacity-70 mb-4">拖放图片或PDF到此处，或点击上传</p>
+        
+        <input
+          ref="fileInputRef"
+          type="file"
+          id="fileInput"
+          accept="image/*,.pdf"
+          multiple
+          @change="onFileSelected"
+          class="hidden"
+        />
+        
+        <button class="btn btn-primary btn-sm" @click.stop>
+          选择文件
+        </button>
+        
+        <div class="divider my-4">或</div>
+        
+        <p class="text-sm opacity-70">
+          按 <kbd class="kbd kbd-sm">Ctrl</kbd> + <kbd class="kbd kbd-sm">V</kbd> 粘贴图片
+        </p>
+      </div>
     </div>
   </div>
 </template>

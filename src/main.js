@@ -1,5 +1,6 @@
 // src/main.js
 import './assets/base.css' // Import global styles first
+import './assets/index.css' // Import Tailwind CSS
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'

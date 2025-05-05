@@ -1,99 +1,179 @@
 <template>
-  <div class="coordinate-view-container" v-if="store.hasOcrResult">
-    <h3 class="section-title">
-      坐标视图
-      <div class="coordinate-controls">
-        <button class="toggle-button" @click="toggleBlockVisibility">
-          {{ showBounds ? '隐藏' : '显示' }}区块
-        </button>
-        <span>区块级别:</span>
-        <select v-model="selectedBlockLevel">
-          <option value="blocks">区块</option>
-          <option value="paragraphs">段落</option>
-          <option value="words">单词</option>
-          <option value="symbols">字符</option>
-        </select>
-      </div>
-    </h3>
+  <div class="fixed bottom-4 right-4 z-40" v-if="store.hasOcrResult">
+    <button 
+      class="btn btn-circle btn-primary shadow-lg"
+      @click="toggleCoordinateView"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+      </svg>
+    </button>
+  </div>
 
-    <div class="coordinate-system-wrapper" ref="coordSystemWrapper">
-      <div
-        class="coordinate-system"
-        ref="coordSystemRef"
-        :style="{ width: systemWidth + 'px', height: systemHeight + 'px' }"
-      >
-        <div class="y-axis" :style="{ height: store.imageDimensions.height + 'px' }"></div>
-        <div class="x-axis" :style="{ width: store.imageDimensions.width + 'px' }"></div>
-
-        <div
-          v-for="label in xAxisLabels"
-          :key="'x'+label.pos"
-          class="axis-label x-label"
-          :style="{ left: label.pos + 'px' }"
-        >
-          {{ label.text }}
-        </div>
-        <div
-          v-for="label in yAxisLabels"
-          :key="'y'+label.pos"
-          class="axis-label y-label"
-          :style="{ top: label.pos + 'px' }"
-        >
-          {{ label.text }}
-        </div>
-
-        <svg class="block-svg" :viewBox="`0 0 ${systemWidth} ${systemHeight}`" preserveAspectRatio="none">
-          <!-- 可见边界 - 用于显示，具有交互效果 -->
-          <polygon
-            v-for="(block, index) in visibleBlockBoundaries"
-            :key="`poly-${selectedBlockLevel}-${index}`"
-            class="block-polygon"
-            :class="{ 'polygon-hover': index === activePolygonIndex }"
-            :points="block.points"
-            :data-tooltip="block.tooltip"
-            @mouseenter="showTooltip($event, block.tooltip)"
-            @mousemove="updateTooltipPosition"
-            @mouseleave="hideTooltip"
-            @click="copyBlockText(block.text)"
-            :style="{ display: showBounds ? 'block' : 'none' }"
-          />
-          
-          <!-- 始终存在的点击层 - 确保所有区域都可以被点击 -->
-          <polygon
-            v-for="(block, index) in blockBoundaries"
-            :key="`click-${selectedBlockLevel}-${index}`"
-            class="block-polygon-click-layer"
-            :points="block.points"
-            @click="copyBlockText(block.text)"
-            @mouseenter="showPolygonHover(index, $event, block.tooltip)"
-            @mousemove="updateTooltipPosition"
-            @mouseleave="hidePolygonHover"
-          />
-        </svg>
-        <div
-          v-for="(symbol, index) in symbolBlocksToDisplay"
-          :key="`symbol-${index}`"
-          class="text-block"
-          :style="{
-            left: `${((symbol.x || 0) + 30)}px`,
-            top: `${(symbol.y || 0)}px`,
-            width: `${Math.max(symbol.width || 0, 20)}px`,
-            height: `${Math.max(symbol.height || 0, 20)}px`,
-            fontSize: symbol.fontSize || '12px'
-          }"
-        >
-          {{ symbol.text }}
-        </div>
+  <div 
+    v-if="showCoordinateView && store.hasOcrResult"
+    class="fixed inset-0 z-40 pointer-events-none flex items-center justify-center bg-base-300 bg-opacity-50"
+  >
+    <!-- 使用pointer-events-auto可以让坐标视图窗口接收鼠标事件，而背景则不会阻挡其他元素 -->
+    <div class="card bg-base-100 shadow-xl w-[90%] h-[90%] max-w-7xl max-h-[90vh] flex flex-col pointer-events-auto" ref="coordViewContainer">
+      <div class="card-title p-4 justify-between items-center border-b border-base-300">
+        <h3 class="text-lg font-medium">坐标视图</h3>
         
-        <!-- 复制成功提示 -->
-        <div v-if="showCopySuccess" class="copy-success-toast">
-          文本已复制
+        <div class="flex items-center gap-2">
+          <!-- 缩放控制按钮 -->
+          <div class="flex items-center gap-1 mx-2">
+            <button 
+              class="btn btn-sm btn-circle"
+              @click="zoomOut"
+              :disabled="zoomLevel <= 0.2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+              </svg>
+            </button>
+            <span class="text-xs">{{ Math.round(zoomLevel * 100) }}%</span>
+            <button 
+              class="btn btn-sm btn-circle"
+              @click="zoomIn"
+              :disabled="zoomLevel >= 2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
+          
+          <!-- 全屏按钮 -->
+          <button 
+            class="btn btn-sm btn-circle"
+            @click="toggleFullscreen"
+            :title="isFullscreen ? '退出全屏' : '全屏模式'"
+          >
+            <svg v-if="!isFullscreen" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 4h4M4 4h4m-4 0L8 8m12-4v4m0-4h-4m4 4h-4m4-4l-4 4M4 16v4m0-4h4m-4 4h4m-4 0l4-4m12 4v-4m0 4h-4m4-4h-4m4 4l-4-4" />
+            </svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          
+          <div class="flex items-center gap-2">
+            <span class="text-sm">区块级别:</span>
+            <select v-model="selectedBlockLevel" class="select select-sm select-bordered">
+              <option value="blocks">区块</option>
+              <option value="paragraphs">段落</option>
+              <option value="words">单词</option>
+              <option value="symbols">字符</option>
+            </select>
+          </div>
+          
+          <button 
+            class="btn btn-sm" 
+            :class="showBounds ? 'btn-primary' : 'btn-outline'"
+            @click="toggleBlockVisibility"
+          >
+            {{ showBounds ? '隐藏' : '显示' }}区块
+          </button>
+          
+          <button 
+            class="btn btn-sm btn-ghost btn-circle"
+            @click="closeCoordinateView"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <div class="card-body p-4 overflow-auto">
+        <div class="coordinate-system-wrapper" ref="coordSystemWrapper">
+          <div
+            class="coordinate-system"
+            ref="coordSystemRef"
+            :style="{ 
+              width: systemWidth + 'px', 
+              height: systemHeight + 'px',
+              transform: `scale(${zoomLevel})`,
+              transformOrigin: 'top left'
+            }"
+          >
+            <div class="y-axis" :style="{ height: store.imageDimensions.height + 'px' }"></div>
+            <div class="x-axis" :style="{ width: store.imageDimensions.width + 'px' }"></div>
+
+            <div
+              v-for="label in xAxisLabels"
+              :key="'x'+label.pos"
+              class="axis-label x-label"
+              :style="{ left: label.pos + 'px' }"
+            >
+              {{ label.text }}
+            </div>
+            <div
+              v-for="label in yAxisLabels"
+              :key="'y'+label.pos"
+              class="axis-label y-label"
+              :style="{ top: label.pos + 'px' }"
+            >
+              {{ label.text }}
+            </div>
+
+            <svg class="block-svg" :viewBox="`0 0 ${systemWidth} ${systemHeight}`" preserveAspectRatio="none">
+              <!-- 单层多边形设计 - 添加一个始终可点击的透明层 -->
+              <g v-for="(block, index) in visibleBlockBoundaries" :key="`block-${selectedBlockLevel}-${index}`">
+                <!-- 可见边界 -->
+                <polygon
+                  class="block-polygon"
+                  :class="{ 'polygon-hover': index === activePolygonIndex }"
+                  :points="block.points"
+                  :data-index="index"
+                  :data-tooltip="block.tooltip"
+                  @click="copyBlockText(block.text, $event)"
+                  :style="{ display: showBounds ? 'block' : 'none' }"
+                />
+                
+                <!-- 始终存在的隐形点击层 -->
+                <polygon
+                  class="block-polygon-click-layer"
+                  :points="block.points"
+                  @mouseenter="showPolygonHover(index, $event, block.tooltip)"
+                  @mousemove="updateTooltipPosition"
+                  @mouseleave="hidePolygonHover"
+                  @click="copyBlockText(block.text, $event)"
+                />
+              </g>
+            </svg>
+            <div
+              v-for="(symbol, index) in symbolBlocksToDisplay"
+              :key="`symbol-${index}`"
+              class="text-block"
+              :style="{
+                left: `${((symbol.x || 0) + 30)}px`,
+                top: `${(symbol.y || 0)}px`,
+                width: `${Math.max(symbol.width || 0, 20)}px`,
+                height: `${Math.max(symbol.height || 0, 20)}px`,
+                fontSize: symbol.fontSize || '12px'
+              }"
+            >
+              {{ symbol.text }}
+            </div>
+            
+            <!-- 复制成功的通知将紧贴鼠标位置显示 -->
+            <div v-if="showCopySuccess" class="mouse-follow-toast" :style="copyToastPosition">
+              <div class="alert alert-success shadow-lg p-2 text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>文本已复制</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
   <div v-else class="coordinate-view-placeholder">
-    识别完成后将在此显示坐标视图。
+    OCR识别工具2025.05.05
   </div>
 </template>
 
@@ -104,11 +184,73 @@ import { useOcrStore } from '@/stores/ocrStore';
 const store = useOcrStore();
 const coordSystemRef = ref(null);
 const coordSystemWrapper = ref(null);
+const coordViewContainer = ref(null);
 
 // --- Local State ---
 const showBounds = ref(true); // 控制 SVG 边界显隐
 const selectedBlockLevel = ref('blocks'); // 控制 SVG 边界级别
 const showCopySuccess = ref(false); // 添加复制成功状态
+const showCoordinateView = ref(false); // 控制坐标视图显示
+const zoomLevel = ref(1); // 坐标系缩放级别，默认为1倍
+const isFullscreen = ref(false); // 全屏模式状态
+
+// 高亮悬停多边形相关状态
+const activePolygonIndex = ref(-1);
+const tooltipText = ref('');
+const tooltipPos = ref({ x: 0, y: 0 });
+const tooltipVisible = ref(false);
+const copyToastPosition = ref({ top: '0px', left: '0px' });
+
+// 缩放控制
+const zoomIn = () => {
+  zoomLevel.value = Math.min(2, zoomLevel.value + 0.1);
+  updateViewportRect(); // 更新视口信息
+};
+
+const zoomOut = () => {
+  zoomLevel.value = Math.max(0.2, zoomLevel.value - 0.1);
+  updateViewportRect(); // 更新视口信息
+};
+
+// 全屏模式控制
+const toggleFullscreen = () => {
+  if (!coordViewContainer.value) return;
+  
+  if (!isFullscreen.value) {
+    // 进入全屏模式
+    if (coordViewContainer.value.requestFullscreen) {
+      coordViewContainer.value.requestFullscreen();
+    } else if (coordViewContainer.value.webkitRequestFullscreen) { // Safari
+      coordViewContainer.value.webkitRequestFullscreen();
+    } else if (coordViewContainer.value.msRequestFullscreen) { // IE11
+      coordViewContainer.value.msRequestFullscreen();
+    }
+  } else {
+    // 退出全屏模式
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) { // Safari
+      document.webkitExitFullscreen();
+    } else if (document.msExitFullscreen) { // IE11
+      document.msExitFullscreen();
+    }
+  }
+};
+
+// 监听全屏状态变化
+const handleFullscreenChange = () => {
+  isFullscreen.value = !!(document.fullscreenElement || 
+                          document.webkitFullscreenElement || 
+                          document.mozFullScreenElement ||
+                          document.msFullscreenElement);
+};
+
+// 监听ESC键退出全屏
+const handleKeyDown = (event) => {
+  if (event.key === 'Escape' && isFullscreen.value) {
+    toggleFullscreen();
+  }
+};
 
 // 虚拟滚动相关状态
 const viewportRect = ref({ top: 0, bottom: 0, left: 0, right: 0 });
@@ -382,7 +524,10 @@ const visibleBlockBoundaries = computed(() => {
       (block.y + block.height) < extendedTop ||
       block.y > extendedBottom
     );
-  });
+  }).map((block, index) => ({
+    ...block,
+    originalIndex: index // 保存原始索引，以便追踪对应关系
+  }));
 });
 
 // --- Methods ---
@@ -390,128 +535,53 @@ const toggleBlockVisibility = () => {
   showBounds.value = !showBounds.value;
 };
 
-// 添加复制文本功能
-const copyBlockText = (text) => {
-  if (!text) {
-    console.log('没有文本可复制');
-    _showNotification('没有可复制的文本', 'warning');
-    return;
-  }
-  
-  try {
-    // 方法1：使用 Clipboard API (现代浏览器)
-    navigator.clipboard.writeText(text)
-      .then(() => {
-        console.log('文本已复制：', text);
-        showCopySuccess.value = true;
-        setTimeout(() => {
-          showCopySuccess.value = false;
-        }, 2000);
-      })
-      .catch(err => {
-        console.error('复制失败:', err);
-        // 尝试备用方法
-        useAlternativeCopy(text);
-      });
-  } catch (e) {
-    console.error('复制出错，尝试备用方法', e);
-    useAlternativeCopy(text);
+// 添加鼠标位置的状态
+const mousePosition = ref({ x: 0, y: 0 });
+
+// 显示多边形悬停效果
+const showPolygonHover = (index, event, tooltip) => {
+  activePolygonIndex.value = index;
+  tooltipText.value = tooltip;
+  tooltipPos.value = { x: event.clientX, y: event.clientY };
+  tooltipVisible.value = true;
+  updateTooltipPosition(event);
+};
+
+// 隐藏多边形悬停效果
+const hidePolygonHover = () => {
+  activePolygonIndex.value = -1;
+  tooltipVisible.value = false;
+};
+
+// 更新工具提示位置
+const updateTooltipPosition = (event) => {
+  if (tooltipVisible.value) {
+    tooltipPos.value = { x: event.clientX, y: event.clientY };
   }
 };
 
-// 备用复制方法（处理 Clipboard API 不可用的情况）
-const useAlternativeCopy = (text) => {
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.style.position = 'fixed';
-  textarea.style.left = '-9999px';
-  textarea.style.top = '-9999px';
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
+// 复制区块文本
+const copyBlockText = (text, event) => {
+  if (!text || !text.trim()) return;
   
-  try {
-    const successful = document.execCommand('copy');
-    if (successful) {
-      console.log('使用备用方法复制成功');
+  // 更新复制成功提示的位置，紧贴鼠标位置
+  copyToastPosition.value = {
+    top: `${event.offsetY}px`,
+    left: `${event.offsetX}px`
+  };
+  
+  // 复制到剪贴板
+  navigator.clipboard.writeText(text.trim())
+    .then(() => {
       showCopySuccess.value = true;
       setTimeout(() => {
         showCopySuccess.value = false;
-      }, 2000);
-    } else {
-      console.error('备用复制方法失败');
-    }
-  } catch (err) {
-    console.error('备用复制方法错误:', err);
-  }
-  
-  document.body.removeChild(textarea);
-};
-
-// Tooltip 相关方法
-const getTooltipElement = () => {
-  // 尝试获取，如果不存在则创建一个（更健壮的方式）
-  let tooltip = document.querySelector('.coordinate-tooltip');
-  if (!tooltip) {
-    console.log("Creating tooltip element.");
-    tooltip = document.createElement('div');
-    tooltip.className = 'coordinate-tooltip';
-    document.body.appendChild(tooltip);
-  }
-  return tooltip;
-};
-
-const showTooltip = (event, tooltipText) => {
-  const tooltip = getTooltipElement();
-  if (tooltip) {
-    tooltip.innerHTML = tooltipText.replace(/\n/g, '<br>');
-    tooltip.style.display = 'block';
-    // 立即更新一次位置，避免初始闪烁在左上角
-    updateTooltipPosition(event);
-    // 添加事件监听器
-    document.addEventListener('mousemove', updateTooltipPosition);
-  }
-};
-
-const updateTooltipPosition = (event) => {
-  const tooltip = getTooltipElement();
-  // 检查 tooltip 是否仍然存在且可见
-  if (!tooltip || tooltip.style.display === 'none') {
-    return;
-  }
-
-  const x = event.clientX;
-  const y = event.clientY;
-  const margin = 15; // 光标与提示框的距离
-  const winW = window.innerWidth;
-  const winH = window.innerHeight;
-  const ttW = tooltip.offsetWidth;
-  const ttH = tooltip.offsetHeight;
-
-  let left = x + margin;
-  let top = y + margin;
-
-  // 防止提示框超出窗口边界
-  if (left + ttW + margin > winW) {
-    left = x - ttW - margin;
-  }
-  if (top + ttH + margin > winH) {
-    top = y - ttH - margin;
-  }
-  left = Math.max(margin / 2, left); // 防止贴边
-  top = Math.max(margin / 2, top);
-
-  tooltip.style.left = `${left}px`;
-  tooltip.style.top = `${top}px`;
-};
-
-const hideTooltip = () => {
-  const tooltip = getTooltipElement();
-  if (tooltip) {
-    tooltip.style.display = 'none';
-  }
-  // 移除事件监听器
-  document.removeEventListener('mousemove', updateTooltipPosition);
+      }, 1500);
+    })
+    .catch(err => {
+      console.error('无法复制文本: ', err);
+      store.showNotification('复制失败，请重试', 'error');
+    });
 };
 
 // 更新可视区域信息
@@ -561,6 +631,25 @@ onMounted(() => {
     
     // 添加窗口大小变化监听
     window.addEventListener('resize', updateViewportRect);
+    
+    // 添加全屏变化事件监听
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    document.addEventListener('keydown', handleKeyDown);
+  });
+
+  // 全局鼠标移动监听
+  window.addEventListener('mousemove', (e) => {
+    mousePosition.value = { x: e.clientX, y: e.clientY };
+  });
+  
+  // 触摸设备支持
+  window.addEventListener('touchmove', (e) => {
+    if (e.touches && e.touches[0]) {
+      mousePosition.value = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
   });
 });
 
@@ -573,6 +662,25 @@ onUnmounted(() => {
   }
   
   window.removeEventListener('resize', updateViewportRect);
+  
+  // 移除全屏变化事件监听
+  document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+  document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+  document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+
+  // 全局鼠标移动监听
+  window.removeEventListener('mousemove', (e) => {
+    mousePosition.value = { x: e.clientX, y: e.clientY };
+  });
+  
+  window.removeEventListener('touchmove', (e) => {
+    if (e.touches && e.touches[0]) {
+      mousePosition.value = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  });
+
+  document.removeEventListener('keydown', handleKeyDown);
 });
 
 // 监听过滤器变化，更新可视区域
@@ -597,37 +705,63 @@ const _showNotification = (message, type = 'info') => {
   }
 };
 
-// 添加多边形悬停效果处理
-const activePolygonIndex = ref(-1);
-
-const showPolygonHover = (index, event, tooltipText) => {
-  activePolygonIndex.value = index;
-  showTooltip(event, tooltipText);
+// 切换坐标视图显示
+const toggleCoordinateView = () => {
+  showCoordinateView.value = !showCoordinateView.value;
 };
 
-const hidePolygonHover = () => {
-  activePolygonIndex.value = -1;
-  hideTooltip();
+// 关闭坐标视图
+const closeCoordinateView = () => {
+  showCoordinateView.value = false;
+  
+  // 如果处于全屏状态，退出全屏
+  if (isFullscreen.value) {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    } else if (document.msExitFullscreen) {
+      document.msExitFullscreen();
+    }
+  }
 };
 </script>
 
 <style scoped>
+/* 确保坐标视图在全屏模式下填满整个屏幕 */
+:deep(.fullscreen) {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+:deep(.fullscreen) .card-body {
+  height: calc(100vh - 60px); /* 减去标题栏高度 */
+}
+
+:deep(.fullscreen) .coordinate-system-wrapper {
+  height: calc(100vh - 80px); /* 适应全屏模式 */
+}
+
 /* 确保所有样式规则都在这里 */
 .coordinate-view-container {
-    background-color: white;
+    background-color: var(--b1, white);
     border-radius: 8px;
     padding: 1rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     margin-top: 1.5rem;
 }
 .coordinate-view-placeholder {
-    background-color: white;
+    background-color: var(--b1, white);
     border-radius: 8px;
     padding: 2rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     margin-top: 1.5rem;
     text-align: center;
-    color: #a0aec0;
+    color: var(--bc, #a0aec0);
 }
 
 .section-title {
@@ -676,9 +810,13 @@ const hidePolygonHover = () => {
 }
 
 .coordinate-system-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
     overflow: auto;
-    border: 1px solid #ddd;
-    background-color: #f9f9f9;
+    border-radius: 0.5rem;
+    border: 1px solid var(--b3, #ddd);
+    background-color: var(--b2, #f9f9f9);
     padding: 0;
     margin-top: 0.5rem;
     min-height: 400px;
@@ -688,7 +826,8 @@ const hidePolygonHover = () => {
 
 .coordinate-system {
     position: relative;
-    /* Width and height are set dynamically via :style */
+    transform-origin: top left;
+    transition: transform 0.3s ease; /* 添加平滑过渡效果 */
     box-sizing: border-box; /* Ensure padding/border included if any */
 }
 
@@ -697,7 +836,7 @@ const hidePolygonHover = () => {
     left: 30px;
     top: 0;
     width: 1px;
-    background-color: #aaa;
+    background-color: var(--bc, #aaa);
     /* height set dynamically */
 }
 
@@ -706,14 +845,14 @@ const hidePolygonHover = () => {
     left: 30px;
     bottom: 30px;
     height: 1px;
-    background-color: #aaa;
+    background-color: var(--bc, #aaa);
      /* width set dynamically */
 }
 
 .axis-label {
     position: absolute;
     font-size: 10px;
-    color: #555;
+    color: var(--bc, #555);
     user-select: none;
 }
 
@@ -738,23 +877,23 @@ const hidePolygonHover = () => {
 }
 
 .block-polygon {
-    stroke: red;
+    stroke: var(--error, red);
     stroke-width: 1.5px;
     stroke-dasharray: 4, 4;
-    fill: rgba(255, 0, 0, 0.05);
+    fill: var(--error-content, rgba(255, 0, 0, 0.05));
     transition: fill 0.2s, stroke 0.2s, stroke-width 0.2s;
     cursor: pointer;
-    pointer-events: all; /* Polygons are interactive */
+    pointer-events: all; /* 多边形可交互 */
     will-change: stroke, fill; /* 优化渲染性能 */
 }
 
 .block-polygon:hover,
 .polygon-hover {
-    fill: rgba(255, 0, 0, 0.2);
-    stroke: #ff0000;
+    fill: var(--error-content, rgba(255, 0, 0, 0.2));
+    stroke: var(--error, #ff0000);
     stroke-width: 2px;
     stroke-dasharray: none;
-    z-index: 100; /* Ensure hover is visible */
+    z-index: 100; /* 确保悬停时可见 */
 }
 
 .text-block {
@@ -763,8 +902,8 @@ const hidePolygonHover = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #333; /* 保留文字颜色 */
-  font-family: 'Arial', sans-serif;
+  color: var(--bc, #333); /* 使用变量以支持暗色模式 */
+  font-family: 'Inter', sans-serif;
   line-height: 1;
   text-align: center;
   white-space: nowrap;
@@ -777,6 +916,7 @@ const hidePolygonHover = () => {
   /* 设置边框和背景为透明 */
   border: 1px solid transparent;
   background-color: transparent;
+  text-shadow: 0 0 2px var(--b2, white); /* 添加文字阴影增强可读性 */
 }
 
 .text-block:hover {
@@ -784,25 +924,41 @@ const hidePolygonHover = () => {
   /* z-index: 101; */
 }
 
-/* 复制成功提示 */
-.copy-success-toast {
+/* 全局通知样式 */
+.global-notification-toast {
   position: fixed;
-  bottom: 20px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 14px;
-  z-index: 1000;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  pointer-events: none;
+  animation: fadeInOut 2s ease-in-out;
+}
+
+.global-notification-toast .alert {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: var(--su, #36d399);
+  color: var(--suc, white);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  font-weight: 500;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, -40%); }
+  15% { opacity: 1; transform: translate(-50%, -50%); }
+  85% { opacity: 1; transform: translate(-50%, -50%); }
+  100% { opacity: 0; transform: translate(-50%, -60%); }
 }
 
 /* 全局 Tooltip 样式 (如果需要的话，保持不变) */
 body .coordinate-tooltip {
   position: fixed;
-  background-color: rgba(0, 0, 0, 0.8);
-  color: white;
+  background-color: var(--n, rgba(0, 0, 0, 0.8));
+  color: var(--nc, white);
   padding: 8px 12px;
   border-radius: 4px;
   font-size: 12px;
@@ -820,7 +976,6 @@ body .coordinate-tooltip {
   cursor: pointer;
   pointer-events: all; /* 保持对点击事件的响应 */
   opacity: 0; /* 完全透明 */
-  z-index: 80; /* 低于可视多边形的z-index */
 }
 
 .block-polygon-click-layer:hover + .block-polygon {
@@ -828,5 +983,34 @@ body .coordinate-tooltip {
   stroke: #ff0000;
   stroke-width: 2px;
   stroke-dasharray: none;
+}
+
+/* 跟随鼠标的通知样式 */
+.mouse-follow-toast {
+  position: absolute;
+  z-index: 999;
+  pointer-events: none;
+  animation: toast-fade 0.3s ease;
+  white-space: nowrap;
+  transform: translate(-50%, -100%);
+  margin-top: -10px;
+}
+
+.mouse-follow-toast .alert {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--su, #36d399);
+  color: var(--suc, white);
+  white-space: nowrap;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+@keyframes toast-fade {
+  0% { opacity: 0; transform: translate(-50%, -90%); }
+  100% { opacity: 1; transform: translate(-50%, -100%); }
 }
 </style>

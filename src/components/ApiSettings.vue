@@ -1,28 +1,54 @@
 <template>
-  <div class="api-container">
-    <form @submit.prevent="saveKey">
-      <div style="position: absolute; left: -9999px;" aria-hidden="true">
-        <label for="fakeUsername">Username</label>
-        <input type="text" id="fakeUsername" name="username" autocomplete="username" tabindex="-1">
-      </div>
-      <div class="api-input-group">
-        <label for="apiKeyInput">Google Cloud Vision API 密钥:</label>
-        <div class="password-container">
-          <input
-            :type="isPasswordVisible ? 'text' : 'password'"
-            id="apiKeyInput"
-            v-model="apiKeyLocal"
-            placeholder="输入您的 API 密钥"
-            autocomplete="current-password" />
-          <button type="button" class="eye-button" @click="togglePasswordVisibility">
-            {{ isPasswordVisible ? '🙈' : '👁️' }}
-          </button>
+  <div class="card bg-base-100 shadow-lg p-6 max-w-xl mx-auto my-6">
+    <div class="card-body p-0">
+      <h2 class="card-title mb-4">欢迎使用OCR识别工具</h2>
+      <p class="mb-4 text-sm opacity-80">请输入您的Google Cloud Vision API密钥以开始使用</p>
+      
+      <form @submit.prevent="saveKey" class="space-y-4">
+        <div style="position: absolute; left: -9999px;" aria-hidden="true">
+          <label for="fakeUsername">Username</label>
+          <input type="text" id="fakeUsername" name="username" autocomplete="username" tabindex="-1">
         </div>
-      </div>
-      <button type="submit" class="primary-button">保存</button>
-    </form>
+        
+        <div class="form-control w-full">
+          <label for="apiKeyInput" class="label">
+            <span class="label-text">API密钥</span>
+          </label>
+          <div class="relative">
+            <input
+              :type="isPasswordVisible ? 'text' : 'password'"
+              id="apiKeyInput"
+              v-model="apiKeyLocal"
+              placeholder="输入您的Google Cloud Vision API密钥"
+              autocomplete="current-password"
+              class="input input-bordered w-full pr-10" />
+            <button 
+              type="button" 
+              class="absolute right-2 top-1/2 -translate-y-1/2 btn btn-ghost btn-sm btn-circle"
+              @click="togglePasswordVisibility"
+            >
+              <svg v-if="isPasswordVisible" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+          </div>
+          <label class="label">
+            <span class="label-text-alt text-info">API密钥将安全地保存在您的浏览器中</span>
+          </label>
+        </div>
+        
+        <div class="card-actions justify-end mt-4">
+          <button type="submit" class="btn btn-primary">开始使用</button>
+        </div>
+      </form>
+    </div>
   </div>
 </template>
+
 <script setup>
 import { ref, watch } from 'vue';
 

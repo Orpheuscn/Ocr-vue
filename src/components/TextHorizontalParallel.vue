@@ -80,7 +80,8 @@ const noResultsMessage = computed(() => {
   line-height: 1.5;
   padding: 1rem;
   border-radius: 4px;
-  background-color: white;
+  background-color: transparent; /* 透明背景 */
+  color: var(--bc, inherit); /* 使用主题颜色变量 */
 }
 
 pre {
@@ -88,5 +89,6 @@ pre {
   word-break: break-word;
   margin: 0;
   font-family: inherit; /* 使用普通字体而不是等宽字体 */
+  color: var(--bc, inherit); /* 使用主题颜色变量 */
 }
 </style>

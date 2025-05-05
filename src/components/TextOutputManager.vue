@@ -1,49 +1,76 @@
 <template>
-  <div class="text-output-manager" ref="textManagerRef">
-    <div class="info-header">
-       <div><strong>尺寸:</strong> {{ store.imageDimensions.width || '?' }}×{{ store.imageDimensions.height || '?' }}px</div>
-       <div><strong>语言:</strong> {{ store.detectedLanguageName || '未确定' }} ({{ store.detectedLanguageCode }})</div>
-       <div><strong>统计:</strong> {{ store.textStats.words }} 词, {{ store.textStats.chars }} 字</div>
-    </div>
-
-    <div class="text-display-toggle">
-      <div class="toggle-options">
-        <span>排版方式:</span>
-        <label>
-          <input type="radio" name="textDisplay" value="parallel" :checked="store.textDisplayMode === 'parallel'" @change="updateDisplayMode('parallel')"> 原排版
-        </label>
-        <label>
-          <input type="radio" name="textDisplay" value="paragraph" :checked="store.textDisplayMode === 'paragraph'" @change="updateDisplayMode('paragraph')"> 分段
-        </label>
+  <div class="card bg-base-100 shadow-md w-full h-full flex flex-col" ref="textManagerRef">
+    <div class="card-body p-4 flex flex-col h-full overflow-hidden">
+      <!-- 信息标题区 -->
+      <div class="flex flex-wrap justify-between text-xs text-opacity-70 mb-2 flex-shrink-0">
+        <div class="badge badge-neutral">尺寸: {{ store.imageDimensions.width || '?' }}×{{ store.imageDimensions.height || '?' }}px</div>
+        <div class="badge badge-neutral">语言: {{ store.detectedLanguageName || '未确定' }} ({{ store.detectedLanguageCode }})</div>
+        <div class="badge badge-neutral">统计: {{ store.textStats.words }} 词, {{ store.textStats.chars }} 字</div>
       </div>
-      <button 
-        class="copy-button" 
-        @click="copyText" 
-        :disabled="!copyableText"
-        :title="copyButtonTooltip"
-      >
-        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-        {{ copyButtonText }}
-      </button>
-    </div>
 
-    <hr class="divider">
-
-    <div class="text-content-area" :style="contentAreaStyle">
-       <div v-if="!store.hasOcrResult && store.currentFiles.length > 0" class="text-placeholder">
-           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-           <p>请点击"开始识别"</p>
-       </div>
-       <div v-else-if="store.isLoading && !store.hasOcrResult" class="text-placeholder">
-           <p>正在识别中...</p>
-       </div>
-       <div v-else-if="store.hasOcrResult">
-            <component :is="activeTextComponent" ref="textComponent" />
-            </div>
-        <div v-else class="text-placeholder">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-            <p>识别结果将显示在此处</p>
+      <!-- 控制区 -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 flex-shrink-0">
+        <div class="btn-group">
+          <button 
+            :class="[
+              'btn btn-xs',
+              store.textDisplayMode === 'parallel' ? 'btn-primary' : 'btn-outline'
+            ]"
+            @click="updateDisplayMode('parallel')"
+          >
+            原排版
+          </button>
+          <button 
+            :class="[
+              'btn btn-xs',
+              store.textDisplayMode === 'paragraph' ? 'btn-primary' : 'btn-outline'
+            ]"
+            @click="updateDisplayMode('paragraph')"
+          >
+            分段
+          </button>
         </div>
+        
+        <button 
+          class="btn btn-xs btn-outline gap-1"
+          @click="copyText" 
+          :disabled="!copyableText"
+          :class="{'btn-success': copyStatus === 'success'}"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          {{ copyButtonText }}
+        </button>
+      </div>
+
+      <div class="divider my-0 flex-shrink-0"></div>
+
+      <!-- 文本内容区 -->
+      <div class="flex-1 overflow-y-auto p-2 text-content-area bg-base-100">
+        <div v-if="!store.hasOcrResult && store.currentFiles.length > 0" class="flex flex-col items-center justify-center h-full text-center opacity-70">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <p>请点击"开始识别"</p>
+        </div>
+        
+        <div v-else-if="store.isLoading && !store.hasOcrResult" class="flex flex-col items-center justify-center h-full text-center">
+          <span class="loading loading-dots loading-md"></span>
+          <p class="mt-2">正在识别中...</p>
+        </div>
+        
+        <div v-else-if="store.hasOcrResult">
+          <component :is="activeTextComponent" ref="textComponent" />
+        </div>
+        
+        <div v-else class="flex flex-col items-center justify-center h-full text-center opacity-70">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <p>识别结果将显示在此处</p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -69,44 +96,19 @@ const store = useOcrStore();
 const textComponent = ref(null);
 const textManagerRef = ref(null);
 const copyStatus = ref('idle'); // 'idle', 'success', 'error'
-const contentAreaHeight = ref(0); // 用于计算文本内容区域的高度
 
 // 监听容器高度变化
 watch(() => props.containerHeight, (newHeight) => {
   if (newHeight > 0) {
-    updateContentAreaHeight(newHeight);
+    textManagerRef.value.style.height = `${newHeight}px`;
   }
 }, { immediate: true });
-
-// 计算文本内容区域高度
-function updateContentAreaHeight(containerHeight) {
-  if (!textManagerRef.value) return;
-  
-  // 获取其他元素的高度
-  const headerElement = textManagerRef.value.querySelector('.info-header');
-  const toggleElement = textManagerRef.value.querySelector('.text-display-toggle');
-  const dividerElement = textManagerRef.value.querySelector('.divider');
-  
-  // 计算这些元素的高度和内边距
-  const headerHeight = headerElement ? headerElement.offsetHeight : 0;
-  const toggleHeight = toggleElement ? toggleElement.offsetHeight : 0;
-  const dividerHeight = dividerElement ? dividerElement.offsetHeight : 0;
-  const containerPadding = 32; // 容器的上下内边距总和 (1rem * 2 = 32px)
-  
-  // 计算剩余高度给内容区域
-  const totalReservedHeight = headerHeight + toggleHeight + dividerHeight + containerPadding;
-  const newContentHeight = Math.max(50, containerHeight - totalReservedHeight);
-  
-  // 更新内容区域高度
-  contentAreaHeight.value = newContentHeight;
-  console.log('文本内容区域高度更新:', contentAreaHeight.value);
-}
 
 // 在组件挂载后初始化高度
 onMounted(() => {
   // 如果已经有传入的容器高度，立即更新
   if (props.containerHeight > 0) {
-    updateContentAreaHeight(props.containerHeight);
+    textManagerRef.value.style.height = `${props.containerHeight}px`;
   }
 });
 
@@ -122,17 +124,6 @@ const activeTextComponent = computed(() => {
   }
 });
 
-// 计算文本内容区域样式
-const contentAreaStyle = computed(() => {
-  if (contentAreaHeight.value > 0) {
-    return {
-      height: `${contentAreaHeight.value}px`,
-      overflowY: 'auto'
-    };
-  }
-  return {};
-});
-
 const updateDisplayMode = (mode) => {
   store.setTextDisplayMode(mode);
 };
@@ -144,13 +135,11 @@ const getFormattedText = () => {
     // 获取文本节点内容，跳过可能存在的HTML标签
     const text = textComponent.value.$el.textContent || '';
     if (text.trim()) {
-      console.log('从组件DOM获取文本内容');
       return text.trim();
     }
   }
   
   // 回退方案：根据当前显示模式返回合适的原始文本
-  console.log('使用回退方案获取文本');
   if (store.textDisplayMode === 'parallel') {
     // 原排版模式
     return store.fullTextAnnotation?.text || '';
@@ -176,176 +165,98 @@ const copyButtonText = computed(() => {
   }
 });
 
-// 复制按钮工具提示文本
-const copyButtonTooltip = computed(() => {
-  if (copyStatus.value === 'success') {
-    return '已复制!';
-  } else if (copyStatus.value === 'error') {
-    return '复制失败，请重试';
-  } else if (!copyableText.value) {
-    return '无可复制内容';
-  } else {
-    return '复制文本';
-  }
-});
-
 // 复制文本方法
 const copyText = async () => {
   if (!copyableText.value) return;
-  
-  console.log('正在复制文本, 排版模式:', store.textDisplayMode);
-  console.log('文本组件类型:', activeTextComponent.value.name || '未知组件');
   
   try {
     await navigator.clipboard.writeText(copyableText.value);
     copyStatus.value = 'success';
     
-    // 显示通知
-    store._showNotification('文本已复制到剪贴板', 'success');
-    
-    // 2秒后重置状态
+    // 3秒后重置状态
     setTimeout(() => {
       copyStatus.value = 'idle';
-    }, 2000);
-  } catch (err) {
-    console.error('复制失败:', err);
+    }, 3000);
+  } catch (e) {
     copyStatus.value = 'error';
+    console.error('复制失败:', e);
     
-    // 显示错误通知
-    store._showNotification('复制失败，请重试', 'error');
-    
-    // 2秒后重置状态
+    // 3秒后重置状态
     setTimeout(() => {
       copyStatus.value = 'idle';
-    }, 2000);
+    }, 3000);
   }
 };
 </script>
 
 <style scoped>
-/* Styles adapted from .text-container and related elements in style.css */
-.text-output-manager {
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    padding: 1rem;
-    /* overflow-y已移至text-content-area */
-    min-height: 300px; /* 最小高度保持不变 */
-    display: flex;
-    flex-direction: column;
-    box-sizing: border-box; /* 确保padding包含在高度内 */
-    width: 100%; /* 使用100%宽度填充父容器 */
-    height: 100%; /* 确保使用100%高度 */
-    overflow: hidden; /* 防止内容溢出导致滚动条出现 */
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 600px;
+  overflow: hidden;
 }
 
-.info-header {
-    margin-bottom: 15px;
-    padding: 10px 15px;
-    background-color: var(--secondary-color);
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column; /* Stack info items */
-    gap: 8px;
-    font-size: 14px;
-    color: var(--text-color);
-}
-.info-header strong {
-    font-weight: 600;
-    margin-right: 5px;
-}
-
-.text-display-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
-    padding: 5px 0;
-    flex-wrap: wrap;
-}
-
-.toggle-options {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    flex-wrap: wrap;
-}
-
-.text-display-toggle span {
-    font-weight: 500;
-}
-.text-display-toggle label {
-    cursor: pointer;
-    display: inline-flex; /* Align radio and text */
-    align-items: center;
-    gap: 5px;
-}
-
-.copy-button {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 5px 10px;
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.copy-button:hover:not(:disabled) {
-    background-color: var(--hover-color);
-}
-
-.copy-button:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
-    opacity: 0.7;
-}
-
-.copy-button svg {
-    width: 16px;
-    height: 16px;
-}
-
-.divider {
-    border: none;
-    border-top: 1px solid var(--border-color);
-    margin: 10px 0 15px 0; /* Adjusted margin */
+.card-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
 }
 
 .text-content-area {
-    flex-grow: 1; /* 扩展填充剩余空间 */
-    white-space: pre-wrap;
-    word-break: break-word;
-    font-family: 'Inter', sans-serif;
-    font-size: 16px;
-    line-height: 1.6;
-    min-height: 50px; /* 最小高度 */
-    overflow-y: auto; /* 内容溢出时显示滚动条 */
-    /* 确保内容区域能够正确伸展 */
-    flex: 1; /* 使用flex: 1使其填充剩余空间 */
+  flex: 1;
+  overflow-y: auto;
+  color: var(--bc, inherit);
+  transition: background-color 0.3s;
+  word-break: break-word;
+  white-space: pre-wrap;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 400px;
+  padding: 1rem;
+  border-radius: 0.375rem;
 }
 
-.text-placeholder {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    color: #a0aec0;
-    text-align: center;
-    padding: 2rem;
+.divider {
+  border: none;
+  border-top: 1px solid var(--b3, var(--border-color));
+  margin: 10px 0 15px 0;
 }
 
-.text-placeholder svg {
-    margin-bottom: 1rem;
-    opacity: 0.5;
+.badge {
+  font-size: 0.75rem;
 }
 
-.text-placeholder p {
-    font-size: 0.9rem;
+.btn-group {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.copy-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background-color: var(--primary, var(--primary-color));
+  color: var(--primary-content, white);
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.copy-button:hover:not(:disabled) {
+  background-color: var(--primary-focus, var(--hover-color));
+}
+
+.copy-button:disabled {
+  background-color: var(--b3, #cccccc);
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 </style>

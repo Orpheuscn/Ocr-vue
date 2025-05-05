@@ -1,36 +1,39 @@
 <template>
-  <div class="action-controls-wrapper">
-    <div class="display-options-container">
-      <span>初始识别方向:</span>
-      <label>
-        <input
-          type="radio"
-          name="initialTextDirection"
-          value="horizontal"
-          :checked="selectedDirection === 'horizontal'"
-          :disabled="isProcessing"
-          @change="updateDirection('horizontal')"
-        /> 正常
-      </label>
-      <label>
-        <input
-          type="radio"
-          name="initialTextDirection"
-          value="vertical"
-          :checked="selectedDirection === 'vertical'"
-          :disabled="isProcessing"
-          @change="updateDirection('vertical')"
-        /> 竖排
-      </label>
-    </div>
+  <div class="card bg-base-100 shadow-sm p-4">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <span class="text-sm font-medium">识别方向:</span>
+        <div class="btn-group">
+          <button 
+            :class="[
+              'btn btn-sm',
+              selectedDirection === 'horizontal' ? 'btn-primary' : 'btn-outline'
+            ]"
+            :disabled="isProcessing"
+            @click="updateDirection('horizontal')"
+          >
+            正常
+          </button>
+          <button 
+            :class="[
+              'btn btn-sm',
+              selectedDirection === 'vertical' ? 'btn-primary' : 'btn-outline'
+            ]"
+            :disabled="isProcessing" 
+            @click="updateDirection('vertical')"
+          >
+            竖排
+          </button>
+        </div>
+      </div>
 
-    <div class="action-buttons">
       <button
-        class="primary-button"
+        class="btn btn-primary w-full md:w-auto"
+        :class="{'btn-disabled': !canStart || isProcessing, 'loading': isProcessing}"
         :disabled="!canStart || isProcessing"
         @click="startOcr"
       >
-        {{ isProcessing ? '处理中...' : '开始识别' }}
+        {{ isProcessing ? '识别中...' : '开始识别' }}
       </button>
     </div>
   </div>
@@ -61,7 +64,6 @@ const updateDirection = (direction) => {
 const startOcr = () => {
   emit('start-ocr', selectedDirection.value);
 };
-
 </script>
 
 <style scoped>

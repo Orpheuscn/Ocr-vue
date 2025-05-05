@@ -1,5 +1,5 @@
 <template>
-  <div class="range-slider-container" ref="containerRef">
+  <div class="range-slider-container" :class="{ 'small': small }" ref="containerRef">
     <div class="track"></div>
     <div class="track-highlight" :style="highlightStyle"></div>
     <input
@@ -33,7 +33,8 @@ const props = defineProps({
   max: { type: Number, default: 100 },
   minValue: { type: Number, default: 0 },
   maxValue: { type: Number, default: 100 },
-  step: { type: Number, default: 1 }
+  step: { type: Number, default: 1 },
+  small: { type: Boolean, default: false }
 });
 
 const emit = defineEmits(['update:minValue', 'update:maxValue']);
@@ -98,6 +99,12 @@ const highlightStyle = computed(() => {
     margin: 0.5rem 0; /* 减小上下边距 */
 }
 
+/* 小尺寸模式的样式 */
+.range-slider-container.small {
+    height: 12px;
+    margin: 0.3rem 0;
+}
+
 .track, .track-highlight {
     position: absolute;
     left: 0;
@@ -106,12 +113,17 @@ const highlightStyle = computed(() => {
     transform: translateY(-50%);
     height: 4px; /* 减小轨道高度 */
     border-radius: 2px; /* 相应减小圆角 */
-    background-color: rgba(255, 255, 255, 0.3);
+    background-color: var(--b3, rgba(200, 200, 200, 0.3));
     z-index: 1;
 }
 
+.small .track, .small .track-highlight {
+    height: 3px;
+    border-radius: 1.5px;
+}
+
 .track-highlight {
-    background-color: var(--slider-color, #5436DA); /* 使用CSS变量或默认值 */
+    background-color: var(--p, #5436DA); /* 使用主题变量 */
     box-shadow: 0 0 4px rgba(84, 54, 218, 0.5); /* 添加轻微发光效果 */
     z-index: 2;
     /* left/right由:style设置 */
@@ -136,7 +148,7 @@ const highlightStyle = computed(() => {
     height: 16px; /* 减小滑块大小 */
     width: 16px;
     border-radius: 50%;
-    background: var(--slider-color, #5436DA);
+    background: var(--p, #5436DA);
     border: 2px solid white;
     cursor: pointer;
     pointer-events: auto;
@@ -145,16 +157,29 @@ const highlightStyle = computed(() => {
     transition: transform 0.1s, box-shadow 0.1s;
 }
 
+.small .slider::-webkit-slider-thumb {
+    height: 12px;
+    width: 12px;
+    border-width: 1.5px;
+    margin-top: -5px;
+}
+
 .slider::-moz-range-thumb {
     height: 16px; /* 减小滑块大小 */
     width: 16px;
     border-radius: 50%;
-    background: var(--slider-color, #5436DA);
+    background: var(--p, #5436DA);
     border: 2px solid white;
     cursor: pointer;
     pointer-events: auto;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
     transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.small .slider::-moz-range-thumb {
+    height: 12px;
+    width: 12px;
+    border-width: 1.5px;
 }
 
 /* 悬停效果 */
@@ -163,9 +188,17 @@ const highlightStyle = computed(() => {
     box-shadow: 0 0 6px rgba(84, 54, 218, 0.6); /* 减小发光效果 */
 }
 
+.small .slider::-webkit-slider-thumb:hover {
+    transform: scale(1.05);
+}
+
 .slider::-moz-range-thumb:hover {
     transform: scale(1.08);
     box-shadow: 0 0 6px rgba(84, 54, 218, 0.6);
+}
+
+.small .slider::-moz-range-thumb:hover {
+    transform: scale(1.05);
 }
 
 /* Focus styles for accessibility */
