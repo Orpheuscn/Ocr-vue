@@ -2,7 +2,6 @@
   <div class="text-table-container">
     <!-- 表格标题 -->
     <div class="table-title" v-if="tableData.headers && tableData.headers.length > 0">
-      <span class="table-mode-badge">{{ i18n.t('table') }}</span>
       <span class="table-info">{{ tableData.headers.length }} {{ i18n.t('columns') }}, {{ tableData.rows.length }} {{ i18n.t('rows') }}</span>
     </div>
     
@@ -10,14 +9,14 @@
     <table class="notes-style-table">
       <thead>
         <tr>
-          <th v-for="(col, colIndex) in tableData.headers" :key="colIndex" :dir="getTextDirection(col)">
+          <th v-for="(col, colIndex) in tableData.headers" :key="colIndex">
             {{ col }}
           </th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="(row, rowIndex) in tableData.rows" :key="rowIndex">
-          <td v-for="(cell, cellIndex) in row" :key="cellIndex" :dir="getTextDirection(cell)">
+          <td v-for="(cell, cellIndex) in row" :key="cellIndex">
             {{ cell }}
           </td>
         </tr>
@@ -31,13 +30,6 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
 import { useI18nStore } from '@/stores/i18nStore';
 
-const props = defineProps({
-  isRtl: {
-    type: Boolean,
-    default: false
-  }
-});
-
 const store = useOcrStore();
 const i18n = useI18nStore();
 
@@ -46,24 +38,6 @@ const tableData = ref({
   headers: [],
   rows: []
 });
-
-// 检测文本是否包含RTL字符（阿拉伯文、希伯来文等）
-function containsRtlChars(text) {
-  if (!text) return false;
-  
-  // 检测RTL字符的正则表达式
-  const rtlCharsRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0590-\u05FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
-  
-  return rtlCharsRegex.test(text);
-}
-
-// 获取文本的方向
-function getTextDirection(text) {
-  if (containsRtlChars(text)) {
-    return 'rtl';
-  }
-  return 'ltr';
-}
 
 // 监听表格设置变化
 watch(() => store.tableSettings, processTableData, { deep: true });
@@ -326,7 +300,6 @@ function analyzeTableStructure(lines) {
 // 根据列分隔点构建表格行数据
 function constructTableRows(lines, columnSeparators) {
   const tableRows = [];
-  const isRtlLayout = props.isRtl;
   
   lines.forEach(line => {
     // 为每列准备一个文本数组
@@ -376,11 +349,6 @@ function constructTableRows(lines, columnSeparators) {
     // 生成行数据
     let rowData = columnTexts;
     
-    // 如果是RTL布局，反转列的顺序，但不改变单元格内的文本
-    if (isRtlLayout) {
-      rowData = rowData.slice().reverse();
-    }
-    
     // 只有当行包含实际内容时才添加
     if (rowData.some(text => text.length > 0)) {
       tableRows.push(rowData);
@@ -422,8 +390,7 @@ function finalizeTableData(tableRows) {
   } else {
     // 生成默认表头
     const headers = new Array(columnsCount).fill('').map((_, i) => {
-      // 对RTL文本，列编号也应该从右到左
-      return props.isRtl ? `列 ${columnsCount - i}` : `列 ${i+1}`;
+      return `列 ${i+1}`;
     });
     
     tableData.value = {
@@ -432,7 +399,7 @@ function finalizeTableData(tableRows) {
     };
   }
   
-  console.log(`表格处理完成: ${tableData.value.headers.length}列 x ${tableData.value.rows.length}行, 文本方向: ${props.isRtl ? 'RTL' : 'LTR'}`);
+  console.log(`表格处理完成: ${tableData.value.headers.length}列 x ${tableData.value.rows.length}行`);
 }
 
 // 优化的两列表格处理，特别针对索引类表格
@@ -444,7 +411,7 @@ function processTwoColumnTable(symbols) {
   console.log(`按Y坐标分组后识别到${rows.length}行`);
   
   if (rows.length === 0) {
-    tableData.value = { headers: [], rows: [], rtlMode: props.isRtl, tableClasses: '' };
+    tableData.value = { headers: [], rows: [], rtlMode: false, tableClasses: '' };
     return;
   }
   
@@ -598,7 +565,7 @@ function processTwoColumnTable(symbols) {
   
   // 处理表头
   if (tableRows.length === 0) {
-    tableData.value = { headers: [], rows: [], rtlMode: props.isRtl, tableClasses: '' };
+    tableData.value = { headers: [], rows: [], rtlMode: false, tableClasses: '' };
     return;
   }
   
@@ -614,7 +581,7 @@ function processTwoColumnTable(symbols) {
     tableData.value = {
       headers: headers,
       rows: tableRows.slice(1),
-      rtlMode: props.isRtl,
+      rtlMode: false,
       tableClasses
     };
   } else {
@@ -622,7 +589,7 @@ function processTwoColumnTable(symbols) {
     tableData.value = {
       headers: headers,
       rows: tableRows,
-      rtlMode: props.isRtl,
+      rtlMode: false,
       tableClasses
     };
   }
@@ -984,7 +951,7 @@ function getMarkdownTable() {
 function getTableData() {
   return {
     ...tableData.value,
-    isRtl: props.isRtl
+    isRtl: false
   };
 }
 
@@ -995,17 +962,18 @@ defineExpose({
 });
 </script>
 
-<style>
+<style scoped>
 /* 表格容器样式 */
 .text-table-container {
   width: 100%;
   overflow-x: auto;
   padding: 8px;
   margin-bottom: 16px;
+  background-color: var(--b1, #ffffff);
 }
 
 /* 表格标题样式 */
-.table-title {
+.text-table-container .table-title {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1013,92 +981,59 @@ defineExpose({
   font-size: 14px;
 }
 
-.table-mode-badge {
-  background-color: #f0f0f0;
-  color: #000000;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 500;
-  border: 1px solid #cccccc;
-}
-
-.table-info {
-  color: #000000;
+/* 表格标题样式 */
+.text-table-container .table-info {
+  color: var(--bc, #333333);
   font-size: 12px;
+  font-weight: 500;
 }
 
 /* 表格主体样式 */
-.notes-style-table {
+.text-table-container .notes-style-table {
   width: 100%;
   border-collapse: collapse;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
   line-height: 1.5;
-  border: 1px solid black;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: var(--b1, #ffffff);
+  border: 1px solid #555555;
+  color: var(--bc, #333333);
 }
 
 /* 表头样式 */
-.notes-style-table th {
-  background-color: #f5f5f5;
-  color: #000000;
+.text-table-container .notes-style-table thead th {
+  background-color: var(--b2, #f2f2f2);
+  color: var(--bc, #333333);
   font-weight: 600;
   padding: 10px;
   text-align: left;
-  border: 1px solid black;
+  border: 1px solid #555555;
 }
 
 /* 单元格样式 */
-.notes-style-table td {
+.text-table-container .notes-style-table tbody td {
   padding: 8px 10px;
   text-align: left;
-  border: 1px solid black;
-  background-color: white;
-  color: #000000;
+  border: 1px solid #555555;
+  background-color: var(--b1, #ffffff);
+  color: var(--bc, #333333);
 }
 
-/* 斑马线样式 */
-.notes-style-table tbody tr:nth-child(even) td {
-  background-color: #f9f9f9;
+/* 悬停效果 - 亮色模式 */
+.text-table-container .notes-style-table tbody tr:hover td {
+  background-color: #e0e0e0;
+  transition: all 0.2s ease;
 }
 
-/* 悬停效果 */
-.notes-style-table tbody tr:hover td {
-  background-color: #f0f7ff;
+/* 暗色模式样式覆盖 */
+:root[data-theme="dark"] .text-table-container .notes-style-table,
+:root[data-theme="dark"] .text-table-container .notes-style-table thead th,
+:root[data-theme="dark"] .text-table-container .notes-style-table tbody td {
+  border-color: #aaaaaa;
 }
 
-/* RTL文本支持 */
-[dir="rtl"] {
-  text-align: right;
-}
-
-/* 暗色模式样式 */
-@media (prefers-color-scheme: dark) {
-  .notes-style-table {
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .notes-style-table th,
-  .notes-style-table td {
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .notes-style-table th {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.85);
-  }
-  
-  .notes-style-table tr:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-  
-  .table-mode-badge {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.8);
-  }
-  
-  .table-info {
-    color: rgba(255, 255, 255, 0.6);
-  }
+/* 悬停效果 - 暗色模式 */
+:root[data-theme="dark"] .text-table-container .notes-style-table tbody tr:hover td {
+  background-color: #333333;
 }
 </style> 
