@@ -20,12 +20,11 @@ const translations = {
     copied: '已复制',
     copyOriginalText: '复制原始文本',
     copyFilteredText: '复制过滤后文本',
+    copyMarkdownTable: '复制Markdown表格',
     or: '或',
     pressCtrlV: '按',
     clear: '清除',
-    copyAsMarkdown: '复制为Markdown表格',
-    copyAsText: '复制为纯文本',
-    twoColumnTableOptimized: '已优化两列索引表格',
+    table: '表格',
     
     // 配置和设置
     apiKeyLabel: 'API 密钥',
@@ -111,10 +110,6 @@ const translations = {
     searchLanguage: '搜索语言名称或代码...',
     languageTip: '选择多种语言可提高混合文本识别率',
     autoDetectLanguage: '自动检测语言',
-    table: '表格',
-    tableColumns: '列数',
-    tableRows: '行数',
-    autoDetect: '自动检测',
     
     // FilterControls组件
     textFilter: '文本过滤',
@@ -149,12 +144,11 @@ const translations = {
     copied: 'Copied',
     copyOriginalText: 'Copy original text',
     copyFilteredText: 'Copy filtered text',
+    copyMarkdownTable: 'Copy Markdown Table',
     or: 'or',
     pressCtrlV: 'press',
     clear: 'Clear',
-    copyAsMarkdown: 'Copy as Markdown Table',
-    copyAsText: 'Copy as Plain Text',
-    twoColumnTableOptimized: 'Two-column index table optimized',
+    table: 'Table',
     
     // Configuration and Settings
     apiKeyLabel: 'API Key',
@@ -240,10 +234,6 @@ const translations = {
     searchLanguage: 'Search languages by name or code...',
     languageTip: 'Selecting multiple languages can improve recognition',
     autoDetectLanguage: 'Auto-detect language',
-    table: 'Table',
-    tableColumns: 'Columns',
-    tableRows: 'Rows',
-    autoDetect: 'Auto Detect',
     
     // FilterControls component
     textFilter: 'Text Filter',

@@ -7,30 +7,30 @@
           <button 
             :class="[
               'btn btn-sm',
-              selectedDirection === 'horizontal' && !isTableMode ? 'btn-accent' : 'btn-outline'
+              selectedDirection === 'horizontal' && selectedMode === 'text' ? 'btn-accent' : 'btn-outline'
             ]"
             :disabled="isProcessing"
-            @click="updateMode('horizontal')"
+            @click="selectHorizontal"
           >
             {{ i18n.t('horizontal') }}
           </button>
           <button 
             :class="[
               'btn btn-sm',
-              selectedDirection === 'vertical' && !isTableMode ? 'btn-accent' : 'btn-outline'
+              selectedDirection === 'vertical' && selectedMode === 'text' ? 'btn-accent' : 'btn-outline'
             ]"
             :disabled="isProcessing" 
-            @click="updateMode('vertical')"
+            @click="selectVertical"
           >
             {{ i18n.t('vertical') }}
           </button>
           <button 
             :class="[
               'btn btn-sm',
-              isTableMode ? 'btn-accent' : 'btn-outline'
+              selectedMode === 'table' ? 'btn-accent' : 'btn-outline'
             ]"
-            :disabled="isProcessing" 
-            @click="updateMode('table')"
+            :disabled="isProcessing"
+            @click="selectTable"
           >
             {{ i18n.t('table') || '表格' }}
           </button>
@@ -129,7 +129,8 @@ import { getAllLanguages } from '@/services/visionApi';
 const props = defineProps({
   canStart: { type: Boolean, default: false },
   isProcessing: { type: Boolean, default: false },
-  initialDirection: { type: String, default: 'horizontal' } // From store
+  initialDirection: { type: String, default: 'horizontal' }, // From store
+  initialMode: { type: String, default: 'text' } // Added for table mode
 });
 
 const emit = defineEmits(['start-ocr']);
@@ -137,21 +138,11 @@ const store = useOcrStore();
 const i18n = useI18nStore();
 
 const selectedDirection = ref(props.initialDirection);
+const selectedMode = ref(props.initialMode);
 const availableLanguages = ref(getAllLanguages());
 const selectedLanguages = ref([]);
 const languageSearch = ref(''); // 用于语言搜索
 const filteredLanguages = ref([]); // 经过搜索过滤后的语言列表
-
-// 监听store中的recognitionMode变化
-watch(() => store.recognitionMode, (newMode) => {
-  if (newMode === 'table') {
-    // 表格模式下保持原来的方向，只是UI显示为表格模式
-    selectedDirection.value = store.initialTextDirection;
-  }
-}, { immediate: true });
-
-// 计算属性：是否为表格模式
-const isTableMode = computed(() => store.recognitionMode === 'table');
 
 // 初始化组件时从store获取语言设置
 onMounted(() => {
@@ -249,16 +240,26 @@ watch(() => props.initialDirection, (newVal) => {
   selectedDirection.value = newVal;
 });
 
-// 更新识别模式和方向
-const updateMode = (mode) => {
-  if (mode === 'horizontal' || mode === 'vertical') {
-    selectedDirection.value = mode;
-    store.initialTextDirection = mode;
-    store.setRecognitionMode('text');
-  } else if (mode === 'table') {
-    // 表格模式下保持原来的方向设置
-    store.setRecognitionMode('table');
-  }
+// Watch for mode changes from props
+watch(() => props.initialMode, (newVal) => {
+  selectedMode.value = newVal;
+});
+
+const selectHorizontal = () => {
+  selectedDirection.value = 'horizontal';
+  selectedMode.value = 'text';
+  store.setRecognitionMode('text');
+};
+
+const selectVertical = () => {
+  selectedDirection.value = 'vertical';
+  selectedMode.value = 'text';
+  store.setRecognitionMode('text');
+};
+
+const selectTable = () => {
+  selectedMode.value = 'table';
+  store.setRecognitionMode('table');
 };
 
 // 切换语言选择状态
@@ -287,14 +288,11 @@ const clearLanguages = () => {
   store.updateSelectedLanguages([]);
 };
 
-// 开始OCR处理
 const startOcr = () => {
-  // 更新store中的识别方向
-  store.initialTextDirection = selectedDirection.value;
-  // 将选中的语言传给store
-  store.updateSelectedLanguages([...selectedLanguages.value]);
-  // 发出开始OCR事件，让父组件处理
-  emit('start-ocr');
+  emit('start-ocr', {
+    direction: selectedDirection.value,
+    mode: selectedMode.value
+  });
 };
 </script>
 

@@ -25,6 +25,7 @@
           :can-start="store.canStartOcr"
           :is-processing="store.isLoading"
           :initial-direction="store.initialTextDirection"
+          :initial-mode="store.recognitionMode || 'text'"
           @start-ocr="store.startOcrProcess"
         />
           </transition>

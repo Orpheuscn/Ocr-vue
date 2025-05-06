@@ -13,14 +13,12 @@
 
       <!-- 控制区 -->
       <div class="flex flex-wrap items-center justify-between gap-2 mb-2 flex-shrink-0">
-        <div v-if="!store.isTableMode" class="btn-group">
+        <div class="btn-group" v-if="store.recognitionMode !== 'table'">
           <button 
             :class="[
               'btn btn-xs',
-              store.textDisplayMode === 'parallel' ? 'btn-accent' : 'btn-outline',
-              { 'cursor-not-allowed opacity-50': store.isTableMode }
+              store.textDisplayMode === 'parallel' ? 'btn-accent' : 'btn-outline'
             ]"
-            :disabled="store.isTableMode"
             @click="updateDisplayMode('parallel')"
           >
             {{ i18n.t('parallel') }}
@@ -28,44 +26,17 @@
           <button 
             :class="[
               'btn btn-xs',
-              store.textDisplayMode === 'paragraph' ? 'btn-accent' : 'btn-outline',
-              { 'cursor-not-allowed opacity-50': store.isTableMode }
+              store.textDisplayMode === 'paragraph' ? 'btn-accent' : 'btn-outline'
             ]"
-            :disabled="store.isTableMode"
             @click="updateDisplayMode('paragraph')"
           >
             {{ i18n.t('paragraph') }}
           </button>
         </div>
         
-        <!-- 表格模式下的行列数输入 -->
-        <div v-if="store.isTableMode" class="flex items-center gap-2">
-          <div class="form-control">
-            <label class="label p-0 pb-1">
-              <span class="label-text text-xs">{{ i18n.t('tableColumns') || '列数' }}</span>
-            </label>
-            <input 
-              type="number" 
-              v-model="customColumns" 
-              class="input input-xs input-bordered w-20" 
-              min="1"
-              :placeholder="i18n.t('autoDetect') || '自动'"
-              @change="updateTableSettings"
-            />
-          </div>
-          <div class="form-control">
-            <label class="label p-0 pb-1">
-              <span class="label-text text-xs">{{ i18n.t('tableRows') || '行数' }}</span>
-            </label>
-            <input 
-              type="number" 
-              v-model="customRows" 
-              class="input input-xs input-bordered w-20" 
-              min="1"
-              :placeholder="i18n.t('autoDetect') || '自动'"
-              @change="updateTableSettings"
-            />
-          </div>
+        <!-- 表格模式标识 -->
+        <div v-if="store.recognitionMode === 'table'" class="badge badge-outline">
+          {{ i18n.t('table') }}
         </div>
         
         <!-- 复制按钮和下拉菜单 -->
@@ -79,10 +50,11 @@
             {{ copyButtonText }}
           </div>
           <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
-            <li v-if="!store.isTableMode"><a @click="copyText('original')">{{ i18n.t('copyOriginalText') }}</a></li>
-            <li v-if="!store.isTableMode"><a @click="copyText('filtered')">{{ i18n.t('copyFilteredText') }}</a></li>
-            <li v-if="store.isTableMode"><a @click="copyTableAsText">{{ i18n.t('copyAsText') }}</a></li>
-            <li v-if="store.isTableMode"><a @click="copyTableAsMarkdown">{{ i18n.t('copyAsMarkdown') }}</a></li>
+            <li v-if="store.recognitionMode === 'table'">
+              <a @click="copyText('markdown')">{{ i18n.t('copyMarkdownTable') || '复制Markdown表格' }}</a>
+            </li>
+            <li><a @click="copyText('original')">{{ i18n.t('copyOriginalText') }}</a></li>
+            <li><a @click="copyText('filtered')">{{ i18n.t('copyFilteredText') }}</a></li>
           </ul>
         </div>
       </div>
@@ -108,8 +80,7 @@
         </div>
         
         <div v-else-if="store.hasOcrResult">
-          <component v-if="!store.isTableMode" :is="activeTextComponent" ref="textComponent" :is-rtl="isRtlText" />
-          <TextTable v-else ref="tableComponent" :is-rtl="isRtlText" />
+          <component :is="activeTextComponent" ref="textComponent" :is-rtl="isRtlText" />
         </div>
         
         <div v-else class="flex flex-col items-center justify-center h-full text-center opacity-70">
@@ -134,8 +105,7 @@ import TextHorizontalParallel from './TextHorizontalParallel.vue';
 import TextHorizontalParagraph from './TextHorizontalParagraph.vue';
 import TextVerticalParallel from './TextVerticalParallel.vue';
 import TextVerticalParagraph from './TextVerticalParagraph.vue';
-// 导入表格组件
-import TextTable from './TextTable.vue';
+import TextTable from './TextTable.vue'; // 导入表格组件
 
 const props = defineProps({
   containerHeight: {
@@ -147,13 +117,10 @@ const props = defineProps({
 const store = useOcrStore();
 const i18n = useI18nStore();
 const textComponent = ref(null);
-const tableComponent = ref(null); // 添加表格组件引用
 const textManagerRef = ref(null);
 const textContentRef = ref(null); // 添加对文本内容区域的引用
 const copyStatus = ref('idle'); // 'idle', 'success', 'error'
 const lastCopyType = ref('original'); // 记录上次复制的类型，默认为原始文本
-const customColumns = ref(1);
-const customRows = ref(1);
 
 // 使用计算属性获取当前语言下的语言名称
 const displayLanguageName = computed(() => {
@@ -224,7 +191,12 @@ onMounted(() => {
 
 // Determine which component to render dynamically
 const activeTextComponent = computed(() => {
-  // 仅在非表格模式下使用
+  // 首先检查是否是表格模式
+  if (store.recognitionMode === 'table') {
+    return TextTable;
+  }
+
+  // 如果不是表格模式，则按原逻辑处理文本方向和显示模式
   const direction = store.initialTextDirection;
   const displayMode = store.textDisplayMode;
 
@@ -241,6 +213,11 @@ const updateDisplayMode = (mode) => {
 
 // 获取原始文本
 const getOriginalText = () => {
+  // 如果是表格模式，返回 Markdown 格式的表格
+  if (store.recognitionMode === 'table' && textComponent.value && textComponent.value.getMarkdownTable) {
+    return textComponent.value.getMarkdownTable();
+  }
+  
   // 根据当前显示模式返回合适的原始文本
   if (store.textDisplayMode === 'parallel') {
     // 原排版模式
@@ -254,6 +231,11 @@ const getOriginalText = () => {
 
 // 获取过滤后的文本
 const getFilteredText = () => {
+  // 如果是表格模式，返回 Markdown 格式的表格
+  if (store.recognitionMode === 'table' && textComponent.value && textComponent.value.getMarkdownTable) {
+    return textComponent.value.getMarkdownTable();
+  }
+
   // 从DOM中获取当前显示的文本
   if (textComponent.value && textComponent.value.$el) {
     const text = textComponent.value.$el.textContent || '';
@@ -293,122 +275,67 @@ const generateFilteredText = () => {
 const copyButtonText = computed(() => {
   if (copyStatus.value === 'success') {
     return i18n.t('copied');
-  } else {
-    return i18n.t('copy');
   }
+  
+  if (store.recognitionMode === 'table') {
+    return i18n.t('copyMarkdownTable') || '复制表格';
+  }
+  
+  return i18n.t('copy');
 });
 
 // 复制文本方法，根据类型选择复制内容
-const copyText = async (type) => {
-  lastCopyType.value = type;
-  let textToCopy = '';
+const copyText = async (type = '') => {
+  if (!store.hasOcrResult) return;
   
+  // 如果没有指定类型，使用上次的类型
+  if (!type) {
+    type = lastCopyType.value;
+  } else {
+    // 保存当前使用的类型
+    lastCopyType.value = type;
+  }
+  
+  // 根据类型获取要复制的文本
+  let textToCopy = '';
   if (type === 'original') {
     textToCopy = getOriginalText();
   } else if (type === 'filtered') {
     textToCopy = getFilteredText();
+  } else if (type === 'markdown') {
+    // 表格模式下复制 Markdown 表格
+    if (textComponent.value && textComponent.value.getMarkdownTable) {
+      textToCopy = textComponent.value.getMarkdownTable();
+    } else {
+      textToCopy = getFilteredText();
+    }
   }
   
-  if (!textToCopy) {
-    _showNotification(i18n.t('copyFailed'), 'error');
-    return;
-  }
+  if (!textToCopy) return;
   
   try {
     await navigator.clipboard.writeText(textToCopy);
     copyStatus.value = 'success';
-    _showNotification(i18n.t('textCopied'), 'success');
     
     // 3秒后重置状态
     setTimeout(() => {
       copyStatus.value = 'idle';
     }, 3000);
-  } catch (err) {
-    console.error('复制失败:', err);
+    
+    // 显示成功提示
+    store._showNotification(i18n.t('textCopied'), 'success');
+  } catch (e) {
     copyStatus.value = 'error';
-    _showNotification(i18n.t('copyFailed'), 'error');
-  }
-};
-
-// 复制表格为Markdown格式
-const copyTableAsMarkdown = async () => {
-  if (!tableComponent.value) {
-    _showNotification(i18n.t('copyFailed'), 'error');
-    return;
-  }
-  
-  try {
-    const markdownTable = tableComponent.value.getMarkdownTable();
-    await navigator.clipboard.writeText(markdownTable);
-    copyStatus.value = 'success';
-    _showNotification(i18n.t('textCopied'), 'success');
+    console.error('复制失败:', e);
+    
+    // 显示错误提示
+    store._showNotification(i18n.t('copyFailed'), 'error');
     
     // 3秒后重置状态
     setTimeout(() => {
       copyStatus.value = 'idle';
     }, 3000);
-  } catch (err) {
-    console.error('复制失败:', err);
-    copyStatus.value = 'error';
-    _showNotification(i18n.t('copyFailed'), 'error');
   }
-};
-
-// 复制表格为纯文本格式
-const copyTableAsText = async () => {
-  if (!tableComponent.value || !store.isTableMode) {
-    _showNotification(i18n.t('copyFailed'), 'error');
-    return;
-  }
-  
-  try {
-    const { headers, rows, isRtl } = tableComponent.value.getTableData();
-    
-    // 组合成纯文本格式
-    let textTable = '';
-    
-    // 如果有表头且不是自动生成的列标题，添加表头
-    if (headers.length > 0 && !headers[0].startsWith('列 ')) {
-      textTable += headers.join('\t') + '\n';
-    }
-    
-    // 添加数据行 - 对RTL文本，我们不需要反转字符顺序，只需反转列顺序，这已在TextTable组件中处理
-    rows.forEach(row => {
-      textTable += row.join('\t') + '\n';
-    });
-    
-    await navigator.clipboard.writeText(textTable);
-    copyStatus.value = 'success';
-    _showNotification(i18n.t('textCopied'), 'success');
-    
-    // 3秒后重置状态
-    setTimeout(() => {
-      copyStatus.value = 'idle';
-    }, 3000);
-  } catch (err) {
-    console.error('复制失败:', err);
-    copyStatus.value = 'error';
-    _showNotification(i18n.t('copyFailed'), 'error');
-  }
-};
-
-// 更新表格设置
-const updateTableSettings = () => {
-  const columns = customColumns.value === '' ? 0 : Math.max(parseInt(customColumns.value) || 0, 0);
-  const rows = customRows.value === '' ? 0 : Math.max(parseInt(customRows.value) || 0, 0);
-  
-  store.setTableSettings(columns, rows);
-};
-
-// 在组件初始化时从store获取当前设置
-watch(() => store.tableSettings, (newSettings) => {
-  customColumns.value = newSettings.columns || '';
-  customRows.value = newSettings.rows || '';
-}, { immediate: true });
-
-// 显示通知的辅助函数
-const _showNotification = (message, type = 'info') => {
-  store._showNotification(message, type);
 };
 </script>
 

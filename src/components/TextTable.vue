@@ -1,5 +1,11 @@
 <template>
   <div class="text-table-container">
+    <!-- 表格标题 -->
+    <div class="table-title" v-if="tableData.headers && tableData.headers.length > 0">
+      <span class="table-mode-badge">{{ i18n.t('table') }}</span>
+      <span class="table-info">{{ tableData.headers.length }} {{ i18n.t('columns') }}, {{ tableData.rows.length }} {{ i18n.t('rows') }}</span>
+    </div>
+    
     <!-- 整个容器不设置方向，让内部内容决定方向 -->
     <table class="notes-style-table">
       <thead>
@@ -66,38 +72,69 @@ watch(() => store.tableSettings, processTableData, { deep: true });
 watch(() => store.filteredSymbolsData, processTableData, { immediate: true });
 watch(() => store.ocrRawResult, processTableData, { immediate: true });
 
+// 监听识别模式变化，在表格模式下重新处理数据
+watch(() => store.recognitionMode, (newMode) => {
+  if (newMode === 'table') {
+    console.log('检测到表格模式，重新处理表格数据');
+    processTableData();
+  }
+}, { immediate: true });
+
 onMounted(() => {
+  console.log('TextTable组件已挂载，处理表格数据');
   processTableData();
 });
 
 // 处理OCR结果，转换为表格格式
 function processTableData() {
-  if (!store.filteredSymbolsData.length || !store.fullTextAnnotation) {
-    tableData.value = { headers: [], rows: [] };
+  console.log('开始处理表格数据，识别模式:', store.recognitionMode);
+  
+  // 检查是否在表格模式下
+  if (store.recognitionMode !== 'table') {
+    console.log('不在表格模式下，跳过表格处理');
     return;
   }
-
-  // 获取所有文本块
-  const symbols = store.filteredSymbolsData.filter(s => s.isFiltered);
   
-  // 获取用户指定的行列数
-  const userColumns = store.tableSettings.columns || 0;
-  const userRows = store.tableSettings.rows || 0;
-  
-  // 如果用户指定了特定行列数，使用对应处理函数
-  if (userColumns > 0 || userRows > 0) {
-    if (userColumns === 2) {
-      processTwoColumnTable(symbols);
-    } else if (userColumns > 0) {
-      processTableWithCustomColumns(symbols, userColumns);
-    } else if (userRows > 0) {
-      processTableWithCustomRows(symbols, userRows);
+  try {
+    // 检查是否有有效的OCR结果
+    if (!store.filteredSymbolsData.length || !store.fullTextAnnotation) {
+      console.log('没有有效的OCR结果，无法处理表格');
+      tableData.value = { headers: ['暂无数据'], rows: [] };
+      return;
     }
-    return;
+
+    // 获取所有文本块
+    const symbols = store.filteredSymbolsData.filter(s => s.isFiltered);
+    console.log(`处理表格数据：找到 ${symbols.length} 个符号`);
+    
+    // 获取用户指定的行列数
+    const userColumns = store.tableSettings.columns || 0;
+    const userRows = store.tableSettings.rows || 0;
+    
+    console.log(`表格设置：${userColumns} 列, ${userRows} 行`);
+    
+    // 如果用户指定了特定行列数，使用对应处理函数
+    if (userColumns > 0 || userRows > 0) {
+      if (userColumns === 2) {
+        processTwoColumnTable(symbols);
+      } else if (userColumns > 0) {
+        processTableWithCustomColumns(symbols, userColumns);
+      } else if (userRows > 0) {
+        processTableWithCustomRows(symbols, userRows);
+      }
+      return;
+    }
+    
+    // 自动检测并处理表格（新增的智能分析逻辑）
+    autoDetectAndProcessTable(symbols);
+  } catch (error) {
+    console.error('处理表格数据时出错:', error);
+    // 设置一个错误消息
+    tableData.value = { 
+      headers: ['处理错误'], 
+      rows: [['表格数据处理失败，请尝试使用不同的识别模式']]
+    };
   }
-  
-  // 自动检测并处理表格（新增的智能分析逻辑）
-  autoDetectAndProcessTable(symbols);
 }
 
 // 新增：智能表格分析与处理函数
@@ -958,43 +995,110 @@ defineExpose({
 });
 </script>
 
-<style scoped>
+<style>
+/* 表格容器样式 */
 .text-table-container {
   width: 100%;
   overflow-x: auto;
-  padding: 0.5rem;
+  padding: 8px;
+  margin-bottom: 16px;
 }
 
+/* 表格标题样式 */
+.table-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.table-mode-badge {
+  background-color: #f0f0f0;
+  color: #000000;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  border: 1px solid #cccccc;
+}
+
+.table-info {
+  color: #000000;
+  font-size: 12px;
+}
+
+/* 表格主体样式 */
 .notes-style-table {
   width: 100%;
   border-collapse: collapse;
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  border: 1px solid black;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.notes-style-table th,
-.notes-style-table td {
-  border: 0.5px solid currentColor;
-  padding: 8px 12px;
+/* 表头样式 */
+.notes-style-table th {
+  background-color: #f5f5f5;
+  color: #000000;
+  font-weight: 600;
+  padding: 10px;
   text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  border: 1px solid black;
 }
 
-/* RTL单元格内容样式 */
+/* 单元格样式 */
+.notes-style-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border: 1px solid black;
+  background-color: white;
+  color: #000000;
+}
+
+/* 斑马线样式 */
+.notes-style-table tbody tr:nth-child(even) td {
+  background-color: #f9f9f9;
+}
+
+/* 悬停效果 */
+.notes-style-table tbody tr:hover td {
+  background-color: #f0f7ff;
+}
+
+/* RTL文本支持 */
 [dir="rtl"] {
   text-align: right;
 }
 
-.notes-style-table th {
-  font-weight: 500;
-}
-
-.notes-style-table tr:nth-child(even),
-.notes-style-table tr:nth-child(odd),
-.notes-style-table th {
-  background-color: transparent;
+/* 暗色模式样式 */
+@media (prefers-color-scheme: dark) {
+  .notes-style-table {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .notes-style-table th,
+  .notes-style-table td {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .notes-style-table th {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.85);
+  }
+  
+  .notes-style-table tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .table-mode-badge {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+  }
+  
+  .table-info {
+    color: rgba(255, 255, 255, 0.6);
+  }
 }
 </style> 
