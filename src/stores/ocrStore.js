@@ -85,6 +85,13 @@ export const useOcrStore = defineStore('ocr', () => {
 
   const initialTextDirection = ref('horizontal'); // 'horizontal' 或 'vertical'
   const textDisplayMode = ref('parallel'); // 'parallel' 或 'paragraph'
+  const recognitionMode = ref('text'); // 'text' 或 'table'
+  
+  // 表格设置
+  const tableSettings = ref({
+    columns: 0, // 0表示自动检测
+    rows: 0     // 0表示自动检测
+  });
 
   // 遮挡区域 - 添加到store中
   const maskedAreas = ref([]);
@@ -105,6 +112,9 @@ export const useOcrStore = defineStore('ocr', () => {
       return { words: wordCount, chars: charCount };
   });
   const hasOcrResult = computed(() => !!fullTextAnnotation.value || originalFullText.value.length > 0);
+
+  // 是否为表格模式
+  const isTableMode = computed(() => recognitionMode.value === 'table');
 
   // --- 动作 (Actions) ---
 
@@ -730,19 +740,37 @@ export const useOcrStore = defineStore('ocr', () => {
 
   // 更新文本显示模式
   function setTextDisplayMode(mode) {
+    // 只有在文本模式下才允许切换显示模式
+    if (recognitionMode.value === 'text') {
       if (mode === 'parallel' || mode === 'paragraph') {
-          textDisplayMode.value = mode;
+        textDisplayMode.value = mode;
       }
+    }
   }
 
+  // 设置识别模式 (文本或表格)
+  function setRecognitionMode(mode) {
+    if (mode === 'text' || mode === 'table') {
+      recognitionMode.value = mode;
+    }
+  }
+
+  // 设置表格行列数
+  function setTableSettings(columns, rows) {
+    tableSettings.value = {
+      columns: Number(columns) || 0,
+      rows: Number(rows) || 0
+    };
+    console.log('表格设置已更新:', tableSettings.value);
+  }
 
   // --- 返回 Store 的 state, getters, actions ---
   return {
     // State
-    apiKey, showApiSettings, currentFiles, filePreviewUrl, isPdfFile, pdfDataArray, currentPage, totalPages, selectedLanguages, isLoading, loadingMessage, ocrRawResult, fullTextAnnotation, originalFullText, imageDimensions, detectedLanguageCode, detectedLanguageName, filterSettings, filterBounds, filteredSymbolsData, initialTextDirection, textDisplayMode, notification, isDimensionsKnown, maskedAreas,
+    apiKey, showApiSettings, currentFiles, filePreviewUrl, isPdfFile, pdfDataArray, currentPage, totalPages, selectedLanguages, isLoading, loadingMessage, ocrRawResult, fullTextAnnotation, originalFullText, imageDimensions, detectedLanguageCode, detectedLanguageName, filterSettings, filterBounds, filteredSymbolsData, initialTextDirection, textDisplayMode, notification, isDimensionsKnown, maskedAreas, recognitionMode, isTableMode, tableSettings,
     // Getters
     hasApiKey, canStartOcr, textStats, hasOcrResult,
     // Actions
-    setApiKey, toggleApiSettings, resetUIState, loadFiles, changePdfPage, setImageDimension, startOcrProcess, applyFilters, setTextDisplayMode, _showNotification, updateSelectedLanguages, initSelectedLanguages, applyMasksToImage,
+    setApiKey, toggleApiSettings, resetUIState, loadFiles, changePdfPage, setImageDimension, startOcrProcess, applyFilters, setTextDisplayMode, _showNotification, updateSelectedLanguages, initSelectedLanguages, applyMasksToImage, setRecognitionMode, setTableSettings,
   };
 });

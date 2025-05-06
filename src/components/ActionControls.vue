@@ -7,22 +7,32 @@
           <button 
             :class="[
               'btn btn-sm',
-              selectedDirection === 'horizontal' ? 'btn-accent' : 'btn-outline'
+              selectedDirection === 'horizontal' && !isTableMode ? 'btn-accent' : 'btn-outline'
             ]"
             :disabled="isProcessing"
-            @click="updateDirection('horizontal')"
+            @click="updateMode('horizontal')"
           >
             {{ i18n.t('horizontal') }}
           </button>
           <button 
             :class="[
               'btn btn-sm',
-              selectedDirection === 'vertical' ? 'btn-accent' : 'btn-outline'
+              selectedDirection === 'vertical' && !isTableMode ? 'btn-accent' : 'btn-outline'
             ]"
             :disabled="isProcessing" 
-            @click="updateDirection('vertical')"
+            @click="updateMode('vertical')"
           >
             {{ i18n.t('vertical') }}
+          </button>
+          <button 
+            :class="[
+              'btn btn-sm',
+              isTableMode ? 'btn-accent' : 'btn-outline'
+            ]"
+            :disabled="isProcessing" 
+            @click="updateMode('table')"
+          >
+            {{ i18n.t('table') || '表格' }}
           </button>
         </div>
       </div>
@@ -132,6 +142,17 @@ const selectedLanguages = ref([]);
 const languageSearch = ref(''); // 用于语言搜索
 const filteredLanguages = ref([]); // 经过搜索过滤后的语言列表
 
+// 监听store中的recognitionMode变化
+watch(() => store.recognitionMode, (newMode) => {
+  if (newMode === 'table') {
+    // 表格模式下保持原来的方向，只是UI显示为表格模式
+    selectedDirection.value = store.initialTextDirection;
+  }
+}, { immediate: true });
+
+// 计算属性：是否为表格模式
+const isTableMode = computed(() => store.recognitionMode === 'table');
+
 // 初始化组件时从store获取语言设置
 onMounted(() => {
   // 确保store已初始化语言设置
@@ -228,8 +249,16 @@ watch(() => props.initialDirection, (newVal) => {
   selectedDirection.value = newVal;
 });
 
-const updateDirection = (direction) => {
-  selectedDirection.value = direction;
+// 更新识别模式和方向
+const updateMode = (mode) => {
+  if (mode === 'horizontal' || mode === 'vertical') {
+    selectedDirection.value = mode;
+    store.initialTextDirection = mode;
+    store.setRecognitionMode('text');
+  } else if (mode === 'table') {
+    // 表格模式下保持原来的方向设置
+    store.setRecognitionMode('table');
+  }
 };
 
 // 切换语言选择状态
@@ -258,8 +287,14 @@ const clearLanguages = () => {
   store.updateSelectedLanguages([]);
 };
 
+// 开始OCR处理
 const startOcr = () => {
-  emit('start-ocr', selectedDirection.value);
+  // 更新store中的识别方向
+  store.initialTextDirection = selectedDirection.value;
+  // 将选中的语言传给store
+  store.updateSelectedLanguages([...selectedLanguages.value]);
+  // 发出开始OCR事件，让父组件处理
+  emit('start-ocr');
 };
 </script>
 
