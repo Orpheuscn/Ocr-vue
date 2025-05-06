@@ -195,17 +195,15 @@ defineExpose({
 .notes-style-table {
   width: 100%;
   border-collapse: collapse;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #333;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
   margin: 0 auto;
-  background-color: transparent;
 }
 
 .notes-style-table th,
 .notes-style-table td {
-  border: 0.5px solid #d1d1d1;
+  border: 0.5px solid currentColor;
   padding: 8px 12px;
   text-align: left;
   overflow: hidden;
@@ -213,16 +211,12 @@ defineExpose({
 }
 
 .notes-style-table th {
-  background-color: #f7f7f7;
   font-weight: 500;
-  color: #333;
 }
 
-.notes-style-table tr {
-  background-color: white;
-}
-
-.notes-style-table tr:nth-child(even) {
-  background-color: #fafafa;
+.notes-style-table tr:nth-child(even),
+.notes-style-table tr:nth-child(odd),
+.notes-style-table th {
+  background-color: transparent;
 }
 </style> 
