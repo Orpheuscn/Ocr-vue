@@ -1109,7 +1109,7 @@ body .coordinate-tooltip {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background-color: var(--su, #36d399);
+  background-color: rgba(54, 211, 153, 0.8); /* 修改为80%的透明度 */
   color: var(--suc, white);
   white-space: nowrap;
   font-weight: 500;
