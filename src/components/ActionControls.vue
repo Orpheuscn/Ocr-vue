@@ -154,6 +154,14 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
 });
 
+// 监听语言变化，更新语言列表
+watch(() => i18n.currentLang, (newLang) => {
+  // 语言切换时重新获取语言列表
+  availableLanguages.value = getAllLanguages();
+  // 更新过滤后的语言列表
+  filterLanguages();
+});
+
 // 下拉菜单显示状态
 const showDropdown = ref(false);
 const dropdownRef = ref(null);
@@ -178,8 +186,9 @@ const toggleDropdown = () => {
   if (!props.isProcessing) {
     showDropdown.value = !showDropdown.value;
     if (showDropdown.value) {
-      // 在显示下拉菜单时，重置搜索状态
+      // 在显示下拉菜单时，重置搜索状态并刷新语言列表
       languageSearch.value = '';
+      availableLanguages.value = getAllLanguages(); // 确保获取最新的语言列表
       filterLanguages();
     }
   }
@@ -198,9 +207,12 @@ const selectedLanguagesDisplay = computed(() => {
     return i18n.t('autoDetectLanguage');
   }
   
+  // 获取最新的语言列表以确保展示正确的语言名称
+  const currentLangList = getAllLanguages();
+  
   // 显示前2个语言名称，后面用+N表示
   const selectedNames = selectedLanguages.value.map(code => {
-    const lang = availableLanguages.value.find(l => l.code === code);
+    const lang = currentLangList.find(l => l.code === code);
     return lang ? lang.name : code;
   });
   

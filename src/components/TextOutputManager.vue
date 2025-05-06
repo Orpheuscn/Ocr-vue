@@ -5,7 +5,7 @@
       <div class="flex flex-wrap justify-between text-xs text-opacity-70 mb-2 flex-shrink-0">
         <div class="badge badge-neutral">{{ i18n.t('size') }}: {{ store.imageDimensions.width || '?' }}×{{ store.imageDimensions.height || '?' }}px</div>
         <div class="badge badge-neutral">
-          {{ i18n.t('language') }}: {{ store.detectedLanguageName || i18n.t('undetermined') }} ({{ store.detectedLanguageCode }})
+          {{ i18n.t('language') }}: {{ displayLanguageName }} ({{ store.detectedLanguageCode }})
           <span v-if="isRtlText" class="ml-1">←</span>
         </div>
         <div class="badge badge-neutral">{{ i18n.t('statistics') }}: {{ store.textStats.words }} {{ i18n.t('words') }}, {{ store.textStats.chars }} {{ i18n.t('characters') }}</div>
@@ -90,7 +90,7 @@
 import { computed, ref, watch, onMounted } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
 import { useI18nStore } from '@/stores/i18nStore';
-import { isRtlLanguage } from '@/services/visionApi';
+import { isRtlLanguage, getLanguageName } from '@/services/visionApi';
 
 // Import the four specialized text components
 import TextHorizontalParallel from './TextHorizontalParallel.vue';
@@ -112,6 +112,19 @@ const textManagerRef = ref(null);
 const textContentRef = ref(null); // 添加对文本内容区域的引用
 const copyStatus = ref('idle'); // 'idle', 'success', 'error'
 const lastCopyType = ref('original'); // 记录上次复制的类型，默认为原始文本
+
+// 使用计算属性获取当前语言下的语言名称
+const displayLanguageName = computed(() => {
+  if (!store.detectedLanguageCode || store.detectedLanguageCode === 'und') {
+    return i18n.t('undetermined');
+  }
+  return getLanguageName(store.detectedLanguageCode);
+});
+
+// 监听语言变化
+watch(() => i18n.currentLang, () => {
+  // 语言切换时更新语言名称会自动通过计算属性更新
+}, { immediate: true });
 
 // 判断是否为RTL文本
 const isRtlText = computed(() => {
