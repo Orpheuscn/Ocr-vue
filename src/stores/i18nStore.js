@@ -228,7 +228,7 @@ const translations = {
     recognitionDirection: 'Recognition Direction',
     languageHint: 'Language Hint',
     searchLanguage: 'Search languages by name or code...',
-    languageTip: 'Selecting multiple languages can improve mixed text recognition',
+    languageTip: 'Selecting multiple languages can improve recognition',
     autoDetectLanguage: 'Auto-detect language',
     
     // FilterControls component
