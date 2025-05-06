@@ -42,6 +42,7 @@
         </div>
         
         <div class="card-actions justify-end mt-4">
+          <button type="button" class="btn btn-error btn-outline" @click="clearApiKey">{{ i18n.t('clearApiKey') }}</button>
           <button type="submit" class="btn btn-accent">{{ i18n.t('getStarted') }}</button>
         </div>
       </form>
@@ -77,6 +78,12 @@ const togglePasswordVisibility = () => {
 
 const saveKey = () => {
   emit('save-api-key', apiKeyLocal.value);
+};
+
+const clearApiKey = () => {
+  localStorage.removeItem('googleVisionApiKey');
+  apiKeyLocal.value = '';
+  emit('save-api-key', '');
 };
 </script>
 
