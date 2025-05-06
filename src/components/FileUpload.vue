@@ -27,7 +27,7 @@
         ref="fileInputRef"
         type="file"
         id="fileInput"
-        accept="image/*,.pdf"
+        accept="image/*,.pdf,.heic,.heif"
         multiple
         @change="onFileSelected"
         class="hidden"

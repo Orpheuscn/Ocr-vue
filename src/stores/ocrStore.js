@@ -7,6 +7,8 @@ import { performOcrRequest, getLanguageName } from '@/services/visionApi';
 import { renderPdfPage, getPdfPageCount } from '@/utils/pdfAdapter';
 // 导入i18n存储
 import { useI18nStore } from '@/stores/i18nStore';
+// 导入HEIC转换库
+import { isHeic, heicTo } from 'heic-to';
 // 不再需要导入PDF.js，使用全局对象
 // worker设置已经在main.js中完成
 
@@ -32,6 +34,36 @@ export const useOcrStore = defineStore('ocr', () => {
       };
       reader.onerror = error => reject(error);
     });
+  };
+
+  // 将HEIC图像转换为Blob格式的JPEG图像
+  const convertHeicToJpeg = async (file) => {
+    try {
+      // 检查是否为HEIC格式
+      const isHeicFormat = await isHeic(file);
+      if (!isHeicFormat) {
+        return file; // 不是HEIC格式，直接返回原始文件
+      }
+      
+      // 转换HEIC为JPEG
+      const jpegBlob = await heicTo({
+        blob: file,
+        type: 'image/jpeg',
+        quality: 0.8 // 保持较高质量
+      });
+      
+      // 创建新的文件对象并保留原始文件名（但更改扩展名）
+      const originalName = file.name.replace(/\.[^/.]+$/, '') || 'image';
+      const convertedFile = new File([jpegBlob], `${originalName}.jpg`, {
+        type: 'image/jpeg',
+        lastModified: file.lastModified
+      });
+      
+      return convertedFile;
+    } catch (error) {
+      console.error('HEIC转换失败:', error);
+      throw new Error(`HEIC格式转换失败: ${error.message}`);
+    }
   };
 
   // --- 状态 (State) ---
@@ -193,18 +225,28 @@ export const useOcrStore = defineStore('ocr', () => {
       resetUIState(); // 重置状态
 
       const file = files[0]; // 只处理第一个文件
-      currentFiles.value = [file];
-
       isLoading.value = true;
       loadingMessage.value = i18n.t('loadingFile');
 
       try {
-          if (file.type === 'application/pdf') {
+          let processedFile = file;
+          
+          // 检查并处理HEIC格式
+          if (file.type === 'image/heic' || file.type === 'image/heif' || 
+              file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
+              loadingMessage.value = i18n.t('convertingHeic');
+              processedFile = await convertHeicToJpeg(file);
+          }
+          
+          // 保存处理后的文件
+          currentFiles.value = [processedFile];
+          
+          if (processedFile.type === 'application/pdf') {
               isPdfFile.value = true;
               
               try {
                   // 读取文件数据为ArrayBuffer
-                  const buffer = await file.arrayBuffer();
+                  const buffer = await processedFile.arrayBuffer();
                   
                   // 创建ArrayBuffer数据的独立副本
                   const tempArray = new Uint8Array(buffer);
@@ -230,18 +272,18 @@ export const useOcrStore = defineStore('ocr', () => {
                   throw new Error(`PDF文件处理失败: ${pdfError.message}`);
               }
               
-          } else if (file.type.startsWith('image/')) {
+          } else if (processedFile.type.startsWith('image/')) {
               isPdfFile.value = false;
               // 释放之前可能存在的 Blob URL
               if (filePreviewUrl.value && filePreviewUrl.value.startsWith('blob:')) {
                   URL.revokeObjectURL(filePreviewUrl.value);
               }
-              filePreviewUrl.value = URL.createObjectURL(file); // 使用 Blob URL 进行预览
+              filePreviewUrl.value = URL.createObjectURL(processedFile); // 使用 Blob URL 进行预览
               // 尺寸将在 ImageCanvas 组件加载图片后通过事件设置
               // isDimensionsKnown 会在事件回调中设置为 true
           } else {
               currentFiles.value = [];
-              throw new Error(`不支持的文件类型: ${file.type || '未知'}`);
+              throw new Error(`不支持的文件类型: ${processedFile.type || '未知'}`);
           }
       } catch (error) {
           console.error("文件加载错误:", error);

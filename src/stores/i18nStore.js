@@ -54,6 +54,7 @@ const translations = {
     // 状态反馈消息
     processing: '处理中...',
     loadingFile: '加载文件中...',
+    convertingHeic: '正在转换HEIC格式...',
     renderingPdfPage: '渲染 PDF 第 {page} 页...',
     recognizingText: '正在识别文本...',
     processingMasks: '正在处理图像遮挡({count}个区域)...',
@@ -72,7 +73,7 @@ const translations = {
     pdfRenderFailed: '渲染 PDF 第 {page} 页失败: {error}',
     
     // 文件类型
-    supportedFiles: '支持的文件格式：JPG、PNG、BMP、WEBP、TIFF、PDF',
+    supportedFiles: '图片或PDF',
     
     // 坐标视图
     coordinateView: '坐标视图',
@@ -178,6 +179,7 @@ const translations = {
     // 状态反馈消息
     processing: 'Processing...',
     loadingFile: 'Loading file...',
+    convertingHeic: 'Converting HEIC format...',
     renderingPdfPage: 'Rendering PDF page {page}...',
     recognizingText: 'Recognizing text...',
     processingMasks: 'Processing image masks ({count} areas)...',
@@ -196,7 +198,7 @@ const translations = {
     pdfRenderFailed: 'Failed to render PDF page {page}: {error}',
     
     // File Types
-    supportedFiles: 'Supported formats: JPG, PNG, BMP, WEBP, TIFF, PDF',
+    supportedFiles: 'Image or PDF',
     
     // Coordinate View
     coordinateView: 'Coordinate View',
