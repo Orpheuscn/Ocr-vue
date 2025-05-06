@@ -34,7 +34,7 @@
       />
       
       <div class="flex items-center gap-2">
-        <button class="btn btn-accent btn-sm shadow-sm hover:shadow-md transition-shadow duration-300" @click.stop>
+        <button class="btn btn-accent btn-sm shadow-sm hover:shadow-md transition-shadow duration-300" @click.stop="triggerFileInput">
           {{ i18n.t('selectFile') }}
         </button>
         <span class="text-xs opacity-50">{{ i18n.t('or') }}</span>
