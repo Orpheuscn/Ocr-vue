@@ -1,14 +1,15 @@
 <template>
   <header class="navbar bg-base-100 shadow-md px-4 sm:px-6">
     <div class="flex-1">
-      <h1 class="text-xl font-semibold text-base-content">OCR 文本识别工具</h1>
+      <h1 class="text-xl font-semibold text-base-content">{{ i18n.t('appTitle') }}</h1>
     </div>
     <div class="flex-none gap-2">
+      <LanguageToggle />
       <ThemeToggle />
       <button 
         class="btn btn-sm btn-accent" 
         @click="emitToggle">
-        {{ store.showApiSettings ? '隐藏' : '设置' }} API
+        {{ store.showApiSettings ? i18n.t('hideSettings') : i18n.t('settings') }} {{ i18n.t('api') }}
       </button>
     </div>
   </header>
@@ -16,13 +17,16 @@
 
 <script setup>
 import { useOcrStore } from '@/stores/ocrStore';
+import { useI18nStore } from '@/stores/i18nStore';
 import ThemeToggle from './ThemeToggle.vue';
+import LanguageToggle from './LanguageToggle.vue';
 
 // Define emits if toggling is handled by parent via event
 const emit = defineEmits(['toggle-api']);
 
 // Or directly call the store action (simpler if store is used everywhere)
 const store = useOcrStore();
+const i18n = useI18nStore();
 const emitToggle = () => {
   emit('toggle-api'); // 发出事件给父组件
 };

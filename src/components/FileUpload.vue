@@ -20,8 +20,8 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
       </svg>
       
-      <h3 class="text-lg font-medium mb-1 transition-colors duration-300" :class="{'text-accent': isHovering}">拖放或点击上传</h3>
-      <p class="text-sm opacity-70 mb-3">支持图片和PDF文件</p>
+      <h3 class="text-lg font-medium mb-1 transition-colors duration-300" :class="{'text-accent': isHovering}">{{ i18n.t('dragFileHere') }}</h3>
+      <p class="text-sm opacity-70 mb-3">{{ i18n.t('supportedFiles') }}</p>
       
       <input
         ref="fileInputRef"
@@ -35,11 +35,11 @@
       
       <div class="flex items-center gap-2">
         <button class="btn btn-accent btn-sm shadow-sm hover:shadow-md transition-shadow duration-300" @click.stop>
-          选择文件
+          {{ i18n.t('selectFile') }}
         </button>
-        <span class="text-xs opacity-50">或</span>
+        <span class="text-xs opacity-50">{{ i18n.t('or') }}</span>
         <span class="text-xs flex items-center gap-1">
-          按 <kbd class="kbd kbd-xs">Ctrl</kbd>+<kbd class="kbd kbd-xs">V</kbd> 粘贴
+          {{ i18n.t('pressCtrlV') }} <kbd class="kbd kbd-xs">Ctrl</kbd>+<kbd class="kbd kbd-xs">V</kbd>
         </span>
       </div>
     </div>
@@ -48,7 +48,9 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import { useI18nStore } from '@/stores/i18nStore';
 
+const i18n = useI18nStore();
 const emit = defineEmits(['files-selected']);
 
 const dropZoneRef = ref(null);

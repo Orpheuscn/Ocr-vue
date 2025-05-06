@@ -5,6 +5,8 @@ import { ref, computed } from 'vue';
 import { performOcrRequest, getLanguageName } from '@/services/visionApi';
 // 导入PDF适配器
 import { renderPdfPage, getPdfPageCount } from '@/utils/pdfAdapter';
+// 导入i18n存储
+import { useI18nStore } from '@/stores/i18nStore';
 // 不再需要导入PDF.js，使用全局对象
 // worker设置已经在main.js中完成
 
@@ -38,6 +40,9 @@ export const useOcrStore = defineStore('ocr', () => {
   const apiKey = ref(localStorage.getItem('googleVisionApiKey') || '');
   const showApiSettings = ref(!apiKey.value); // 如果没有保存的 key，默认显示设置
 
+  // 获取i18n实例
+  const i18n = useI18nStore();
+  
   // 文件和预览相关
   const currentFiles = ref([]); // 存储 File 对象数组 (虽然目前只处理第一个)
   const filePreviewUrl = ref(''); // 用于 <img> src (Blob URL 或 Data URL)
@@ -51,7 +56,7 @@ export const useOcrStore = defineStore('ocr', () => {
 
   // UI 状态
   const isLoading = ref(false);
-  const loadingMessage = ref('处理中...');
+  const loadingMessage = ref(i18n.t('processing')); // 使用i18n
   const notification = ref({ message: '', type: 'info', visible: false, key: 0 }); // Key 用于强制更新通知组件
   const isDimensionsKnown = ref(false); // 新增：标记图片/PDF 尺寸是否已知
 
@@ -141,7 +146,7 @@ export const useOcrStore = defineStore('ocr', () => {
       imageDimensions.value = { width: 0, height: 0 }; // 重置尺寸
       isDimensionsKnown.value = false; // **重要：重置尺寸已知状态**
       isLoading.value = false;
-      loadingMessage.value = '处理中...';
+      loadingMessage.value = i18n.t('processing');
       // 清空遮挡区域
       maskedAreas.value = [];
       // 可以选择是否重置 API 设置显示状态
@@ -181,7 +186,7 @@ export const useOcrStore = defineStore('ocr', () => {
       currentFiles.value = [file];
 
       isLoading.value = true;
-      loadingMessage.value = '加载文件中...';
+      loadingMessage.value = i18n.t('loadingFile');
 
       try {
           if (file.type === 'application/pdf') {
@@ -204,7 +209,12 @@ export const useOcrStore = defineStore('ocr', () => {
                   currentPage.value = 1;
                   
                   // 渲染第一页
-                  await renderCurrentPdfPageToPreview();
+                  const renderResult = await renderCurrentPdfPageToPreview();
+                  
+                  // 如果渲染失败，抛出异常
+                  if (!renderResult) {
+                      throw new Error("PDF页面渲染失败");
+                  }
               } catch (pdfError) {
                   console.error("PDF处理错误:", pdfError);
                   throw new Error(`PDF文件处理失败: ${pdfError.message}`);
@@ -225,7 +235,7 @@ export const useOcrStore = defineStore('ocr', () => {
           }
       } catch (error) {
           console.error("文件加载错误:", error);
-          _showNotification(`文件加载失败: ${error.message || error}`, 'error');
+          _showNotification(i18n.tf('fileLoadFailed', { error: error.message || error }), 'error');
           resetUIState();
       } finally {
           // 如果不是PDF，加载状态在图片@load事件后由setImageDimension解除
@@ -241,13 +251,21 @@ export const useOcrStore = defineStore('ocr', () => {
       if (!pdfDataArray.value || !isPdfFile.value) return;
 
       isLoading.value = true;
-      loadingMessage.value = `渲染 PDF 第 ${currentPage.value} 页...`;
+      loadingMessage.value = i18n.tf('renderingPdfPage', { page: currentPage.value });
       isDimensionsKnown.value = false; // 渲染新页面时，尺寸暂时未知
+
+      // 添加超时处理
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('PDF渲染超时，请尝试重新加载或选择较小的PDF文件')), 30000);
+      });
 
       try {
           // 直接传递原始数据，不要在这里创建Uint8Array副本
           // 让pdfAdapter处理数据副本的创建
-          const result = await renderPdfPage(pdfDataArray.value, currentPage.value, 1.5);
+          const result = await Promise.race([
+            renderPdfPage(pdfDataArray.value, currentPage.value, 1.5),
+            timeoutPromise
+          ]);
           
           // 设置尺寸已知状态
           imageDimensions.value = { width: result.width, height: result.height };
@@ -264,15 +282,24 @@ export const useOcrStore = defineStore('ocr', () => {
           filePreviewUrl.value = result.dataUrl;
           
           resetOcrData(); // 清除旧 OCR 结果
-          _showNotification(`PDF 第 ${currentPage.value} 页渲染完成`, 'success');
+          _showNotification(i18n.tf('pdfRenderSuccess', { page: currentPage.value }), 'success');
+          
+          // 重要：渲染成功后，确保更新状态
+          isLoading.value = false;
+          return result; // 返回渲染结果
 
       } catch (error) {
-          console.error(`PDF 页面 ${currentPage.value} 渲染错误:`, error);
-          _showNotification(`渲染 PDF 第 ${currentPage.value} 页失败: ${error.message}`, 'error');
+          console.error("PDF渲染错误:", error);
+          _showNotification(i18n.tf('pdfRenderFailed', { page: currentPage.value, error: error.message }), 'error');
           filePreviewUrl.value = ''; // 清除预览
           imageDimensions.value = { width: 0, height: 0 }; // 重置尺寸
-      } finally {
+          
+          // 重要：发生错误时，确保重置加载状态
           isLoading.value = false;
+          isDimensionsKnown.value = false;
+          
+          // 不要重新抛出错误，而是返回null表示失败
+          return null;
       }
   }
 
@@ -350,83 +377,84 @@ export const useOcrStore = defineStore('ocr', () => {
     }
   }
 
-  // 开始OCR识别过程，添加对遮挡区域的支持
+  // 执行 OCR 识别过程
   async function startOcrProcess(direction) {
-      // 再次检查是否可以开始 (防御性编程)
-      if (!canStartOcr.value || !currentFiles.value[0]) {
-          _showNotification('无法开始识别，请检查文件、API Key 和图像尺寸。', 'error');
-          if (!isDimensionsKnown.value) {
-              _showNotification('图像尺寸尚未加载完成，请稍候。', 'info');
-          }
-          if (!hasApiKey.value) {
-              _showNotification('请先设置 API Key。', 'error');
-              showApiSettings.value = true;
-          }
-          return;
+    // 检查前置条件
+    if (!canStartOcr.value) {
+      if (!hasApiKey.value) {
+        _showNotification(i18n.t('pleaseSetApiKey'), 'error');
+      } else if (!isDimensionsKnown.value) {
+        _showNotification(i18n.t('imageSizeNotLoaded'), 'info');
+      } else {
+        _showNotification(i18n.t('cannotStartOcr'), 'error');
       }
+      return;
+    }
 
-      initialTextDirection.value = direction; // 锁定用户选择的方向
+    try {
       isLoading.value = true;
-      loadingMessage.value = '正在识别文本...';
-      resetOcrData(); // 清除旧结果
+      loadingMessage.value = i18n.t('recognizingText');
+      resetOcrData();
 
-      try {
-          let base64Image = '';
-          const processDimensions = imageDimensions.value; // 使用已知的尺寸
+      let base64Image = '';
+      const processDimensions = imageDimensions.value; // 使用已知的尺寸
 
-          if (isPdfFile.value) {
-              // 对于 PDF，使用当前渲染页面的 Data URL
-              if (!filePreviewUrl.value.startsWith('data:image/png;base64,')) {
-                  throw new Error("PDF 页面预览数据无效，请重新加载文件");
-              }
-              base64Image = filePreviewUrl.value.split(',')[1];
-          } else {
-              // 对于图片，将 File 对象转换为 Base64
-              base64Image = await fileToBase64(currentFiles.value[0]);
+      if (isPdfFile.value) {
+          // 对于 PDF，使用当前渲染页面的 Data URL
+          if (!filePreviewUrl.value.startsWith('data:image/png;base64,')) {
+              throw new Error("PDF 页面预览数据无效，请重新加载文件");
           }
-
-          // 如果有遮挡区域，先处理图像
-          console.log(`遮挡区域数量: ${maskedAreas.value.length}`);
-          if (maskedAreas.value.length > 0) {
-              console.log(`准备应用${maskedAreas.value.length}个遮挡区域:`);
-              console.log(JSON.stringify(maskedAreas.value));
-              loadingMessage.value = `正在处理图像遮挡(${maskedAreas.value.length}个区域)...`;
-              base64Image = await applyMasksToImage(base64Image, processDimensions);
-              loadingMessage.value = '正在识别文本...';
-          }
-
-          // 调用 API 服务，传递语言提示
-          const languageHints = selectedLanguages.value.length > 0 ? selectedLanguages.value : [];
-          const result = await performOcrRequest(base64Image, apiKey.value, languageHints);
-          ocrRawResult.value = result; // 存储原始结果
-
-          // 解析和处理结果
-          fullTextAnnotation.value = result.fullTextAnnotation || null;
-          const textAnns = result.textAnnotations || [];
-          originalFullText.value = fullTextAnnotation.value?.text || (textAnns[0]?.description || '');
-
-          // 检测语言
-          const langCode = fullTextAnnotation.value?.pages?.[0]?.property?.detectedLanguages?.[0]?.languageCode
-                           || textAnns[0]?.locale;
-          detectedLanguageCode.value = langCode || 'und';
-          detectedLanguageName.value = getLanguageName(langCode);
-
-          // 设置过滤器范围
-          setupFilterBounds(processDimensions.width, processDimensions.height);
-
-          // 应用过滤器（使用重置后的最大范围）
-          applyFilters(filterSettings.value);
-
-          const langHint = languageHints.length > 0 ? '（使用语言提示：' + languageHints.map(code => getLanguageName(code)).join(', ') + '）' : '';
-          _showNotification(`识别完成${langHint}`, 'success');
-
-      } catch (error) {
-          console.error("OCR 处理错误:", error);
-          _showNotification(`识别失败: ${error.message || error}`, 'error');
-          resetOcrData(); // 失败时清除结果
-      } finally {
-          isLoading.value = false;
+          base64Image = filePreviewUrl.value.split(',')[1];
+      } else {
+          // 对于图片，将 File 对象转换为 Base64
+          base64Image = await fileToBase64(currentFiles.value[0]);
       }
+
+      // 应用遮挡区域 (如果有)
+      if (maskedAreas.value.length > 0) {
+        loadingMessage.value = i18n.tf('processingMasks', { count: maskedAreas.value.length });
+        base64Image = await applyMasksToImage(base64Image, processDimensions);
+      }
+
+      // 调用 API 服务，传递语言提示
+      const languageHints = selectedLanguages.value.length > 0 ? selectedLanguages.value : [];
+      const result = await performOcrRequest(base64Image, apiKey.value, languageHints);
+      ocrRawResult.value = result; // 存储原始结果
+
+      // 解析和处理结果
+      fullTextAnnotation.value = result.fullTextAnnotation || null;
+      const textAnns = result.textAnnotations || [];
+      originalFullText.value = fullTextAnnotation.value?.text || (textAnns[0]?.description || '');
+
+      // 检测语言
+      const langCode = fullTextAnnotation.value?.pages?.[0]?.property?.detectedLanguages?.[0]?.languageCode
+                       || textAnns[0]?.locale;
+      detectedLanguageCode.value = langCode || 'und';
+      detectedLanguageName.value = getLanguageName(langCode);
+
+      // 设置过滤器范围
+      setupFilterBounds(processDimensions.width, processDimensions.height);
+
+      // 应用过滤器（使用重置后的最大范围）
+      applyFilters(filterSettings.value);
+
+      // 使用检测到的语言信息构建提示
+      let langHint = '';
+      if (detectedLanguageCode.value !== 'und') {
+        langHint = ` (${detectedLanguageName.value})`;
+      }
+
+      // 设置初始文本方向
+      initialTextDirection.value = direction;
+
+      _showNotification(i18n.tf('recognitionComplete', { lang: langHint }), 'success');
+
+    } catch (error) {
+      console.error("OCR识别错误:", error);
+      _showNotification(i18n.tf('recognitionFailed', { error: error.message || error }), 'error');
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   // 应用遮挡到图像
@@ -690,7 +718,7 @@ export const useOcrStore = defineStore('ocr', () => {
           }); // end page loop
       } catch (error) {
           console.error("Error during symbol processing and filtering:", error);
-          _showNotification("处理符号数据时出错", "error");
+          _showNotification(i18n.t('errorProcessingSymbols'), "error");
           filteredSymbolsData.value = []; // 出错时清空
           return; // 提前退出
       }

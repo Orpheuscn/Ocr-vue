@@ -2,7 +2,7 @@
   <div class="card bg-base-100 shadow-sm p-4">
     <div class="flex flex-col md:flex-row items-center justify-between gap-4">
       <div class="flex items-center gap-4">
-        <span class="text-sm font-medium">识别方向:</span>
+        <span class="text-sm font-medium">{{ i18n.t('recognitionDirection') }}:</span>
         <div class="btn-group">
           <button 
             :class="[
@@ -12,7 +12,7 @@
             :disabled="isProcessing"
             @click="updateDirection('horizontal')"
           >
-            正常
+            {{ i18n.t('horizontal') }}
           </button>
           <button 
             :class="[
@@ -22,7 +22,7 @@
             :disabled="isProcessing" 
             @click="updateDirection('vertical')"
           >
-            竖排
+            {{ i18n.t('vertical') }}
           </button>
         </div>
       </div>
@@ -30,14 +30,14 @@
       <!-- 语言选择下拉框 -->
       <div class="form-control w-full max-w-xs">
         <label class="label">
-          <span class="label-text text-sm font-medium">语言提示:</span>
+          <span class="label-text text-sm font-medium">{{ i18n.t('languageHint') }}:</span>
           <span class="label-text-alt text-xs">
             <button 
               class="btn btn-xs btn-ghost" 
               @click="clearLanguages"
               :disabled="isProcessing"
             >
-              清除
+              {{ i18n.t('clear') }}
             </button>
           </span>
         </label>
@@ -61,7 +61,7 @@
                 <input 
                   type="text" 
                   v-model="languageSearch" 
-                  placeholder="搜索语言名称或代码..." 
+                  :placeholder="i18n.t('searchLanguage')" 
                   class="input input-sm input-bordered w-full"
                   @input="filterLanguages"
                 />
@@ -94,7 +94,7 @@
           </div>
         </div>
         <label class="label">
-          <span class="label-text-alt text-xs">选择多种语言可提高混合文本识别率</span>
+          <span class="label-text-alt text-xs">{{ i18n.t('languageTip') }}</span>
         </label>
       </div>
 
@@ -104,7 +104,7 @@
         :disabled="!canStart || isProcessing"
         @click="startOcr"
       >
-        {{ isProcessing ? '识别中...' : '开始识别' }}
+        {{ isProcessing ? i18n.t('processing') : i18n.t('startOcr') }}
       </button>
     </div>
   </div>
@@ -113,6 +113,7 @@
 <script setup>
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
+import { useI18nStore } from '@/stores/i18nStore';
 import { getAllLanguages } from '@/services/visionApi';
 
 const props = defineProps({
@@ -123,6 +124,7 @@ const props = defineProps({
 
 const emit = defineEmits(['start-ocr']);
 const store = useOcrStore();
+const i18n = useI18nStore();
 
 const selectedDirection = ref(props.initialDirection);
 const availableLanguages = ref(getAllLanguages());
@@ -193,7 +195,7 @@ const handleClickOutside = (event) => {
 // 显示当前选择的语言
 const selectedLanguagesDisplay = computed(() => {
   if (selectedLanguages.value.length === 0) {
-    return '自动检测语言';
+    return i18n.t('autoDetectLanguage');
   }
   
   // 显示前2个语言名称，后面用+N表示

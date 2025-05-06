@@ -6,7 +6,7 @@
         class="btn btn-circle btn-warning shadow-lg hover-btn"
         @click="toggleMaskingMode"
         :class="{'btn-active': isMaskingActive}"
-        :title="isMaskingActive ? '退出遮挡模式' : '添加遮挡区域'"
+        :title="isMaskingActive ? i18n.t('exitMaskingMode') : i18n.t('addMaskingArea')"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11h2m-2 4v3a2 2 0 01-2 2H5a2 2 0 01-2-2v-3m0-4h2m12-4V5a2 2 0 00-2-2H9a2 2 0 00-2 2v3" />
@@ -22,12 +22,12 @@
       class="fixed top-0 left-0 right-0 bg-base-200 p-2 z-50 flex items-center justify-between shadow-md"
     >
       <div class="flex items-center gap-2">
-        <span class="badge badge-warning">遮挡模式</span>
-        <span class="text-sm">拖动鼠标选择要遮挡的区域</span>
+        <span class="badge badge-warning">{{ i18n.t('maskingMode') }}</span>
+        <span class="text-sm">{{ i18n.t('dragToSelectMaskingArea') }}</span>
       </div>
       <div class="flex gap-2">
-        <button class="btn btn-sm btn-ghost" @click="clearAllMasks">清除所有</button>
-        <button class="btn btn-sm btn-ghost" @click="toggleMaskingMode">退出</button>
+        <button class="btn btn-sm btn-ghost" @click="clearAllMasks">{{ i18n.t('clearAll') }}</button>
+        <button class="btn btn-sm btn-ghost" @click="toggleMaskingMode">{{ i18n.t('exit') }}</button>
       </div>
     </div>
 
@@ -85,11 +85,11 @@
     
     <!-- 调试信息 -->
     <div v-if="showDebug" class="fixed bottom-2 right-2 bg-black text-white p-2 z-50 text-xs max-w-xs overflow-auto max-h-40">
-      <p>遮挡区域数量: {{ store.maskedAreas?.length || 0 }}</p>
-      <p>可见遮挡区域数量: {{ visibleMaskedAreas?.length || 0 }}</p>
-      <p v-if="lastImageInfo">图像位置: ({{ lastImageInfo.left }}, {{ lastImageInfo.top }})</p>
-      <p v-if="lastImageInfo">图像尺寸: {{ lastImageInfo.width }}x{{ lastImageInfo.height }}</p>
-      <p v-if="lastImageInfo">比例: {{ lastImageInfo.scale }}</p>
+      <p>{{ i18n.t('maskingAreasCount') }}: {{ store.maskedAreas?.length || 0 }}</p>
+      <p>{{ i18n.t('visibleMaskingAreasCount') }}: {{ visibleMaskedAreas?.length || 0 }}</p>
+      <p v-if="lastImageInfo">{{ i18n.t('imagePosition') }}: ({{ lastImageInfo.left }}, {{ lastImageInfo.top }})</p>
+      <p v-if="lastImageInfo">{{ i18n.t('imageSize') }}: {{ lastImageInfo.width }}x{{ lastImageInfo.height }}</p>
+      <p v-if="lastImageInfo">{{ i18n.t('scale') }}: {{ lastImageInfo.scale }}</p>
     </div>
   </div>
 </template>
@@ -97,8 +97,10 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
+import { useI18nStore } from '@/stores/i18nStore';
 
 const store = useOcrStore();
+const i18n = useI18nStore();
 // 状态
 const isMaskingActive = ref(false);
 const isDrawing = ref(false);

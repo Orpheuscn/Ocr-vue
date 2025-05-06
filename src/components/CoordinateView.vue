@@ -17,9 +17,15 @@
     <!-- 使用pointer-events-auto可以让坐标视图窗口接收鼠标事件，而背景则不会阻挡其他元素 -->
     <div class="card bg-base-100 shadow-xl w-[90%] h-[90%] max-w-7xl max-h-[90vh] flex flex-col pointer-events-auto" ref="coordViewContainer">
       <div class="card-title p-4 justify-between items-center border-b border-base-300">
-        <h3 class="text-lg font-medium">坐标视图</h3>
+        <h3 class="text-lg font-medium">{{ i18n.t('coordinateView') }}</h3>
         
         <div class="flex items-center gap-2">
+          <!-- 调试信息 -->
+          <div class="text-xs bg-base-200 px-2 py-1 rounded">
+            <span>{{ i18n.t('cachedPolygons') }}: {{ blockBoundaries.length }}, </span>
+            <span>{{ i18n.t('visiblePolygons') }}: {{ visibleBlockBoundaries.length }}</span>
+          </div>
+          
           <!-- 缩放控制按钮 -->
           <div class="flex items-center gap-1 mx-2">
             <button 
@@ -47,7 +53,7 @@
           <button 
             class="btn btn-sm btn-circle"
             @click="toggleFullscreen"
-            :title="isFullscreen ? '退出全屏' : '全屏模式'"
+            :title="isFullscreen ? i18n.t('exitFullscreen') : i18n.t('fullscreenMode')"
           >
             <svg v-if="!isFullscreen" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 4h4M4 4h4m-4 0L8 8m12-4v4m0-4h-4m4 4h-4m4-4l-4 4M4 16v4m0-4h4m-4 4h4m-4 0l4-4m12 4v-4m0 4h-4m4-4h-4m4 4l-4-4" />
@@ -58,12 +64,12 @@
           </button>
           
           <div class="flex items-center gap-2">
-            <span class="text-sm">区块级别:</span>
+            <span class="text-sm">{{ i18n.t('blockLevel') }}:</span>
             <select v-model="selectedBlockLevel" class="select select-sm select-bordered">
-          <option value="blocks">区块</option>
-          <option value="paragraphs">段落</option>
-          <option value="words">单词</option>
-          <option value="symbols">字符</option>
+          <option value="blocks">{{ i18n.t('blocks') }}</option>
+          <option value="paragraphs">{{ i18n.t('paragraphs') }}</option>
+          <option value="words">{{ i18n.t('words') }}</option>
+          <option value="symbols">{{ i18n.t('symbols') }}</option>
         </select>
       </div>
           
@@ -71,7 +77,7 @@
             class="btn btn-sm" 
             @click="toggleBlockVisibility"
           >
-            {{ showBounds ? '隐藏' : '显示' }}区块
+            {{ showBounds ? i18n.t('hideBlocks') : i18n.t('showBlocks') }}
           </button>
           
           <button 
@@ -94,8 +100,10 @@
               width: systemWidth + 'px', 
               height: systemHeight + 'px',
               transform: `scale(${zoomLevel})`,
-              transformOrigin: 'top left'
+              transformOrigin: 'top left',
+              willChange: 'transform'
             }"
+            @transitionend="handleTransformEnd"
       >
         <div class="y-axis" :style="{ height: store.imageDimensions.height + 'px' }"></div>
         <div class="x-axis" :style="{ width: store.imageDimensions.width + 'px' }"></div>
@@ -157,15 +165,22 @@
           {{ symbol.text }}
         </div>
         
-            <!-- 复制成功的通知将紧贴鼠标位置显示 -->
-            <div v-if="showCopySuccess" class="mouse-follow-toast" :style="copyToastPosition">
-              <div class="alert alert-success shadow-lg p-2 text-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>文本已复制</span>
-              </div>
-            </div>
+        <!-- 调试信息悬浮块 -->
+        <div v-if="blockBoundaries.length > 0" class="debug-info">
+          {{ i18n.t('cachedPolygons') }}: {{ blockBoundaries.length }}<br>
+          {{ i18n.t('visiblePolygons') }}: {{ visibleBlockBoundaries.length }}<br>
+          {{ i18n.t('zoom') }}: {{ Math.round(zoomLevel.value * 100) }}%
+        </div>
+        
+        <!-- 复制成功的通知将紧贴鼠标位置显示 -->
+        <div v-if="showCopySuccess" class="mouse-follow-toast" :style="copyToastPosition">
+          <div class="alert alert-success shadow-lg p-2 text-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span>{{ i18n.t('textCopied') }}</span>
+          </div>
+        </div>
           </div>
         </div>
       </div>
@@ -176,8 +191,10 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
+import { useI18nStore } from '@/stores/i18nStore';
 
 const store = useOcrStore();
+const i18n = useI18nStore();
 const coordSystemRef = ref(null);
 const coordSystemWrapper = ref(null);
 const coordViewContainer = ref(null);
@@ -197,62 +214,15 @@ const tooltipPos = ref({ x: 0, y: 0 });
 const tooltipVisible = ref(false);
 const copyToastPosition = ref({ top: '0px', left: '0px' });
 
-// 缩放控制
-const zoomIn = () => {
-  zoomLevel.value = Math.min(2, zoomLevel.value + 0.1);
-  updateViewportRect(); // 更新视口信息
-};
-
-const zoomOut = () => {
-  zoomLevel.value = Math.max(0.2, zoomLevel.value - 0.1);
-  updateViewportRect(); // 更新视口信息
-};
-
-// 全屏模式控制
-const toggleFullscreen = () => {
-  if (!coordViewContainer.value) return;
-  
-  if (!isFullscreen.value) {
-    // 进入全屏模式
-    if (coordViewContainer.value.requestFullscreen) {
-      coordViewContainer.value.requestFullscreen();
-    } else if (coordViewContainer.value.webkitRequestFullscreen) { // Safari
-      coordViewContainer.value.webkitRequestFullscreen();
-    } else if (coordViewContainer.value.msRequestFullscreen) { // IE11
-      coordViewContainer.value.msRequestFullscreen();
-    }
-  } else {
-    // 退出全屏模式
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if (document.webkitExitFullscreen) { // Safari
-      document.webkitExitFullscreen();
-    } else if (document.msExitFullscreen) { // IE11
-      document.msExitFullscreen();
-    }
-  }
-};
-
-// 监听全屏状态变化
-const handleFullscreenChange = () => {
-  isFullscreen.value = !!(document.fullscreenElement || 
-                          document.webkitFullscreenElement || 
-                          document.mozFullScreenElement ||
-                          document.msFullscreenElement);
-};
-
-// 监听ESC键退出全屏
-const handleKeyDown = (event) => {
-  if (event.key === 'Escape' && isFullscreen.value) {
-    toggleFullscreen();
-  }
-};
-
 // 虚拟滚动相关状态
 const viewportRect = ref({ top: 0, bottom: 0, left: 0, right: 0 });
 const scrollTop = ref(0);
 const scrollLeft = ref(0);
-const viewportPadding = ref(500); // 增加可视区域外的padding，确保用户能点击到边界附近的block
+const viewportPadding = ref(1000); // 增加可视区域外的padding，从500增加到1000，确保用户能点击到边界附近的block
+
+// 用于跟踪滚动位置变化
+let lastScrollTop = 0;
+let lastScrollLeft = 0;
 
 // --- Computed Properties ---
 const systemWidth = computed(() => (store.imageDimensions.width || 0) + 30); // 加 30px 给 Y 轴标签留空
@@ -301,7 +271,8 @@ const symbolBlocksToDisplay = computed(() => {
 let blockBoundariesCache = null;
 const blockBoundaries = computed(() => {
   // 检查selectedBlockLevel是否变化，如果没有变化且已有缓存，直接返回缓存
-  if (blockBoundariesCache && blockBoundariesCache.level === selectedBlockLevel.value) {
+  if (blockBoundariesCache && blockBoundariesCache.level === selectedBlockLevel.value && 
+      blockBoundariesCache.zoom === zoomLevel.value) {
     return blockBoundariesCache.data;
   }
   
@@ -351,7 +322,8 @@ const blockBoundaries = computed(() => {
         block.paragraphs?.forEach(para => {
           para.words?.forEach(word => {
             word.symbols?.forEach(symbol => {
-              // 放宽匹配条件，增加匹配半径
+              // 放宽匹配条件，增加匹配半径，并根据缩放系数动态调整
+              const dynamicRadius = 15 / (zoomLevel.value || 1); // 基础半径15px，随缩放调整
               const symbolData = store.filteredSymbolsData.find(fd => {
                 if (!fd.isFiltered || fd.text !== symbol.text) return false;
                 
@@ -359,8 +331,8 @@ const blockBoundaries = computed(() => {
                 const symbolX = symbol.boundingBox?.vertices?.[0]?.x ?? -999;
                 const symbolY = symbol.boundingBox?.vertices?.[0]?.y ?? -999;
                 
-                // 增加匹配半径
-                return Math.abs(fd.x - symbolX) < 10 && Math.abs(fd.y - symbolY) < 10;
+                // 增加匹配半径，并考虑缩放
+                return Math.abs(fd.x - symbolX) < dynamicRadius && Math.abs(fd.y - symbolY) < dynamicRadius;
               });
               
               if (symbolData) {
@@ -394,7 +366,8 @@ const blockBoundaries = computed(() => {
             let hasAnyText = false;
             paragraph.words?.forEach(word => {
               word.symbols?.forEach(symbol => {
-                // 放宽匹配条件，增加匹配半径
+                // 放宽匹配条件，增加匹配半径，并根据缩放系数动态调整
+                const dynamicRadius = 15 / (zoomLevel.value || 1); // 基础半径15px，随缩放调整
                 const symbolData = store.filteredSymbolsData.find(fd => {
                   if (!fd.isFiltered || fd.text !== symbol.text) return false;
                   
@@ -402,8 +375,8 @@ const blockBoundaries = computed(() => {
                   const symbolX = symbol.boundingBox?.vertices?.[0]?.x ?? -999;
                   const symbolY = symbol.boundingBox?.vertices?.[0]?.y ?? -999;
                   
-                  // 增加匹配半径
-                  return Math.abs(fd.x - symbolX) < 10 && Math.abs(fd.y - symbolY) < 10;
+                  // 增加匹配半径，并考虑缩放
+                  return Math.abs(fd.x - symbolX) < dynamicRadius && Math.abs(fd.y - symbolY) < dynamicRadius;
                 });
                 
                 if (symbolData) {
@@ -435,7 +408,8 @@ const blockBoundaries = computed(() => {
                 let wordText = '';
                 let hasAnyText = false;
                 word.symbols?.forEach(symbol => {
-                  // 放宽匹配条件，增加匹配半径
+                  // 放宽匹配条件，增加匹配半径，并根据缩放系数动态调整
+                  const dynamicRadius = 15 / (zoomLevel.value || 1); // 基础半径15px，随缩放调整
                   const symbolData = store.filteredSymbolsData.find(fd => {
                     if (!fd.isFiltered || fd.text !== symbol.text) return false;
                     
@@ -443,8 +417,8 @@ const blockBoundaries = computed(() => {
                     const symbolX = symbol.boundingBox?.vertices?.[0]?.x ?? -999;
                     const symbolY = symbol.boundingBox?.vertices?.[0]?.y ?? -999;
                     
-                    // 增加匹配半径
-                    return Math.abs(fd.x - symbolX) < 10 && Math.abs(fd.y - symbolY) < 10;
+                    // 增加匹配半径，并考虑缩放
+                    return Math.abs(fd.x - symbolX) < dynamicRadius && Math.abs(fd.y - symbolY) < dynamicRadius;
                   });
                   
                   if (symbolData) {
@@ -464,6 +438,7 @@ const blockBoundaries = computed(() => {
               } else if (selectedBlockLevel.value === 'symbols') {
                 word.symbols?.forEach(symbol => {
                   // 修改匹配逻辑，放宽匹配条件以支持倾斜文字
+                  const dynamicRadius = 15 / (zoomLevel.value || 1); // 基础半径15px，随缩放调整
                   const symbolData = store.filteredSymbolsData.find(fd => {
                     if (!fd.isFiltered || fd.text !== symbol.text) return false;
                     
@@ -472,7 +447,7 @@ const blockBoundaries = computed(() => {
                     const symbolY = symbol.boundingBox?.vertices?.[0]?.y ?? -999;
                     
                     // 放宽匹配标准，增加匹配半径，特别是对于倾斜文本
-                    return Math.abs(fd.x - symbolX) < 10 && Math.abs(fd.y - symbolY) < 10;
+                    return Math.abs(fd.x - symbolX) < dynamicRadius && Math.abs(fd.y - symbolY) < dynamicRadius;
                   });
                   
                   if (symbolData) {
@@ -491,9 +466,10 @@ const blockBoundaries = computed(() => {
     });
   });
 
-  // 更新缓存
+  // 更新缓存，包含当前缩放级别
   blockBoundariesCache = {
     level: selectedBlockLevel.value,
+    zoom: zoomLevel.value,
     data: boundaries
   };
   
@@ -506,7 +482,7 @@ const visibleBlockBoundaries = computed(() => {
   
   const { top, bottom, left, right } = viewportRect.value;
   
-  // 扩展视口区域
+  // 扩展视口区域，增加边距从500px到1000px
   const extendedTop = top - viewportPadding.value;
   const extendedBottom = bottom + viewportPadding.value;
   const extendedLeft = left - viewportPadding.value;
@@ -590,13 +566,19 @@ const updateViewportRect = () => {
   scrollTop.value = scrollInfo.scrollTop;
   scrollLeft.value = scrollInfo.scrollLeft;
   
-  // 计算可视区域的边界
+  // 计算可视区域的边界，并考虑缩放级别
   viewportRect.value = {
-    top: scrollTop.value,
-    left: scrollLeft.value,
-    bottom: scrollTop.value + wrapperRect.height,
-    right: scrollLeft.value + wrapperRect.width
+    top: scrollTop.value / zoomLevel.value,
+    left: scrollLeft.value / zoomLevel.value,
+    bottom: (scrollTop.value + wrapperRect.height) / zoomLevel.value,
+    right: (scrollLeft.value + wrapperRect.width) / zoomLevel.value
   };
+
+  // 强制刷新visibleBlockBoundaries
+  nextTick(() => {
+    // 通过触发reactive更新
+    scrollTop.value = scrollTop.value;
+  });
 };
 
 // 优化的滚动处理函数
@@ -609,6 +591,13 @@ const handleScroll = () => {
     window._scrollRequestPending = true;
     requestAnimationFrame(() => {
       updateViewportRect();
+      // 当滚动距离较大时，可能需要重新计算缓存
+      if (Math.abs(scrollTop.value - lastScrollTop) > 100 || 
+          Math.abs(scrollLeft.value - lastScrollLeft) > 100) {
+        blockBoundariesCache = null; // 强制重新计算缓存
+      }
+      lastScrollTop = scrollTop.value;
+      lastScrollLeft = scrollLeft.value;
       window._scrollRequestPending = false;
     });
   }
@@ -681,6 +670,7 @@ onUnmounted(() => {
 
 // 监听过滤器变化，更新可视区域
 watch(() => store.filteredSymbolsData, () => {
+  blockBoundariesCache = null; // 强制重新计算缓存
   nextTick(updateViewportRect);
 }, { deep: true });
 
@@ -690,14 +680,50 @@ watch(() => selectedBlockLevel.value, () => {
   blockBoundariesCache = null;
 });
 
-// 添加一个简单的通知提示函数
-const _showNotification = (message, type = 'info') => {
-  // 如果store中有通知函数就使用它
-  if (typeof store._showNotification === 'function') {
-    store._showNotification(message, type);
+// 监听缩放级别变化，更新视口和缓存
+watch(() => zoomLevel.value, () => {
+  // 清除缓存，强制重新计算
+  blockBoundariesCache = null;
+  nextTick(updateViewportRect);
+}, { flush: 'post' });
+
+// 监听全屏状态变化
+const handleFullscreenChange = () => {
+  isFullscreen.value = !!(document.fullscreenElement || 
+                          document.webkitFullscreenElement || 
+                          document.mozFullScreenElement ||
+                          document.msFullscreenElement);
+};
+
+// 监听ESC键退出全屏
+const handleKeyDown = (event) => {
+  if (event.key === 'Escape' && isFullscreen.value) {
+    toggleFullscreen();
+  }
+};
+
+// 全屏模式控制
+const toggleFullscreen = () => {
+  if (!coordViewContainer.value) return;
+  
+  if (!isFullscreen.value) {
+    // 进入全屏模式
+    if (coordViewContainer.value.requestFullscreen) {
+      coordViewContainer.value.requestFullscreen();
+    } else if (coordViewContainer.value.webkitRequestFullscreen) { // Safari
+      coordViewContainer.value.webkitRequestFullscreen();
+    } else if (coordViewContainer.value.msRequestFullscreen) { // IE11
+      coordViewContainer.value.msRequestFullscreen();
+    }
   } else {
-    // 否则直接使用控制台
-    console.log(`[${type}] ${message}`);
+    // 退出全屏模式
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) { // Safari
+      document.webkitExitFullscreen();
+    } else if (document.msExitFullscreen) { // IE11
+      document.msExitFullscreen();
+    }
   }
 };
 
@@ -721,6 +747,63 @@ const closeCoordinateView = () => {
     }
   }
 };
+
+// 在template部分添加调试指示器，在合适的位置插入
+const cacheInfo = computed(() => {
+  return {
+    cached: blockBoundaries.value.length,
+    visible: visibleBlockBoundaries.value.length,
+    zoom: Math.round(zoomLevel.value * 100) + '%'
+  };
+});
+
+// 缩放控制
+const zoomIn = () => {
+  zoomLevel.value = Math.min(2, zoomLevel.value + 0.1);
+  // 清除缓存，强制重新计算
+  blockBoundariesCache = null;
+  // 更新视口信息，使用setTimeout确保DOM已更新
+  updateViewportRect();
+  setTimeout(() => {
+    updateViewportRect();
+  }, 100);
+};
+
+const zoomOut = () => {
+  zoomLevel.value = Math.max(0.2, zoomLevel.value - 0.1);
+  // 清除缓存，强制重新计算
+  blockBoundariesCache = null;
+  // 更新视口信息，使用setTimeout确保DOM已更新
+  updateViewportRect();
+  setTimeout(() => {
+    updateViewportRect();
+  }, 100);
+};
+
+// 添加一个简单的通知提示函数
+const _showNotification = (message, type = 'info') => {
+  // 如果store中有通知函数就使用它
+  if (typeof store._showNotification === 'function') {
+    store._showNotification(message, type);
+  } else {
+    // 否则直接使用控制台
+    console.log(`[${type}] ${message}`);
+  }
+};
+
+// 处理transform变换结束的事件
+const handleTransformEnd = () => {
+  // 在变换结束后再次更新视口，以确保多边形显示正确
+  updateViewportRect();
+  
+  // 强制刷新可见多边形
+  blockBoundariesCache = null;
+  
+  // 在下一帧更新数据
+  nextTick(() => {
+    updateViewportRect();
+  });
+};
 </script>
 
 <style scoped>
@@ -740,6 +823,23 @@ const closeCoordinateView = () => {
 
 :deep(.fullscreen) .coordinate-system-wrapper {
   height: calc(100vh - 80px); /* 适应全屏模式 */
+}
+
+/* 添加平滑过渡效果 */
+.coordinate-system {
+  transition: transform 0.2s cubic-bezier(0.215, 0.610, 0.355, 1.000);
+}
+
+/* 调试信息样式 */
+.debug-info {
+  font-size: 0.75rem;
+  background-color: rgba(200, 200, 200, 0.7);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  z-index: 10;
 }
 
 /* 确保所有样式规则都在这里 */

@@ -1,8 +1,8 @@
 <template>
   <div class="card bg-base-100 shadow-lg p-6 max-w-xl mx-auto my-6">
     <div class="card-body p-0">
-      <h2 class="card-title mb-4">欢迎使用OCR识别工具</h2>
-      <p class="mb-4 text-sm opacity-80">请输入您的Google Cloud Vision API密钥以开始使用</p>
+      <h2 class="card-title mb-4">{{ i18n.t('welcomeToOcr') }}</h2>
+      <p class="mb-4 text-sm opacity-80">{{ i18n.t('enterApiKeyPrompt') }}</p>
       
       <form @submit.prevent="saveKey" class="space-y-4">
         <div style="position: absolute; left: -9999px;" aria-hidden="true">
@@ -12,14 +12,14 @@
         
         <div class="form-control w-full">
           <label for="apiKeyInput" class="label">
-            <span class="label-text">API密钥</span>
+            <span class="label-text">{{ i18n.t('apiKeyLabel') }}</span>
           </label>
           <div class="relative">
             <input
               :type="isPasswordVisible ? 'text' : 'password'"
               id="apiKeyInput"
               v-model="apiKeyLocal"
-              placeholder="输入您的Google Cloud Vision API密钥"
+              :placeholder="i18n.t('apiKeyPlaceholder')"
               autocomplete="current-password"
               class="input input-bordered w-full pr-10" />
             <button 
@@ -37,12 +37,12 @@
             </button>
           </div>
           <label class="label">
-            <span class="label-text-alt text-info">API密钥将安全地保存在您的浏览器中</span>
+            <span class="label-text-alt text-info">{{ i18n.t('apiKeySavedLocally') }}</span>
           </label>
         </div>
         
         <div class="card-actions justify-end mt-4">
-          <button type="submit" class="btn btn-accent">开始使用</button>
+          <button type="submit" class="btn btn-accent">{{ i18n.t('getStarted') }}</button>
         </div>
       </form>
     </div>
@@ -51,6 +51,7 @@
 
 <script setup>
 import { ref, watch } from 'vue';
+import { useI18nStore } from '@/stores/i18nStore';
 
 const props = defineProps({
   initialApiKey: {
@@ -60,6 +61,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['save-api-key']);
+const i18n = useI18nStore();
 
 const apiKeyLocal = ref(props.initialApiKey);
 const isPasswordVisible = ref(false);

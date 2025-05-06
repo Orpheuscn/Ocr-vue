@@ -1,0 +1,294 @@
+import { defineStore } from 'pinia';
+import { ref, computed } from 'vue';
+
+// 翻译数据
+const translations = {
+  zh: {
+    // 页面标题
+    appTitle: 'OCR 文本识别工具',
+    
+    // 按钮和操作
+    settings: '设置',
+    hideSettings: '隐藏',
+    api: 'API',
+    upload: '上传',
+    processing: '处理中...',
+    startOcr: '开始识别',
+    selectFile: '选择文件',
+    dragFileHere: '拖放或点击上传',
+    copy: '复制',
+    copied: '已复制',
+    copyOriginalText: '复制原始文本',
+    copyFilteredText: '复制过滤后文本',
+    or: '或',
+    pressCtrlV: '按',
+    clear: '清除',
+    
+    // 配置和设置
+    apiKeyLabel: 'API 密钥',
+    apiKeyPlaceholder: '在此输入您的 Google Vision API 密钥',
+    saveApiKey: '保存',
+    clearApiKey: '清除',
+    
+    // 结果和信息
+    results: '识别结果',
+    noResults: '尚未识别任何文本。上传图片并点击开始识别。',
+    statistics: '统计',
+    words: '词',
+    characters: '字',
+    textDirection: '文本方向',
+    horizontal: '正常',
+    vertical: '竖排',
+    displayMode: '显示模式',
+    parallel: '原排版',
+    paragraph: '分段',
+    size: '尺寸',
+    language: '语言',
+    undetermined: '未确定',
+    pleaseStartOcr: '请点击"开始识别"',
+    recognizing: '正在识别中...',
+    resultsWillShowHere: '识别结果将显示在此处',
+    
+    // 状态反馈消息
+    processing: '处理中...',
+    loadingFile: '加载文件中...',
+    renderingPdfPage: '渲染 PDF 第 {page} 页...',
+    recognizingText: '正在识别文本...',
+    processingMasks: '正在处理图像遮挡({count}个区域)...',
+    recognitionComplete: '识别完成{lang}',
+    recognitionFailed: '识别失败: {error}',
+    fileLoadFailed: '文件加载失败: {error}',
+    pdfRenderSuccess: 'PDF 第 {page} 页渲染完成',
+    pdfRenderFailed: '渲染 PDF 第 {page} 页失败: {error}',
+    cannotStartOcr: '无法开始识别，请检查文件、API Key 和图像尺寸。',
+    imageSizeNotLoaded: '图像尺寸尚未加载完成，请稍候。',
+    pleaseSetApiKey: '请先设置 API Key。',
+    errorProcessingSymbols: '处理符号数据时出错',
+    
+    // PDF相关
+    pdfPageRendered: 'PDF 第 {page} 页渲染完成',
+    pdfRenderFailed: '渲染 PDF 第 {page} 页失败: {error}',
+    
+    // 文件类型
+    supportedFiles: '支持的文件格式：JPG、PNG、BMP、WEBP、TIFF、PDF',
+    
+    // 坐标视图
+    coordinateView: '坐标视图',
+    cachedPolygons: '缓存多边形',
+    visiblePolygons: '可见多边形',
+    blockLevel: '区块级别',
+    blocks: '区块',
+    paragraphs: '段落',
+    words: '单词',
+    symbols: '字符',
+    showBlocks: '显示区块',
+    hideBlocks: '隐藏区块',
+    exitFullscreen: '退出全屏',
+    fullscreenMode: '全屏模式',
+    zoom: '缩放',
+    textCopied: '文本已复制',
+    copyFailed: '复制失败，请重试',
+    
+    // 遮挡工具
+    exitMaskingMode: '退出遮挡模式',
+    addMaskingArea: '添加遮挡区域',
+    maskingMode: '遮挡模式',
+    dragToSelectMaskingArea: '拖动鼠标选择要遮挡的区域',
+    clearAll: '清除所有',
+    exit: '退出',
+    maskingAreasCount: '遮挡区域数量',
+    visibleMaskingAreasCount: '可见遮挡区域数量',
+    imagePosition: '图像位置',
+    imageSize: '图像尺寸',
+    scale: '比例',
+    
+    // ActionControls组件
+    recognitionDirection: '识别方向',
+    languageHint: '语言提示',
+    searchLanguage: '搜索语言名称或代码...',
+    languageTip: '选择多种语言可提高混合文本识别率',
+    
+    // FilterControls组件
+    textFilter: '文本过滤',
+    characterWidth: '字符宽度',
+    xCoordinate: 'X坐标',
+    yCoordinate: 'Y坐标',
+    notSet: '未设置',
+    
+    // ApiSettings组件
+    welcomeToOcr: '欢迎使用OCR识别工具',
+    enterApiKeyPrompt: '请输入您的Google Cloud Vision API密钥以开始使用',
+    apiKeySavedLocally: 'API密钥将安全地保存在您的浏览器中',
+    getStarted: '开始使用',
+    
+    // 语言切换
+    switchLanguage: '切换语言'
+  },
+  en: {
+    // Page Title
+    appTitle: 'OCR Text Recognition Tool',
+    
+    // Buttons and Actions
+    settings: 'Settings',
+    hideSettings: 'Hide',
+    api: 'API',
+    upload: 'Upload',
+    processing: 'Processing...',
+    startOcr: 'Start OCR',
+    selectFile: 'Select File',
+    dragFileHere: 'Drag & drop or click to upload',
+    copy: 'Copy',
+    copied: 'Copied',
+    copyOriginalText: 'Copy original text',
+    copyFilteredText: 'Copy filtered text',
+    or: 'or',
+    pressCtrlV: 'press',
+    clear: 'Clear',
+    
+    // Configuration and Settings
+    apiKeyLabel: 'API Key',
+    apiKeyPlaceholder: 'Enter your Google Vision API key here',
+    saveApiKey: 'Save',
+    clearApiKey: 'Clear',
+    
+    // Results and Information
+    results: 'Recognition Results',
+    noResults: 'No text has been recognized yet. Upload an image and click Start OCR.',
+    statistics: 'Statistics',
+    words: 'words',
+    characters: 'chars',
+    textDirection: 'Text Direction',
+    horizontal: 'Normal',
+    vertical: 'Vertical',
+    displayMode: 'Display Mode',
+    parallel: 'Original Layout',
+    paragraph: 'Paragraph',
+    size: 'Size',
+    language: 'Language',
+    undetermined: 'Undetermined',
+    pleaseStartOcr: 'Please click "Start OCR"',
+    recognizing: 'Recognizing...',
+    resultsWillShowHere: 'Results will show here',
+    
+    // 状态反馈消息
+    processing: 'Processing...',
+    loadingFile: 'Loading file...',
+    renderingPdfPage: 'Rendering PDF page {page}...',
+    recognizingText: 'Recognizing text...',
+    processingMasks: 'Processing image masks ({count} areas)...',
+    recognitionComplete: 'Recognition complete{lang}',
+    recognitionFailed: 'Recognition failed: {error}',
+    fileLoadFailed: 'File loading failed: {error}',
+    pdfRenderSuccess: 'PDF page {page} rendered successfully',
+    pdfRenderFailed: 'Failed to render PDF page {page}: {error}',
+    cannotStartOcr: 'Cannot start recognition, please check file, API Key and image dimensions.',
+    imageSizeNotLoaded: 'Image dimensions not yet loaded, please wait.',
+    pleaseSetApiKey: 'Please set API Key first.',
+    errorProcessingSymbols: 'Error processing symbol data',
+    
+    // PDF Related
+    pdfPageRendered: 'PDF page {page} rendered successfully',
+    pdfRenderFailed: 'Failed to render PDF page {page}: {error}',
+    
+    // File Types
+    supportedFiles: 'Supported formats: JPG, PNG, BMP, WEBP, TIFF, PDF',
+    
+    // Coordinate View
+    coordinateView: 'Coordinate View',
+    cachedPolygons: 'Cached polygons',
+    visiblePolygons: 'Visible polygons',
+    blockLevel: 'Block level',
+    blocks: 'Blocks',
+    paragraphs: 'Paragraphs',
+    words: 'Words',
+    symbols: 'Symbols',
+    showBlocks: 'Show blocks',
+    hideBlocks: 'Hide blocks',
+    exitFullscreen: 'Exit fullscreen',
+    fullscreenMode: 'Fullscreen mode',
+    zoom: 'Zoom',
+    textCopied: 'Text copied',
+    copyFailed: 'Copy failed, please try again',
+    
+    // Masking Tool
+    exitMaskingMode: 'Exit masking mode',
+    addMaskingArea: 'Add masking area',
+    maskingMode: 'Masking Mode',
+    dragToSelectMaskingArea: 'Drag to select area for masking',
+    clearAll: 'Clear all',
+    exit: 'Exit',
+    maskingAreasCount: 'Masking areas count',
+    visibleMaskingAreasCount: 'Visible masking areas',
+    imagePosition: 'Image position',
+    imageSize: 'Image size',
+    scale: 'Scale',
+    
+    // ActionControls component
+    recognitionDirection: 'Recognition Direction',
+    languageHint: 'Language Hint',
+    searchLanguage: 'Search languages by name or code...',
+    languageTip: 'Selecting multiple languages can improve recognition',
+    
+    // FilterControls component
+    textFilter: 'Text Filter',
+    characterWidth: 'Character Width',
+    xCoordinate: 'X Coordinate',
+    yCoordinate: 'Y Coordinate',
+    notSet: 'Not set',
+    
+    // ApiSettings component
+    welcomeToOcr: 'Welcome to OCR Recognition Tool',
+    enterApiKeyPrompt: 'Please enter your Google Cloud Vision API key to get started',
+    apiKeySavedLocally: 'API key will be securely saved in your browser',
+    getStarted: 'Get Started',
+    
+    // Language Switch
+    switchLanguage: 'Switch Language'
+  }
+};
+
+export const useI18nStore = defineStore('i18n', () => {
+  // 当前语言
+  const currentLang = ref(localStorage.getItem('language') || 'zh');
+  
+  // 设置语言
+  function setLanguage(lang) {
+    if (lang === 'zh' || lang === 'en') {
+      currentLang.value = lang;
+      localStorage.setItem('language', lang);
+    }
+  }
+  
+  // 获取翻译
+  function t(key) {
+    const langData = translations[currentLang.value];
+    return langData[key] || key;
+  }
+  
+  // 格式化翻译，替换占位符
+  function tf(key, params = {}) {
+    let text = t(key);
+    
+    // 替换所有 {paramName} 占位符
+    Object.keys(params).forEach(paramKey => {
+      const regex = new RegExp(`{${paramKey}}`, 'g');
+      text = text.replace(regex, params[paramKey]);
+    });
+    
+    return text;
+  }
+  
+  // 切换语言
+  function toggleLanguage() {
+    const newLang = currentLang.value === 'zh' ? 'en' : 'zh';
+    setLanguage(newLang);
+  }
+  
+  return {
+    currentLang,
+    setLanguage,
+    toggleLanguage,
+    t,
+    tf
+  };
+}); 

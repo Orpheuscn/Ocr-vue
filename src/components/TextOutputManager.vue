@@ -3,12 +3,12 @@
     <div class="card-body p-4 flex flex-col h-full overflow-hidden">
       <!-- 信息标题区 -->
       <div class="flex flex-wrap justify-between text-xs text-opacity-70 mb-2 flex-shrink-0">
-        <div class="badge badge-neutral">尺寸: {{ store.imageDimensions.width || '?' }}×{{ store.imageDimensions.height || '?' }}px</div>
+        <div class="badge badge-neutral">{{ i18n.t('size') }}: {{ store.imageDimensions.width || '?' }}×{{ store.imageDimensions.height || '?' }}px</div>
         <div class="badge badge-neutral">
-          语言: {{ store.detectedLanguageName || '未确定' }} ({{ store.detectedLanguageCode }})
+          {{ i18n.t('language') }}: {{ store.detectedLanguageName || i18n.t('undetermined') }} ({{ store.detectedLanguageCode }})
           <span v-if="isRtlText" class="ml-1">←</span>
         </div>
-        <div class="badge badge-neutral">统计: {{ store.textStats.words }} 词, {{ store.textStats.chars }} 字</div>
+        <div class="badge badge-neutral">{{ i18n.t('statistics') }}: {{ store.textStats.words }} {{ i18n.t('words') }}, {{ store.textStats.chars }} {{ i18n.t('characters') }}</div>
       </div>
 
       <!-- 控制区 -->
@@ -21,7 +21,7 @@
             ]"
             @click="updateDisplayMode('parallel')"
           >
-            原排版
+            {{ i18n.t('parallel') }}
           </button>
           <button 
             :class="[
@@ -30,7 +30,7 @@
             ]"
             @click="updateDisplayMode('paragraph')"
           >
-            分段
+            {{ i18n.t('paragraph') }}
           </button>
         </div>
         
@@ -45,8 +45,8 @@
             {{ copyButtonText }}
           </div>
           <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
-            <li><a @click="copyText('original')">复制原始文本</a></li>
-            <li><a @click="copyText('filtered')">复制过滤后文本</a></li>
+            <li><a @click="copyText('original')">{{ i18n.t('copyOriginalText') }}</a></li>
+            <li><a @click="copyText('filtered')">{{ i18n.t('copyFilteredText') }}</a></li>
           </ul>
         </div>
       </div>
@@ -63,12 +63,12 @@
           <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <p>请点击"开始识别"</p>
+          <p>{{ i18n.t('pleaseStartOcr') }}</p>
         </div>
         
         <div v-else-if="store.isLoading && !store.hasOcrResult" class="flex flex-col items-center justify-center h-full text-center">
           <span class="loading loading-dots loading-md"></span>
-          <p class="mt-2">正在识别中...</p>
+          <p class="mt-2">{{ i18n.t('recognizing') }}</p>
         </div>
         
         <div v-else-if="store.hasOcrResult">
@@ -79,7 +79,7 @@
           <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <p>识别结果将显示在此处</p>
+          <p>{{ i18n.t('resultsWillShowHere') }}</p>
         </div>
       </div>
     </div>
@@ -89,6 +89,7 @@
 <script setup>
 import { computed, ref, watch, onMounted } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
+import { useI18nStore } from '@/stores/i18nStore';
 import { isRtlLanguage } from '@/services/visionApi';
 
 // Import the four specialized text components
@@ -105,6 +106,7 @@ const props = defineProps({
 });
 
 const store = useOcrStore();
+const i18n = useI18nStore();
 const textComponent = ref(null);
 const textManagerRef = ref(null);
 const textContentRef = ref(null); // 添加对文本内容区域的引用
@@ -234,9 +236,9 @@ const generateFilteredText = () => {
 // 复制按钮文本
 const copyButtonText = computed(() => {
   if (copyStatus.value === 'success') {
-    return '已复制';
+    return i18n.t('copied');
   } else {
-    return '复制';
+    return i18n.t('copy');
   }
 });
 
@@ -270,9 +272,15 @@ const copyText = async (type = '') => {
     setTimeout(() => {
       copyStatus.value = 'idle';
     }, 3000);
+    
+    // 显示成功提示
+    store._showNotification(i18n.t('textCopied'), 'success');
   } catch (e) {
     copyStatus.value = 'error';
     console.error('复制失败:', e);
+    
+    // 显示错误提示
+    store._showNotification(i18n.t('copyFailed'), 'error');
     
     // 3秒后重置状态
     setTimeout(() => {

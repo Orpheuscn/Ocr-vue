@@ -1,5 +1,11 @@
 <template>
   <footer class="py-4 text-center text-sm text-base-content opacity-70">
-    版权 &copy; OCR文本识别工具 2025
+    {{ i18n.t('copyright') }} &copy; {{ i18n.t('appTitle') }} 2025
   </footer>
-</template> 
+</template>
+
+<script setup>
+import { useI18nStore } from '@/stores/i18nStore';
+
+const i18n = useI18nStore();
+</script> 

@@ -19,7 +19,7 @@
     >
       <div class="card bg-base-100 shadow-xl w-64 overflow-hidden rounded-xl">
         <div class="card-title p-2 justify-between items-center border-b border-base-300 text-sm">
-          <h3 class="text-base">文本过滤</h3>
+          <h3 class="text-base">{{ i18n.t('textFilter') }}</h3>
           
           <button 
             class="btn btn-xs btn-ghost btn-circle"
@@ -35,7 +35,7 @@
           <div class="flex flex-col gap-3">
             <div class="form-control">
               <label class="label py-0">
-                <span class="label-text text-xs">字符宽度: {{ formatRange(currentFilters.minWidth, currentFilters.maxWidth) }}</span>
+                <span class="label-text text-xs">{{ i18n.t('characterWidth') }}: {{ formatRange(currentFilters.minWidth, currentFilters.maxWidth) }}</span>
               </label>
             <RangeSlider
               :min="bounds.width.min"
@@ -50,7 +50,7 @@
 
             <div class="form-control">
               <label class="label py-0">
-                <span class="label-text text-xs">X坐标: {{ formatRange(currentFilters.minX, currentFilters.maxX) }}</span>
+                <span class="label-text text-xs">{{ i18n.t('xCoordinate') }}: {{ formatRange(currentFilters.minX, currentFilters.maxX) }}</span>
               </label>
              <RangeSlider
               :min="bounds.x.min"
@@ -65,7 +65,7 @@
 
             <div class="form-control">
               <label class="label py-0">
-                <span class="label-text text-xs">Y坐标: {{ formatRange(currentFilters.minY, currentFilters.maxY) }}</span>
+                <span class="label-text text-xs">{{ i18n.t('yCoordinate') }}: {{ formatRange(currentFilters.minY, currentFilters.maxY) }}</span>
               </label>
              <RangeSlider
               :min="bounds.y.min"
@@ -87,6 +87,7 @@
 <script setup>
 import { ref, watch, reactive, onMounted } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
+import { useI18nStore } from '@/stores/i18nStore';
 import RangeSlider from './RangeSlider.vue'; // Import the reusable slider
 
 const props = defineProps({
@@ -112,6 +113,7 @@ const props = defineProps({
 
 const emit = defineEmits(['filters-changed']);
 const store = useOcrStore();
+const i18n = useI18nStore();
 
 // 控制面板显示状态
 const isVisible = ref(false); // 默认隐藏
@@ -178,7 +180,7 @@ const updateFilter = (key, value) => {
 
 // Helper to display range
 const formatRange = (min, max) => {
-    if (min === undefined || max === undefined) return '未设置';
+    if (min === undefined || max === undefined) return i18n.t('notSet');
     return `${Math.round(min)}-${Math.round(max)}`;
 };
 </script>
