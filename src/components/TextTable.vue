@@ -1,7 +1,21 @@
 <template>
   <div class="text-table-container">
-    <!-- 使用pre标签确保保留文本格式，包括空格和换行 -->
-    <pre class="text-table-content">{{ formattedTextTable }}</pre>
+    <table class="notes-style-table">
+      <thead>
+        <tr>
+          <th v-for="(col, colIndex) in tableData.headers" :key="colIndex">
+            {{ col }}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(row, rowIndex) in tableData.rows" :key="rowIndex">
+          <td v-for="(cell, cellIndex) in row" :key="cellIndex">
+            {{ cell }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </template>
 
@@ -18,69 +32,10 @@ const props = defineProps({
 
 const store = useOcrStore();
 
-/**
- * 表格数据结构
- * headers: 表头列数组
- * rows: 表格内容行数组
- */
+// 表格数据结构
 const tableData = ref({
   headers: [],
   rows: []
-});
-
-/**
- * 计算属性：将表格数据格式化为纯文本ASCII表格
- * 生成类似以下格式的表格：
- * +------+------+------+
- * | Col1 | Col2 | Col3 |
- * +------+------+------+
- * | Data | Data | Data |
- * +------+------+------+
- */
-const formattedTextTable = computed(() => {
-  if (!tableData.value.headers.length) return '';
-  
-  const { headers, rows } = tableData.value;
-  
-  // 计算每列的最大宽度
-  const columnWidths = [];
-  
-  // 先检查表头宽度
-  headers.forEach((header, index) => {
-    columnWidths[index] = header.length;
-  });
-  
-  // 再检查每一行数据的宽度
-  rows.forEach(row => {
-    row.forEach((cell, index) => {
-      columnWidths[index] = Math.max(columnWidths[index] || 0, cell.length);
-    });
-  });
-  
-  // 生成表格分隔线
-  const separator = columnWidths.map(width => '-'.repeat(width + 2)).join('+');
-  const borderLine = '+' + separator + '+';
-  
-  // 生成表头行
-  let result = borderLine + '\n';
-  result += '| ' + headers.map((header, index) => 
-    header.padEnd(columnWidths[index], ' ')
-  ).join(' | ') + ' |\n';
-  
-  // 生成表头与数据之间的分隔线
-  result += borderLine + '\n';
-  
-  // 生成数据行
-  rows.forEach(row => {
-    result += '| ' + row.map((cell, index) => 
-      cell.padEnd(columnWidths[index] || 0, ' ')
-    ).join(' | ') + ' |\n';
-  });
-  
-  // 生成表格底部边框
-  result += borderLine;
-  
-  return result;
 });
 
 // 当OCR结果更新时，处理表格数据
@@ -91,12 +46,7 @@ onMounted(() => {
   processTableData();
 });
 
-/**
- * 处理OCR结果，转换为表格格式
- * 1. 根据Y坐标相近的文本元素识别表格行
- * 2. 根据X坐标相近的文本元素识别表格列
- * 3. 将文本按照行列坐标分组到表格单元格中
- */
+// 处理OCR结果，转换为表格格式
 function processTableData() {
   if (!store.filteredSymbolsData.length || !store.fullTextAnnotation) {
     tableData.value = { headers: [], rows: [] };
@@ -209,10 +159,7 @@ function processTableData() {
   };
 }
 
-/**
- * 导出表格为Markdown格式
- * @returns {string} Markdown格式的表格文本
- */
+// 导出表格为Markdown格式
 function getMarkdownTable() {
   if (!tableData.value.headers.length) return '';
   
@@ -242,18 +189,40 @@ defineExpose({
 .text-table-container {
   width: 100%;
   overflow-x: auto;
-  font-family: 'Courier New', monospace;
-  padding: 1rem;
-  background-color: var(--base-100, #fff);
-  border-radius: 0.375rem;
+  padding: 0.5rem;
 }
 
-.text-table-content {
-  white-space: pre;
-  text-align: left;
+.notes-style-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
-  color: var(--base-content, #333);
-  margin: 0;
+  color: #333;
+  margin: 0 auto;
+  background-color: transparent;
+}
+
+.notes-style-table th,
+.notes-style-table td {
+  border: 0.5px solid #d1d1d1;
+  padding: 8px 12px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notes-style-table th {
+  background-color: #f7f7f7;
+  font-weight: 500;
+  color: #333;
+}
+
+.notes-style-table tr {
+  background-color: white;
+}
+
+.notes-style-table tr:nth-child(even) {
+  background-color: #fafafa;
 }
 </style> 
