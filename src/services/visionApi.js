@@ -1,5 +1,6 @@
 // src/services/visionApi.js
 import languageData from '@/assets/languages.json';
+import { useI18nStore } from '@/stores/i18nStore';
 
 const API_URL = 'https://vision.googleapis.com/v1/images:annotate';
 
@@ -76,23 +77,38 @@ const LANGUAGE_MAP = languageData;
 
 // Helper function to get language name
 export function getLanguageName(code) {
-    if (LANGUAGE_MAP[code]) return LANGUAGE_MAP[code];
+    // 获取当前语言环境
+    const i18nStore = useI18nStore();
+    const currentLang = i18nStore.currentLang;
+    
+    if (LANGUAGE_MAP[code]) {
+        // 返回当前语言环境下的语言名称
+        return LANGUAGE_MAP[code][currentLang] || code || (currentLang === 'zh' ? '未知' : 'Unknown');
+    }
+    
     const baseCode = code?.split('-')[0];
-    return LANGUAGE_MAP[baseCode] || code || '未知'; // Fallback
+    return LANGUAGE_MAP[baseCode] ? 
+        LANGUAGE_MAP[baseCode][currentLang] : 
+        (code || (currentLang === 'zh' ? '未知' : 'Unknown')); // Fallback
 }
 
 // 获取所有可用语言的列表，用于多选组件
 export function getAllLanguages() {
     const result = [];
+    const i18nStore = useI18nStore();
+    const currentLang = i18nStore.currentLang;
     
     // 添加所有语言
-    for (const [code, name] of Object.entries(LANGUAGE_MAP)) {
+    for (const [code, names] of Object.entries(LANGUAGE_MAP)) {
         // 排除一些特殊值
         if (code !== 'und' && !code.includes('-')) {
-            result.push({ code, name });
+            result.push({ 
+                code, 
+                name: names[currentLang] || code
+            });
         }
     }
     
-    // 按照语言名称排序
-    return result.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+    // 按照当前语言环境的语言名称排序
+    return result.sort((a, b) => a.name.localeCompare(b.name, currentLang === 'zh' ? 'zh-CN' : 'en'));
 }

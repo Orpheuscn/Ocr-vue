@@ -107,6 +107,7 @@ const translations = {
     languageHint: '语言提示',
     searchLanguage: '搜索语言名称或代码...',
     languageTip: '选择多种语言可提高混合文本识别率',
+    autoDetectLanguage: '自动检测语言',
     
     // FilterControls组件
     textFilter: '文本过滤',
@@ -227,7 +228,8 @@ const translations = {
     recognitionDirection: 'Recognition Direction',
     languageHint: 'Language Hint',
     searchLanguage: 'Search languages by name or code...',
-    languageTip: 'Selecting multiple languages can improve recognition',
+    languageTip: 'Selecting multiple languages can improve mixed text recognition',
+    autoDetectLanguage: 'Auto-detect language',
     
     // FilterControls component
     textFilter: 'Text Filter',
