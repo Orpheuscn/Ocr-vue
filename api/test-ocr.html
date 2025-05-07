@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR API 测试页面</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        input, textarea, button {
+            padding: 8px;
+            font-size: 16px;
+        }
+        button {
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #imagePreview {
+            max-width: 100%;
+            max-height: 300px;
+            margin-top: 10px;
+        }
+        #result {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+    <h1>OCR API 测试页面</h1>
+    <div class="container">
+        <div class="form-group">
+            <label for="apiKey">Google Vision API 密钥</label>
+            <input type="text" id="apiKey" placeholder="输入你的API密钥">
+        </div>
+        
+        <div class="form-group">
+            <label for="imageUpload">选择图像</label>
+            <input type="file" id="imageUpload" accept="image/*">
+            <img id="imagePreview" style="display: none;" alt="图像预览">
+        </div>
+        
+        <div class="form-group">
+            <button id="submitBtn">识别文本</button>
+        </div>
+        
+        <div class="form-group">
+            <h3>结果：</h3>
+            <div id="result">结果将显示在这里...</div>
+        </div>
+    </div>
+    
+    <script>
+        const apiKeyInput = document.getElementById('apiKey');
+        const imageUpload = document.getElementById('imageUpload');
+        const imagePreview = document.getElementById('imagePreview');
+        const submitBtn = document.getElementById('submitBtn');
+        const resultDiv = document.getElementById('result');
+        
+        // 显示图像预览
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    imagePreview.src = event.target.result;
+                    imagePreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // 提交OCR请求
+        submitBtn.addEventListener('click', async function() {
+            const apiKey = apiKeyInput.value.trim();
+            const imageData = imagePreview.src;
+            
+            if (!apiKey) {
+                alert('请输入API密钥');
+                return;
+            }
+            
+            if (!imageData || imageData === '') {
+                alert('请选择图像');
+                return;
+            }
+            
+            resultDiv.textContent = '正在处理中...';
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/ocr/recognize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image: imageData,
+                        apiKey: apiKey,
+                        languageHints: ['zh', 'en'] // 可以添加其他语言提示
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 提取文本
+                    const extractedText = result.data.fullTextAnnotation?.text || '未检测到文本';
+                    resultDiv.textContent = extractedText;
+                    
+                    // 也可以显示完整的API响应
+                    console.log('完整响应:', result.data);
+                } else {
+                    resultDiv.textContent = `错误: ${result.message}`;
+                }
+            } catch (error) {
+                resultDiv.textContent = `请求错误: ${error.message}`;
+                console.error('请求错误:', error);
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html> 

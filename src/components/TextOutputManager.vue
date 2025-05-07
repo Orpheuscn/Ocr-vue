@@ -218,14 +218,24 @@ const getOriginalText = () => {
     return textComponent.value.getMarkdownTable();
   }
   
-  // 根据当前显示模式返回合适的原始文本
-  if (store.textDisplayMode === 'parallel') {
-    // 原排版模式
+  // 根据当前活动组件类型应用对应的格式化策略
+  const componentType = activeTextComponent.value;
+  
+  if (componentType === TextVerticalParallel) {
+    // 垂直平行模式
+    return formatTextAsVerticalParallel(store.rawSymbolsData || []);
+  } 
+  else if (componentType === TextVerticalParagraph) {
+    // 垂直段落模式
+    return formatTextAsVerticalParagraph();
+  }
+  else if (componentType === TextHorizontalParagraph) {
+    // 水平段落模式
+    return formatTextAsHorizontalParagraph();
+  }
+  else {
+    // 水平平行模式 (TextHorizontalParallel)
     return store.fullTextAnnotation?.text || '';
-  } else {
-    // 分段模式，将连续空行合并为一个空行
-    const originalText = store.originalFullText || '';
-    return originalText.replace(/\n+/g, '\n\n').trim();
   }
 };
 
@@ -236,20 +246,328 @@ const getFilteredText = () => {
     return textComponent.value.getMarkdownTable();
   }
 
-  // 从DOM中获取当前显示的文本
-  if (textComponent.value && textComponent.value.$el) {
-    const text = textComponent.value.$el.textContent || '';
-    if (text.trim()) {
-      return text.trim();
-    }
-  }
+  // 根据当前活动组件类型应用对应的格式化策略
+  const componentType = activeTextComponent.value;
   
-  // 如果无法从DOM获取，则使用fallback生成过滤后的文本
-  return generateFilteredText();
+  if (componentType === TextVerticalParallel) {
+    // 垂直平行模式
+    return formatTextAsVerticalParallel(store.filteredSymbolsData.filter(s => s.isFiltered));
+  } 
+  else if (componentType === TextVerticalParagraph) {
+    // 垂直段落模式
+    return formatTextAsVerticalParagraph();
+  }
+  else if (componentType === TextHorizontalParagraph) {
+    // 水平段落模式
+    return formatTextAsHorizontalParagraph();
+  }
+  else {
+    // 水平平行模式 (TextHorizontalParallel)
+    return formatTextAsHorizontalParallel();
+  }
 };
 
-// 生成过滤后的文本（fallback方法）
-const generateFilteredText = () => {
+// 垂直平行模式的格式化函数 - 复制自TextVerticalParallel组件的逻辑
+const formatTextAsVerticalParallel = (symbols) => {
+  if (!symbols || symbols.length === 0) {
+    return '';
+  }
+  
+  // 1. 计算平均字符宽度
+  const getAverageCharWidth = (syms) => {
+    if (!syms || syms.length === 0) return 15; // 默认宽度
+    const validSymbols = syms.filter(s => s.width > 0 && isFinite(s.width));
+    const widthsPerChar = validSymbols
+      .filter(s => s.text?.length > 0)
+      .map(s => s.width / s.text.length);
+    if (widthsPerChar.length > 0) {
+      return widthsPerChar.reduce((a, b) => a + b, 0) / widthsPerChar.length;
+    } else if (validSymbols.length > 0) {
+      return validSymbols.reduce((a,b) => a + b.width, 0) / validSymbols.length;
+    } else {
+      return 15; // 默认值
+    }
+  };
+  
+  const avgWidth = getAverageCharWidth(symbols);
+  const columnThreshold = avgWidth * 0.75;
+  
+  // 2. 初始排序：按X坐标（右到左），次要按Y坐标（上到下）
+  const sortedSymbols = [...symbols].sort((a, b) => {
+    const colDiff = Math.abs(a.midX - b.midX);
+    if (colDiff > columnThreshold) {
+      return b.midX - a.midX; // 从右到左
+    }
+    return a.midY - b.midY; // 同一列内从上到下
+  });
+  
+  // 3. 分列：根据X坐标将字符分组
+  const columns = [];
+  let currentColumn = [];
+  
+  if (sortedSymbols.length > 0) {
+    currentColumn.push(sortedSymbols[0]);
+    let lastMidX = sortedSymbols[0].midX;
+    
+    for (let i = 1; i < sortedSymbols.length; i++) {
+      const sym = sortedSymbols[i];
+      
+      if (Math.abs(sym.midX - lastMidX) < columnThreshold) {
+        currentColumn.push(sym);
+        // 更新参考点（使用平均值）
+        lastMidX = currentColumn.reduce((sum, s) => sum + s.midX, 0) / currentColumn.length;
+      } else {
+        // 开始新列
+        currentColumn.sort((a, b) => a.midY - b.midY);
+        columns.push(currentColumn);
+        currentColumn = [sym];
+        lastMidX = sym.midX;
+      }
+    }
+    // 处理最后一列
+    currentColumn.sort((a, b) => a.midY - b.midY);
+    columns.push(currentColumn);
+  }
+  
+  // 4. 按列的X坐标排序（右到左）
+  columns.sort((a, b) => {
+    const avgXa = a.reduce((s, c) => s + c.midX, 0) / a.length;
+    const avgXb = b.reduce((s, c) => s + c.midX, 0) / b.length;
+    return avgXb - avgXa;
+  });
+  
+  // 5. 拼接结果：每列一行，列间用换行符连接
+  const resultText = columns.map(col => col.map(s => s.text).join('')).join('\n');
+  return resultText.length > 0 ? resultText : '';
+};
+
+// 垂直段落模式的格式化函数 - 复制自TextVerticalParagraph组件的逻辑
+const formatTextAsVerticalParagraph = () => {
+  if (!store.fullTextAnnotation?.pages || !store.filteredSymbolsData) {
+    return '';
+  }
+
+  // 辅助函数：计算平均字符宽度
+  const getAverageCharWidth = (symbols) => {
+    if (!symbols || symbols.length === 0) return 15;
+    const validSymbols = symbols.filter(s => s.width > 0 && isFinite(s.width));
+    const widthsPerChar = validSymbols
+      .filter(s => s.text?.length > 0)
+      .map(s => s.width / s.text.length);
+    if (widthsPerChar.length > 0) {
+      return widthsPerChar.reduce((a, b) => a + b, 0) / widthsPerChar.length;
+    } else if (validSymbols.length > 0) {
+      return validSymbols.reduce((a,b) => a + b.width, 0) / validSymbols.length;
+    } else {
+      return 15;
+    }
+  };
+
+  const paragraphTextArray = []; // 存储每个段落的文本和位置
+  
+  // 1. 遍历原始的段落结构
+  store.fullTextAnnotation.pages.forEach(page => {
+    page.blocks?.forEach(block => {
+      block.paragraphs?.forEach(paragraph => {
+        const symbolsInParagraph = [];
+        let paragraphHasFilteredContent = false;
+        
+        // 获取段落左上角x坐标（用于段落排序）
+        let paraX = 0;
+        if (paragraph.boundingBox?.vertices?.length) {
+          paraX = Math.min(...paragraph.boundingBox.vertices.map(v => v?.x ?? 0));
+        }
+        
+        // 收集段落内所有通过过滤的符号并清理换行符
+        paragraph.words?.forEach(word => {
+          word.symbols?.forEach(symbol => {
+            const symbolData = store.filteredSymbolsData.find(fd =>
+              fd.originalIndex !== undefined &&
+              fd.text === symbol.text &&
+              Math.abs(fd.x - (symbol.boundingBox?.vertices?.[0]?.x ?? -1)) < 2 &&
+              Math.abs(fd.y - (symbol.boundingBox?.vertices?.[0]?.y ?? -1)) < 2
+            );
+            
+            if (symbolData?.isFiltered) {
+              // 只清理段落内的换行符
+              const cleanedSymbol = {
+                ...symbolData,
+                text: (symbolData.text || '').replace(/[\r\n]/g, '')
+              };
+              symbolsInParagraph.push(cleanedSymbol);
+              paragraphHasFilteredContent = true;
+            }
+          });
+        });
+        
+        if (paragraphHasFilteredContent && symbolsInParagraph.length > 0) {
+          // 使用与generateVerticalParallelText相同的列分割逻辑
+          const avgWidth = getAverageCharWidth(symbolsInParagraph);
+          const columnThreshold = avgWidth * 0.75;
+          
+          // 排序：按X坐标（右到左），次要按Y坐标（上到下）
+          symbolsInParagraph.sort((a, b) => {
+            const colDiff = Math.abs(a.midX - b.midX);
+            if (colDiff > columnThreshold) {
+              return b.midX - a.midX;
+            }
+            return a.midY - b.midY;
+          });
+          
+          // 分列
+          const columns = [];
+          let currentColumn = [];
+          
+          if (symbolsInParagraph.length > 0) {
+            currentColumn.push(symbolsInParagraph[0]);
+            let lastMidX = symbolsInParagraph[0].midX;
+            
+            for (let i = 1; i < symbolsInParagraph.length; i++) {
+              const sym = symbolsInParagraph[i];
+              
+              if (Math.abs(sym.midX - lastMidX) < columnThreshold) {
+                currentColumn.push(sym);
+                lastMidX = currentColumn.reduce((sum, s) => sum + s.midX, 0) / currentColumn.length;
+              } else {
+                currentColumn.sort((a, b) => a.midY - b.midY);
+                columns.push(currentColumn);
+                currentColumn = [sym];
+                lastMidX = sym.midX;
+              }
+            }
+            // 处理最后一列
+            currentColumn.sort((a, b) => a.midY - b.midY);
+            columns.push(currentColumn);
+          }
+          
+          // 按列的X坐标排序（右到左）
+          columns.sort((a, b) => {
+            const avgXa = a.reduce((s, c) => s + c.midX, 0) / a.length;
+            const avgXb = b.reduce((s, c) => s + c.midX, 0) / b.length;
+            return avgXb - avgXa;
+          });
+          
+          // 拼接结果，列之间不用空格分隔
+          const paragraphText = columns.map(col => 
+            col.map(s => s.text).join('')
+          ).join('');
+          
+          paragraphTextArray.push({ text: paragraphText, paraX });
+        }
+      });
+    });
+  });
+  
+  if (paragraphTextArray.length === 0) {
+    return '';
+  }
+  
+  // 2. 段落排序：按x坐标从大到小
+  paragraphTextArray.sort((a, b) => b.paraX - a.paraX);
+  
+  // 3. 拼接结果，段落之间用双换行符连接
+  const resultText = paragraphTextArray
+    .map(pd => pd.text)
+    .join('\n\n');
+  
+  return resultText.length > 0 ? resultText : '';
+};
+
+// 水平段落模式的格式化函数 - 复制自TextHorizontalParagraph组件的逻辑
+const formatTextAsHorizontalParagraph = () => {
+  if (!store.fullTextAnnotation?.pages || !store.filteredSymbolsData) {
+    return '';
+  }
+
+  const paragraphsOutput = [];
+  const noSpaceLanguages = ['zh', 'ja', 'ko', 'th', 'lo', 'my']; // 不使用空格的语言
+
+  store.fullTextAnnotation.pages.forEach(page => {
+    page.blocks?.forEach(block => {
+      block.paragraphs?.forEach(paragraph => {
+        let currentParagraphText = '';
+        let paragraphHasFilteredContent = false;
+        let paragraphMinY = Infinity;
+
+        // 尝试获取段落边界框的Y坐标用于排序
+        if (paragraph.boundingBox?.vertices) {
+          paragraphMinY = Math.min(...paragraph.boundingBox.vertices.map(v => v?.y ?? Infinity));
+        }
+
+        paragraph.words?.forEach(word => {
+          word.symbols?.forEach(symbol => {
+            // 在filteredSymbolsData中查找对应的符号
+            const symbolData = store.filteredSymbolsData.find(fd =>
+              fd.text === symbol.text &&
+              Math.abs(fd.midX - (symbol.boundingBox ? (Math.min(...symbol.boundingBox.vertices.map(v => v?.x ?? Infinity)) + Math.max(...symbol.boundingBox.vertices.map(v => v?.x ?? -Infinity))) / 2 : -Infinity)) < 5 && 
+              Math.abs(fd.midY - (symbol.boundingBox ? (Math.min(...symbol.boundingBox.vertices.map(v => v?.y ?? Infinity)) + Math.max(...symbol.boundingBox.vertices.map(v => v?.y ?? -Infinity))) / 2 : -Infinity)) < 5
+            );
+
+            if (symbolData?.isFiltered) { // 检查符号是否通过过滤
+              currentParagraphText += (noSpaceLanguages.includes(store.detectedLanguageCode) && symbol.text === ',') 
+                ? '，' 
+                : symbol.text;
+              paragraphHasFilteredContent = true;
+              const breakType = symbolData.detectedBreak;
+              // 如果需要添加空格，并且语言使用空格
+              if ((breakType === 'SPACE' || breakType === 'EOL_SURE_SPACE') && !noSpaceLanguages.includes(store.detectedLanguageCode)) {
+                currentParagraphText += ' ';
+              }
+            }
+          }); // 符号循环结束
+        }); // 单词循环结束
+
+        if (paragraphHasFilteredContent) {
+          let cleanedText = currentParagraphText.replace(/\s+/g, ' ').trim(); // 清理空格
+          if (cleanedText.length > 0) {
+            paragraphsOutput.push({ text: cleanedText, y: isFinite(paragraphMinY) ? paragraphMinY : Infinity });
+          }
+        }
+      }); // 段落循环结束
+    }); // 块循环结束
+  }); // 页面循环结束
+
+  if (paragraphsOutput.length === 0) {
+    return '';
+  }
+
+  // 按垂直位置排序段落（从上到下）
+  paragraphsOutput.sort((a, b) => a.y - b.y);
+
+  // 用双换行符连接段落
+  return paragraphsOutput.map(p => p.text).join('\n\n');
+};
+
+// 水平平行模式的格式化函数 - 复制自TextHorizontalParallel组件的逻辑
+const formatTextAsHorizontalParallel = () => {
+  // 检查是否使用默认过滤器设置
+  const checkIfDefaultFilter = () => {
+    const { filterSettings, filterBounds } = store;
+    
+    if (!filterSettings || !filterBounds) return true;
+    
+    // 检查当前过滤器是否是最大范围（即全部显示）
+    return (
+      filterSettings.minWidth === filterBounds.width?.min &&
+      filterSettings.maxWidth === filterBounds.width?.max &&
+      filterSettings.minX === filterBounds.x?.min &&
+      filterSettings.maxX === filterBounds.x?.max &&
+      filterSettings.minY === filterBounds.y?.min &&
+      filterSettings.maxY === filterBounds.y?.max
+    );
+  };
+  
+  // 从store中获取原始文本
+  const rawText = store.fullTextAnnotation?.text || '';
+  
+  // 如果存在文本并且过滤器设置为默认值，直接返回完整文本
+  const isDefaultFilter = checkIfDefaultFilter();
+  
+  if (rawText && isDefaultFilter) {
+    return rawText;
+  }
+  
+  // 否则使用过滤后的文本 - 类似generateFilteredText函数
   const symbolsToProcess = store.filteredSymbolsData;
   if (!symbolsToProcess || symbolsToProcess.length === 0) {
     return '';
