@@ -203,12 +203,14 @@ function adjustImageHeight() {
     const imageCanvasElement = document.querySelector('.card');
     if (imageCanvasElement) {
       // 使用容器宽度和图像比例计算合适的高度
-      const containerWidth = imageCanvasElement.clientWidth;
+      const containerWidth = imageCanvasElement.clientWidth - 32; // 减去左右padding
       const aspectRatio = store.imageDimensions.height / store.imageDimensions.width;
-      const calculatedHeight = containerWidth * aspectRatio;
+      const calculatedContentHeight = containerWidth * aspectRatio;
       
-      // 确保高度适中
-      const finalHeight = Math.max(300, Math.min(window.innerHeight * 0.8, calculatedHeight));
+      // 确保高度适中，并考虑padding
+      const paddingOffset = 32; // 上下各16px的padding
+      const finalContentHeight = Math.max(300, Math.min(window.innerHeight * 0.8, calculatedContentHeight));
+      const finalHeight = finalContentHeight + paddingOffset;
       
       // 更新高度
       updateImageContainerHeight(finalHeight);
@@ -254,12 +256,29 @@ function syncComponentHeights() {
     
     debugLog(`目标高度: ${targetHeight}px (视窗高度: ${viewportHeight}px, 最小期望: ${minDesiredHeight}px)`);
     
-    // 同步容器和卡片高度
+    // 容器高度保持不变
     textContainer.style.height = `${targetHeight}px`;
     imageContainer.style.height = `${targetHeight}px`;
     
-    textCard.style.height = `${targetHeight}px`;
-    imageCard.style.height = `${targetHeight}px`;
+    // 为卡片高度留出padding空间
+    const paddingOffset = 32; // 上下各16px的padding
+    const cardHeight = targetHeight;
+    
+    // 设置卡片高度
+    textCard.style.height = `${cardHeight}px`;
+    imageCard.style.height = `${cardHeight}px`;
+    
+    // 设置卡片内部内容区域的高度
+    const imageCardBody = imageCard.querySelector('.card-body');
+    const textCardBody = textCard.querySelector('.card-body');
+    
+    if (imageCardBody) {
+      imageCardBody.style.height = `${cardHeight - paddingOffset}px`;
+    }
+    
+    if (textCardBody) {
+      textCardBody.style.height = `${cardHeight - paddingOffset}px`;
+    }
     
     // 更新存储的高度
     imageContainerHeight.value = targetHeight;
@@ -315,10 +334,14 @@ const handleDimensionsKnown = ({ width, height }) => {
         // 使用容器宽度和图像比例计算高度
         const containerWidth = imageContainer.clientWidth;
         const aspectRatio = height / width;
-        const calculatedHeight = containerWidth * aspectRatio;
+        const calculatedContentHeight = containerWidth * aspectRatio;
+        
+        // 添加上下padding空间
+        const paddingOffset = 32; // 上下各16px
+        const finalHeight = calculatedContentHeight + paddingOffset;
         
         // 更新高度，使用合理的限制
-        updateImageContainerHeight(calculatedHeight);
+        updateImageContainerHeight(finalHeight);
         
         // 强制同步文本区域的高度
         syncComponentHeights();
@@ -383,11 +406,16 @@ onMounted(() => {
         if (imageCanvasRef.value) {
           const imageContainer = imageCanvasRef.value.querySelector('.card-body');
           if (imageContainer) {
+            // 使用容器宽度和图像比例计算高度
             const containerWidth = imageContainer.clientWidth;
             const aspectRatio = height / width;
-            const calculatedHeight = containerWidth * aspectRatio;
+            const calculatedContentHeight = containerWidth * aspectRatio;
             
-            updateImageContainerHeight(calculatedHeight);
+            // 添加padding空间
+            const paddingOffset = 32; // 上下各16px
+            const finalHeight = calculatedContentHeight + paddingOffset;
+            
+            updateImageContainerHeight(finalHeight);
           }
         }
       }

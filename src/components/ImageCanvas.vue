@@ -102,7 +102,10 @@ const calculateContainerHeight = () => {
   const minHeight = Math.max(500, viewportHeight * 0.7); // 最小不低于500px且至少有视窗70%高
   
   // 最终高度：根据原始比例，但在合理范围内
-  calculatedHeight.value = Math.max(minHeight, Math.min(maxHeight, idealHeight));
+  let calculatedContentHeight = Math.max(minHeight, Math.min(maxHeight, idealHeight));
+  
+  // 加上padding的高度(上下各16px，总共32px)
+  calculatedHeight.value = calculatedContentHeight + 32;
   
   // 调整容器高度
   containerRef.value.style.height = `${calculatedHeight.value}px`;
@@ -124,9 +127,10 @@ const imageStyle = computed(() => {
   
   return {
     maxWidth: '100%',
-    maxHeight: `${calculatedHeight.value}px`,
+    maxHeight: `${calculatedHeight.value - 32}px`, // 减去padding空间(上下各16px)
     width: 'auto',
-    height: 'auto'
+    height: 'auto',
+    margin: '8px 0' // 添加上下边距确保不贴边
   };
 });
 
