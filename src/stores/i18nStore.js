@@ -25,6 +25,8 @@ const translations = {
     pressCtrlV: '按',
     clear: '清除',
     table: '表格',
+    planA: '方案1',
+    planB: '方案2',
     
     // 配置和设置
     apiKeyLabel: 'API 密钥',
@@ -150,6 +152,8 @@ const translations = {
     pressCtrlV: 'press',
     clear: 'Clear',
     table: 'Table',
+    planA: 'PlanA',
+    planB: 'PlanB',
     
     // Configuration and Settings
     apiKeyLabel: 'API Key',

@@ -123,6 +123,7 @@ export const useOcrStore = defineStore('ocr', () => {
   const initialTextDirection = ref('horizontal'); // 'horizontal' 或 'vertical'
   const textDisplayMode = ref('parallel'); // 'parallel' 或 'paragraph'
   const recognitionMode = ref('text'); // 'text' 或 'table'
+  const currentTableComponent = ref('planA'); // 'planA' 或 'planB'，用于切换表格处理组件
 
   // 遮挡区域 - 添加到store中
   const maskedAreas = ref([]);
@@ -191,6 +192,8 @@ export const useOcrStore = defineStore('ocr', () => {
       tableSettings.value = { columns: 0, rows: 0 };
       // 重置识别模式
       recognitionMode.value = 'text';
+      // 重置表格组件为方案1
+      currentTableComponent.value = 'planA';
       // 可以选择是否重置 API 设置显示状态
       // showApiSettings.value = !hasApiKey.value;
       // 重置过滤器到最大范围（如果需要）
@@ -825,13 +828,18 @@ export const useOcrStore = defineStore('ocr', () => {
     console.log("表格设置已更新:", tableSettings.value);
   }
 
+  // 设置当前使用的表格组件
+  function setTableComponent(component) {
+    currentTableComponent.value = component;
+  }
+
   // --- 返回 Store 的 state, getters, actions ---
   return {
     // State
-    apiKey, showApiSettings, currentFiles, filePreviewUrl, isPdfFile, pdfDataArray, currentPage, totalPages, selectedLanguages, isLoading, loadingMessage, ocrRawResult, fullTextAnnotation, originalFullText, imageDimensions, detectedLanguageCode, detectedLanguageName, filterSettings, filterBounds, filteredSymbolsData, initialTextDirection, textDisplayMode, notification, isDimensionsKnown, maskedAreas, recognitionMode, tableSettings,
+    apiKey, showApiSettings, currentFiles, filePreviewUrl, isPdfFile, pdfDataArray, currentPage, totalPages, selectedLanguages, isLoading, loadingMessage, ocrRawResult, fullTextAnnotation, originalFullText, imageDimensions, detectedLanguageCode, detectedLanguageName, filterSettings, filterBounds, filteredSymbolsData, initialTextDirection, textDisplayMode, notification, isDimensionsKnown, maskedAreas, recognitionMode, tableSettings, currentTableComponent,
     // Getters
     hasApiKey, canStartOcr, textStats, hasOcrResult,
     // Actions
-    setApiKey, toggleApiSettings, resetUIState, loadFiles, changePdfPage, setImageDimension, startOcrProcess, applyFilters, setTextDisplayMode, _showNotification, updateSelectedLanguages, initSelectedLanguages, applyMasksToImage, setRecognitionMode, updateTableSettings,
+    setApiKey, toggleApiSettings, resetUIState, loadFiles, changePdfPage, setImageDimension, startOcrProcess, applyFilters, setTextDisplayMode, _showNotification, updateSelectedLanguages, initSelectedLanguages, applyMasksToImage, setRecognitionMode, updateTableSettings, setTableComponent,
   };
 });

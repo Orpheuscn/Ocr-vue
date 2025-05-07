@@ -35,8 +35,25 @@
         </div>
         
         <!-- 表格模式标识 -->
-        <div v-if="store.recognitionMode === 'table'" class="badge badge-outline">
-          {{ i18n.t('table') }}
+        <div v-if="store.recognitionMode === 'table'" class="btn-group">
+          <button 
+            :class="[
+              'btn btn-xs',
+              activeTextComponent === TextTable ? 'btn-accent' : 'btn-outline'
+            ]"
+            @click="setTableComponent('planA')"
+          >
+            {{ i18n.t('planA') }}
+          </button>
+          <button 
+            :class="[
+              'btn btn-xs',
+              activeTextComponent === TextTablePlanB ? 'btn-accent' : 'btn-outline'
+            ]"
+            @click="setTableComponent('planB')"
+          >
+            {{ i18n.t('planB') }}
+          </button>
         </div>
         
         <!-- 复制按钮和下拉菜单 -->
@@ -106,6 +123,7 @@ import TextHorizontalParagraph from './TextHorizontalParagraph.vue';
 import TextVerticalParallel from './TextVerticalParallel.vue';
 import TextVerticalParagraph from './TextVerticalParagraph.vue';
 import TextTable from './TextTable.vue'; // 导入表格组件
+import TextTablePlanB from './TextTablePlanB.vue'; // 导入方案B表格组件
 
 const props = defineProps({
   containerHeight: {
@@ -193,7 +211,7 @@ onMounted(() => {
 const activeTextComponent = computed(() => {
   // 首先检查是否是表格模式
   if (store.recognitionMode === 'table') {
-    return TextTable;
+    return store.currentTableComponent === 'planB' ? TextTablePlanB : TextTable;
   }
 
   // 如果不是表格模式，则按原逻辑处理文本方向和显示模式
@@ -706,6 +724,10 @@ const copyText = async (type = '') => {
       copyStatus.value = 'idle';
     }, 3000);
   }
+};
+
+const setTableComponent = (plan) => {
+  store.setTableComponent(plan);
 };
 </script>
 
