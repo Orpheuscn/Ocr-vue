@@ -50,9 +50,28 @@ const paragraphText = computed(() => {
                       console.log("Paragraph: Found symbolData:", symbolData ? { text: symbolData.text, isFiltered: symbolData.isFiltered, originalIndex: symbolData.originalIndex } : undefined);
 
                       if (symbolData?.isFiltered) { // Check if the symbol passed the filters
-                           currentParagraphText += (noSpaceLanguages.includes(store.detectedLanguageCode) && symbol.text === ',') 
-                              ? '，' 
-                              : symbol.text;
+                           // Handle CJK punctuation replacements
+                           if (noSpaceLanguages.includes(store.detectedLanguageCode)) {
+                               // Replace western punctuation with CJK equivalents
+                               if (symbol.text === ',') {
+                                   currentParagraphText += '，'; // Replace comma
+                               } else if (symbol.text === '-') {
+                                   currentParagraphText += '——'; // Replace hyphen with em dash
+                               } else if (symbol.text === ';') {
+                                   currentParagraphText += '；'; // Replace semicolon
+                               } else if (symbol.text === '!') {
+                                   currentParagraphText += '！'; // Replace exclamation mark
+                               } else if (symbol.text === '?') {
+                                   currentParagraphText += '？'; // Replace question mark
+                               } else if (symbol.text === ':') {
+                                   currentParagraphText += '：'; // Replace colon
+                               } else {
+                                   currentParagraphText += symbol.text;
+                               }
+                           } else {
+                               currentParagraphText += symbol.text;
+                           }
+                           
                            paragraphHasFilteredContent = true;
                            const breakType = symbolData.detectedBreak;
                            // Add space if needed and language uses spaces

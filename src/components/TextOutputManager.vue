@@ -223,7 +223,8 @@ const getOriginalText = () => {
   
   if (componentType === TextVerticalParallel) {
     // 垂直平行模式
-    return formatTextAsVerticalParallel(store.rawSymbolsData || []);
+    // 使用filteredSymbolsData而不是rawSymbolsData
+    return formatTextAsVerticalParallel(store.filteredSymbolsData?.filter(s => s.isFiltered) || []);
   } 
   else if (componentType === TextVerticalParagraph) {
     // 垂直段落模式
@@ -589,6 +590,23 @@ const formatTextAsHorizontalParallel = () => {
   return text.replace(/ +/g, ' ').replace(/\n+/g, '\n').trim();
 };
 
+// 添加一个通用的CJK标点符号替换函数
+const replaceCJKPunctuation = (text) => {
+  if (!text || !store.detectedLanguageCode) return text;
+  
+  const noSpaceLanguages = ['zh', 'ja', 'ko', 'th', 'lo', 'my'];
+  if (!noSpaceLanguages.includes(store.detectedLanguageCode)) return text;
+  
+  // 使用正则表达式替换所有标点符号
+  return text
+    .replace(/,/g, '，')  // 替换逗号
+    .replace(/-/g, '——') // 替换连字符为破折号
+    .replace(/;/g, '；')  // 替换分号
+    .replace(/!/g, '！')  // 替换感叹号
+    .replace(/\?/g, '？') // 替换问号
+    .replace(/:/g, '：');  // 替换冒号
+};
+
 // 复制按钮文本
 const copyButtonText = computed(() => {
   if (copyStatus.value === 'success') {
@@ -606,12 +624,12 @@ const copyButtonText = computed(() => {
 const copyText = async (type = '') => {
   if (!store.hasOcrResult) return;
   
-  // 如果没有指定类型，使用上次的类型
-  if (!type) {
-    type = lastCopyType.value;
-  } else {
-    // 保存当前使用的类型
+  // 保存当前使用的类型（如果指定了类型）
+  if (type) {
     lastCopyType.value = type;
+  } else {
+    // 如果没有指定类型，使用上次的类型
+    type = lastCopyType.value;
   }
   
   // 根据类型获取要复制的文本
@@ -630,6 +648,9 @@ const copyText = async (type = '') => {
   }
   
   if (!textToCopy) return;
+  
+  // 应用标点符号替换
+  textToCopy = replaceCJKPunctuation(textToCopy);
   
   try {
     await navigator.clipboard.writeText(textToCopy);

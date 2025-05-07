@@ -59,11 +59,40 @@ const verticalParagraphText = computed(() => {
             
             if (symbolData?.isFiltered) {
               // 只清理段落内的换行符
-              const cleanedSymbol = {
+              const cleanedText = (symbolData.text || '').replace(/[\r\n]/g, '');
+              
+              // 使用与 TextHorizontalParagraph 相同的逻辑处理 CJK 标点符号
+              const noSpaceLanguages = ['zh', 'ja', 'ko', 'th', 'lo', 'my']; // 不使用空格的语言
+              let processedText = '';
+              
+              if (noSpaceLanguages.includes(store.detectedLanguageCode)) {
+                // 替换西方标点为 CJK 标点
+                if (cleanedText === ',') {
+                  processedText = '，'; // 替换逗号
+                } else if (cleanedText === '-') {
+                  processedText = '——'; // 替换连字符为破折号
+                } else if (cleanedText === ';') {
+                  processedText = '；'; // 替换分号
+                } else if (cleanedText === '!') {
+                  processedText = '！'; // 替换感叹号
+                } else if (cleanedText === '?') {
+                  processedText = '？'; // 替换问号
+                } else if (cleanedText === ':') {
+                  processedText = '：'; // 替换冒号
+                } else {
+                  processedText = cleanedText;
+                }
+              } else {
+                processedText = cleanedText;
+              }
+              
+              // 创建带处理后文本的符号对象
+              const processedSymbol = {
                 ...symbolData,
-                text: (symbolData.text || '').replace(/[\r\n]/g, '')
+                text: processedText
               };
-              symbolsInParagraph.push(cleanedSymbol);
+              
+              symbolsInParagraph.push(processedSymbol);
               paragraphHasFilteredContent = true;
             }
           });
