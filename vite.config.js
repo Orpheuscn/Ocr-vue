@@ -61,7 +61,7 @@ export default defineConfig({
         skipWaiting: true
       },
       strategies: 'generateSW',
-      filename: 'sw.js?v=' + Date.now(),
+      filename: 'sw.js',
       devOptions: {
         enabled: true,
         type: 'module'
