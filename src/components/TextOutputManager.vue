@@ -482,6 +482,7 @@ const formatTextAsHorizontalParagraph = () => {
 
   const paragraphsOutput = [];
   const noSpaceLanguages = ['zh', 'ja', 'ko', 'th', 'lo', 'my']; // 不使用空格的语言
+  const isCJKLanguage = noSpaceLanguages.includes(store.detectedLanguageCode);
 
   store.fullTextAnnotation.pages.forEach(page => {
     page.blocks?.forEach(block => {
@@ -505,14 +506,44 @@ const formatTextAsHorizontalParagraph = () => {
             );
 
             if (symbolData?.isFiltered) { // 检查符号是否通过过滤
-              currentParagraphText += (noSpaceLanguages.includes(store.detectedLanguageCode) && symbol.text === ',') 
-                ? '，' 
-                : symbol.text;
-              paragraphHasFilteredContent = true;
               const breakType = symbolData.detectedBreak;
-              // 如果需要添加空格，并且语言使用空格
-              if ((breakType === 'SPACE' || breakType === 'EOL_SURE_SPACE') && !noSpaceLanguages.includes(store.detectedLanguageCode)) {
-                currentParagraphText += ' ';
+              
+              // 处理非CJK语言中的连字符 (HYPHEN或EOL_SURE_SPACE)
+              // 如果不是CJK语言，且当前符号是连字符，且有HYPHEN或EOL_SURE_SPACE断行，则跳过
+              if (!isCJKLanguage && 
+                  symbol.text === '-' && 
+                  (breakType === 'HYPHEN' || breakType === 'EOL_SURE_SPACE')) {
+                  // 跳过连字符和空格的添加
+                  paragraphHasFilteredContent = true; // 仍然标记段落包含过滤内容
+              } else {
+                  // 正常处理符号文本
+                  if (isCJKLanguage) {
+                      // 替换西文标点为中文标点
+                      if (symbol.text === ',') {
+                          currentParagraphText += '，'; // 替换逗号
+                      } else if (symbol.text === '-') {
+                          currentParagraphText += '——'; // 替换连字符为破折号
+                      } else if (symbol.text === ';') {
+                          currentParagraphText += '；'; // 替换分号
+                      } else if (symbol.text === '!') {
+                          currentParagraphText += '！'; // 替换感叹号
+                      } else if (symbol.text === '?') {
+                          currentParagraphText += '？'; // 替换问号
+                      } else if (symbol.text === ':') {
+                          currentParagraphText += '：'; // 替换冒号
+                      } else {
+                          currentParagraphText += symbol.text;
+                      }
+                  } else {
+                      currentParagraphText += symbol.text;
+                  }
+                  
+                  paragraphHasFilteredContent = true;
+                  
+                  // 添加空格（如果需要且语言使用空格）
+                  if ((breakType === 'SPACE' || breakType === 'EOL_SURE_SPACE') && !isCJKLanguage) {
+                      currentParagraphText += ' ';
+                  }
               }
             }
           }); // 符号循环结束

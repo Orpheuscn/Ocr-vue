@@ -25,6 +25,7 @@ const paragraphText = computed(() => {
 
   const paragraphsOutput = [];
   const noSpaceLanguages = ['zh', 'ja', 'ko', 'th', 'lo', 'my']; // Languages that don't typically use spaces
+  const isCJKLanguage = noSpaceLanguages.includes(store.detectedLanguageCode);
 
   store.fullTextAnnotation.pages.forEach(page => {
       page.blocks?.forEach(block => {
@@ -50,39 +51,47 @@ const paragraphText = computed(() => {
                       console.log("Paragraph: Found symbolData:", symbolData ? { text: symbolData.text, isFiltered: symbolData.isFiltered, originalIndex: symbolData.originalIndex } : undefined);
 
                       if (symbolData?.isFiltered) { // Check if the symbol passed the filters
-                           // Handle CJK punctuation replacements
-                           if (noSpaceLanguages.includes(store.detectedLanguageCode)) {
-                               // Replace western punctuation with CJK equivalents
-                               if (symbol.text === ',') {
-                                   currentParagraphText += '，'; // Replace comma
-                               } else if (symbol.text === '-') {
-                                   currentParagraphText += '——'; // Replace hyphen with em dash
-                               } else if (symbol.text === ';') {
-                                   currentParagraphText += '；'; // Replace semicolon
-                               } else if (symbol.text === '!') {
-                                   currentParagraphText += '！'; // Replace exclamation mark
-                               } else if (symbol.text === '?') {
-                                   currentParagraphText += '？'; // Replace question mark
-                               } else if (symbol.text === ':') {
-                                   currentParagraphText += '：'; // Replace colon
+                           const breakType = symbolData.detectedBreak;
+                          
+                           // 处理非CJK语言中的连字符 (HYPHEN或EOL_SURE_SPACE)
+                           // 如果不是CJK语言，且当前符号是连字符，且有HYPHEN或EOL_SURE_SPACE断行，则跳过
+                           if (!isCJKLanguage && 
+                               symbol.text === '-' && 
+                               (breakType === 'HYPHEN' || breakType === 'EOL_SURE_SPACE')) {
+                               // 跳过连字符和空格的添加
+                               paragraphHasFilteredContent = true; // 仍然标记段落包含过滤内容
+                           } else {
+                               // 正常处理符号文本
+                               if (isCJKLanguage) {
+                                   // Replace western punctuation with CJK equivalents
+                                   if (symbol.text === ',') {
+                                       currentParagraphText += '，'; // Replace comma
+                                   } else if (symbol.text === '-') {
+                                       currentParagraphText += '——'; // Replace hyphen with em dash
+                                   } else if (symbol.text === ';') {
+                                       currentParagraphText += '；'; // Replace semicolon
+                                   } else if (symbol.text === '!') {
+                                       currentParagraphText += '！'; // Replace exclamation mark
+                                   } else if (symbol.text === '?') {
+                                       currentParagraphText += '？'; // Replace question mark
+                                   } else if (symbol.text === ':') {
+                                       currentParagraphText += '：'; // Replace colon
+                                   } else {
+                                       currentParagraphText += symbol.text;
+                                   }
                                } else {
                                    currentParagraphText += symbol.text;
                                }
-                           } else {
-                               currentParagraphText += symbol.text;
+                               
+                               paragraphHasFilteredContent = true;
+                               
+                               // 添加空格（如果需要且语言使用空格）
+                               if ((breakType === 'SPACE' || breakType === 'EOL_SURE_SPACE') && !isCJKLanguage) {
+                                   currentParagraphText += ' ';
+                               }
                            }
-                           
-                           paragraphHasFilteredContent = true;
-                           const breakType = symbolData.detectedBreak;
-                           // Add space if needed and language uses spaces
-                           if ((breakType === 'SPACE' || breakType === 'EOL_SURE_SPACE') && !noSpaceLanguages.includes(store.detectedLanguageCode)) {
-                                currentParagraphText += ' ';
-                           }
-                           // Note: LINE_BREAK within a paragraph is usually ignored for paragraph mode
                       } else if (!symbolData) {
-                           console.warn("Paragraph: Symbol NOT FOUND in filteredSymbolsData:", symbol.text); // 添加未找到的警告
-                      } else {
-                           // console.log("Paragraph: Symbol found but not filtered:", symbol.text); // 如果需要检查过滤状态
+                           console.warn("Paragraph: Symbol NOT FOUND in filteredSymbolsData:", symbol.text);
                       }
                   }); // End symbols loop
               }); // End words loop
