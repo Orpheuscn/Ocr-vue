@@ -1130,14 +1130,12 @@ body .coordinate-tooltip {
 
 .hover-effect:hover {
   transform: translateY(-3px);
-  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
-  filter: brightness(0.85); /* 使用亮度滤镜代替固定颜色值，保持原色系 */
+  filter: brightness(1.15); /* 将亮度提高到115%，而不是降低 */
   color: white;
 }
 
 .hover-effect:active {
   transform: translateY(-1px);
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* 图标颜色过渡 */
