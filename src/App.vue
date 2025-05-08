@@ -89,8 +89,11 @@
        :visible="store.notification.visible"
      />
      
+    <!-- 教程组件 -->
+    <Tutorial ref="tutorialRef" />
+     
     <!-- 页脚 -->
-    <TheFooter />
+    <TheFooter @open-tutorial="openTutorial" />
   </div>
 </template>
 
@@ -112,11 +115,13 @@ import LoadingOverlay from './components/LoadingOverlay.vue';
 import NotificationBar from './components/NotificationBar.vue';
 import MaskingTool from './components/MaskingTool.vue';
 import TheFooter from './components/TheFooter.vue';
+import Tutorial from './components/Tutorial.vue';
 
 const store = useOcrStore();
 const imageCanvasRef = ref(null);
 const imageContainerHeight = ref(0);
 let resizeObserver = null;
+const tutorialRef = ref(null);
 
 // 调试模式开关，设置为true时才会输出调试日志
 const DEBUG_MODE = false;
@@ -436,5 +441,12 @@ const handlePdfControlsHeightChange = (height) => {
   nextTick(() => {
     syncComponentHeights();
   });
+};
+
+// 打开教程弹窗
+const openTutorial = () => {
+  if (tutorialRef.value) {
+    tutorialRef.value.openModal();
+  }
 };
 </script>

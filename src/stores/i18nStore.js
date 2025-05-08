@@ -27,6 +27,9 @@ const translations = {
     table: '表格',
     planA: '方案1',
     planB: '方案2',
+    tutorial: '教程',
+    loading: '加载中...',
+    copyright: '版权所有',
     
     // 配置和设置
     apiKeyLabel: 'API 密钥',
@@ -108,7 +111,7 @@ const translations = {
     scale: '比例',
     
     // ActionControls组件
-    recognitionDirection: '识别方向',
+    recognitionDirection: '识别方式',
     languageHint: '语言提示',
     searchLanguage: '搜索语言名称或代码...',
     languageTip: '选择多种语言可提高混合文本识别率',
@@ -154,6 +157,9 @@ const translations = {
     table: 'Table',
     planA: 'PlanA',
     planB: 'PlanB',
+    tutorial: 'Tutorial',
+    loading: 'Loading...',
+    copyright: 'Copyright',
     
     // Configuration and Settings
     apiKeyLabel: 'API Key',
@@ -235,7 +241,7 @@ const translations = {
     scale: 'Scale',
     
     // ActionControls component
-    recognitionDirection: 'Recognition Direction',
+    recognitionDirection: 'Recognition Mode',
     languageHint: 'Language Hint',
     searchLanguage: 'Search languages by name or code...',
     languageTip: 'Selecting multiple languages can improve recognition',
