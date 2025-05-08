@@ -1,16 +1,18 @@
 <template>
-  <div v-if="isOpen" class="tutorial-overlay" @click.self="closeModal">
-    <div class="tutorial-modal">
-      <div class="tutorial-header">
-        <h2>{{ i18n.t('tutorial') }}</h2>
-        <button class="close-btn" @click="closeModal">×</button>
-      </div>
-      <div class="tutorial-content">
-        <div v-if="content" class="markdown-content" v-html="renderedContent"></div>
-        <div v-else class="loading">{{ i18n.t('loading') }}</div>
+  <transition name="fade">
+    <div v-if="isOpen" class="tutorial-overlay" @click.self="closeModal">
+      <div class="tutorial-modal">
+        <div class="tutorial-header">
+          <h2>{{ i18n.t('tutorial') }}</h2>
+          <button class="close-btn" @click="closeModal">×</button>
+        </div>
+        <div class="tutorial-content">
+          <div v-if="content" class="markdown-content" v-html="renderedContent"></div>
+          <div v-else class="loading">{{ i18n.t('loading') }}</div>
+        </div>
       </div>
     </div>
-  </div>
+  </transition>
 </template>
 
 <script setup>
@@ -229,13 +231,31 @@ defineExpose({ openModal, closeModal });
 </style>
 
 <style scoped>
+/* 淡入淡出效果 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: scale(0.98);
+}
+
+.fade-enter-to,
+.fade-leave-from {
+  opacity: 1;
+  transform: scale(1);
+}
+
 .tutorial-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -251,6 +271,8 @@ defineExpose({ openModal, closeModal });
   display: flex;
   flex-direction: column;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  /* 添加变换起点 */
+  transform-origin: center;
 }
 
 .tutorial-header {
