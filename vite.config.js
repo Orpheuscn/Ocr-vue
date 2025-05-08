@@ -40,7 +40,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        maximumFileSizeToCacheInBytes: 3000000,
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -72,5 +72,15 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
+  },
+  server: {
+    host: '0.0.0.0', // 使所有网络接口可访问，对Docker环境很重要
+    port: 8080,
+    strictPort: true, // 如果端口已被占用，则退出
+  },
+  preview: {
+    host: '0.0.0.0', // 同样使所有网络接口可访问
+    port: 8080,
+    strictPort: true,
   },
 })

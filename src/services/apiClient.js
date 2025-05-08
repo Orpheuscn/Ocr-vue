@@ -7,9 +7,10 @@ const API_BASE_URL = 'http://localhost:3000';
  * @param {string[]} languageHints - 可选的语言提示数组
  * @param {string} recognitionDirection - 识别方向，'horizontal'或'vertical'
  * @param {string} recognitionMode - 识别模式，'text'或'table'
+ * @param {string} userId - 可选的用户ID，用于记录OCR统计
  * @returns {Promise<object>} - 包含OCR结果文本的对象
  */
-export async function processSimple(file, languageHints = [], recognitionDirection = 'horizontal', recognitionMode = 'text') {
+export async function processSimple(file, languageHints = [], recognitionDirection = 'horizontal', recognitionMode = 'text', userId = null) {
   try {
     const formData = new FormData();
     formData.append('file', file);
@@ -22,6 +23,11 @@ export async function processSimple(file, languageHints = [], recognitionDirecti
     
     formData.append('recognitionDirection', recognitionDirection);
     formData.append('recognitionMode', recognitionMode);
+    
+    // 添加用户ID，用于记录OCR统计
+    if (userId) {
+      formData.append('userId', userId);
+    }
     
     const response = await fetch(`${API_BASE_URL}/api/ocr/process`, {
       method: 'POST',
@@ -48,9 +54,10 @@ export async function processSimple(file, languageHints = [], recognitionDirecti
  * @param {string[]} languageHints - 可选的语言提示数组
  * @param {string} recognitionDirection - 识别方向，'horizontal'或'vertical'
  * @param {string} recognitionMode - 识别模式，'text'或'table'
+ * @param {string} userId - 可选的用户ID，用于记录OCR统计
  * @returns {Promise<object>} - 包含OCR结果的对象
  */
-export async function processFile(file, apiKey, languageHints = [], recognitionDirection = 'horizontal', recognitionMode = 'text') {
+export async function processFile(file, apiKey, languageHints = [], recognitionDirection = 'horizontal', recognitionMode = 'text', userId = null) {
   try {
     const formData = new FormData();
     formData.append('file', file);
@@ -64,6 +71,11 @@ export async function processFile(file, apiKey, languageHints = [], recognitionD
     
     formData.append('recognitionDirection', recognitionDirection);
     formData.append('recognitionMode', recognitionMode);
+    
+    // 添加用户ID，用于记录OCR统计
+    if (userId) {
+      formData.append('userId', userId);
+    }
     
     const response = await fetch(`${API_BASE_URL}/api/ocr/process`, {
       method: 'POST',

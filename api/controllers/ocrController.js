@@ -1,6 +1,7 @@
 // api/controllers/ocrController.js
 import * as ocrService from '../services/ocrService.js';
 import { fileTypeFromBuffer } from 'file-type';
+import * as ocrRecordService from '../services/ocrRecordService.js';
 
 // 简化版OCR处理 - 只支持图像文件，返回原始文本
 export const processSimple = async (req, res) => {
@@ -13,7 +14,7 @@ export const processSimple = async (req, res) => {
     }
 
     // 获取参数
-    const { languageHints = [], recognitionDirection = 'horizontal', recognitionMode = 'text' } = req.body;
+    const { languageHints = [], recognitionDirection = 'horizontal', recognitionMode = 'text', userId } = req.body;
     
     // 检测文件类型
     const fileBuffer = req.file.buffer;
@@ -30,6 +31,7 @@ export const processSimple = async (req, res) => {
 
     // 转换为Base64并进行OCR识别
     const base64Data = fileBuffer.toString('base64');
+    const startTime = Date.now();
     
     try {
       // 调用OCR服务
@@ -39,6 +41,30 @@ export const processSimple = async (req, res) => {
         recognitionDirection, 
         recognitionMode
       );
+      
+      const processingTime = Date.now() - startTime;
+      const textLength = result.originalFullText ? result.originalFullText.length : 0;
+      
+      // 如果提供了用户ID，则创建OCR记录
+      if (userId) {
+        try {
+          await ocrRecordService.createOcrRecord({
+            userId,
+            filename: req.file.originalname || '未命名图片',
+            fileType: 'image',
+            pageCount: 1,
+            recognitionMode,
+            language: result.detectedLanguageCode || 'auto',
+            processingTime,
+            textLength,
+            status: 'success'
+          });
+          console.log(`为用户 ${userId} 创建了OCR记录`);
+        } catch (recordError) {
+          console.error('创建OCR记录失败:', recordError);
+          // 不中断主流程，继续返回OCR结果
+        }
+      }
       
       // 成功响应，只返回原始文本内容
       res.json({
@@ -74,7 +100,7 @@ export const processFile = async (req, res) => {
       });
     }
 
-    const { apiKey, languageHints = [], recognitionDirection = 'horizontal', recognitionMode = 'text' } = req.body;
+    const { apiKey, languageHints = [], recognitionDirection = 'horizontal', recognitionMode = 'text', userId } = req.body;
     
     if (!apiKey) {
       return res.status(400).json({
@@ -87,11 +113,15 @@ export const processFile = async (req, res) => {
     const fileBuffer = req.file.buffer;
     const fileType = await fileTypeFromBuffer(fileBuffer);
     const mimeType = fileType ? fileType.mime : req.file.mimetype;
-
+    const startTime = Date.now();
     let result;
+    let filePageCount = 1;
+    
     if (mimeType === 'application/pdf') {
       // 处理PDF文件
       result = await ocrService.processPdf(fileBuffer, apiKey, languageHints, 1, recognitionDirection, recognitionMode);
+      // 获取PDF页面数量
+      filePageCount = result.totalPages || 1;
     } else if (mimeType.startsWith('image/')) {
       // 处理图像文件
       const base64Data = fileBuffer.toString('base64');
@@ -101,6 +131,32 @@ export const processFile = async (req, res) => {
         success: false,
         message: '不支持的文件类型'
       });
+    }
+    
+    const processingTime = Date.now() - startTime;
+    
+    // 如果提供了用户ID，则创建OCR记录
+    if (userId) {
+      try {
+        const fileType = mimeType === 'application/pdf' ? 'pdf' : 'image';
+        const textLength = result.fullTextAnnotation?.text?.length || 0;
+        
+        await ocrRecordService.createOcrRecord({
+          userId,
+          filename: req.file.originalname || `未命名${fileType === 'pdf' ? 'PDF' : '图片'}`,
+          fileType,
+          pageCount: filePageCount,
+          recognitionMode,
+          language: result.detectedLanguage || 'auto',
+          processingTime,
+          textLength,
+          status: 'success'
+        });
+        console.log(`为用户 ${userId} 创建了OCR记录: ${fileType}, ${filePageCount}页`);
+      } catch (recordError) {
+        console.error('创建OCR记录失败:', recordError);
+        // 不中断主流程，继续返回OCR结果
+      }
     }
     
     res.json({

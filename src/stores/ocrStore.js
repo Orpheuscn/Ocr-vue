@@ -1,6 +1,6 @@
 // src/stores/ocrStore.js
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 // 确保正确导入你的 API 服务文件路径
 import { performOcrRequest, getLanguageName } from '@/services/visionApi';
 // 导入PDF适配器
@@ -11,6 +11,7 @@ import { useI18nStore } from '@/stores/i18nStore';
 import { isHeic, heicTo } from 'heic-to';
 // 不再需要导入PDF.js，使用全局对象
 // worker设置已经在main.js中完成
+import { processSimple } from '@/services/apiClient';
 
 export const useOcrStore = defineStore('ocr', () => {
   // --- 私有辅助函数 ---
@@ -467,6 +468,19 @@ export const useOcrStore = defineStore('ocr', () => {
       loadingMessage.value = i18n.t('recognizingText');
       resetOcrData();
 
+      // 获取当前用户ID（如果已登录）
+      let userId = null;
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          userId = user.id;
+          console.log('当前用户ID:', userId);
+        }
+      } catch (userError) {
+        console.warn('获取用户信息失败:', userError);
+      }
+
       let base64Image = '';
       const processDimensions = imageDimensions.value; // 使用已知的尺寸
 
@@ -487,9 +501,49 @@ export const useOcrStore = defineStore('ocr', () => {
         base64Image = await applyMasksToImage(base64Image, processDimensions);
       }
 
-      // 调用 API 服务，传递语言提示
+      // 准备API请求参数
       const languageHints = selectedLanguages.value.length > 0 ? selectedLanguages.value : [];
-      const result = await performOcrRequest(base64Image, apiKey.value, languageHints);
+
+      // 根据文件类型和是否有API密钥选择不同的处理方式
+      let result;
+      if (!hasApiKey.value) {
+        // 使用简化的服务器端处理（不需要API密钥）
+        const formData = new FormData();
+        formData.append('file', currentFiles.value[0]);
+        formData.append('recognitionDirection', direction);
+        formData.append('recognitionMode', mode);
+        
+        // 添加用户ID，用于记录统计
+        if (userId) {
+          formData.append('userId', userId);
+        }
+        
+        if (languageHints.length > 0) {
+          languageHints.forEach(lang => {
+            formData.append('languageHints', lang);
+          });
+        }
+        
+        // 直接使用processSimple方法处理
+        console.log('使用服务器端简化OCR处理...');
+        const simpleResult = await processSimple(currentFiles.value[0], languageHints, direction, mode, userId);
+        
+        // 构建兼容的结果对象
+        result = {
+          fullTextAnnotation: {
+            text: simpleResult.text
+          },
+          textAnnotations: [{
+            description: simpleResult.text,
+            locale: simpleResult.language
+          }]
+        };
+      } else {
+        // 使用Google Vision API
+        console.log('使用Google Vision API处理...');
+        result = await performOcrRequest(base64Image, apiKey.value, languageHints);
+      }
+      
       ocrRawResult.value = result; // 存储原始结果
 
       // 解析和处理结果

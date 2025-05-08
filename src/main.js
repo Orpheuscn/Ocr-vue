@@ -4,6 +4,7 @@ import './assets/index.css' // Import Tailwind CSS
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import router from './router'
 
 import App from './App.vue'
 
@@ -15,5 +16,6 @@ import App from './App.vue'
 const app = createApp(App)
 
 app.use(createPinia()) // Use Pinia
+app.use(router) // Use Router
 
 app.mount('#app')
