@@ -138,8 +138,8 @@ export const refreshUserInfo = async () => {
     
     const userId = currentUser.id;
     
-    // 获取最新的用户信息
-    const response = await fetch(`${API_URL}/profile/${userId}`);
+    // 获取最新的用户信息 - 修正API路径
+    const response = await fetch(`${API_URL}/${userId}/profile`);
     const data = await response.json();
     
     if (!response.ok) {
@@ -164,7 +164,8 @@ export const refreshUserInfo = async () => {
 // 获取用户详细信息
 export const getUserProfile = async (userId) => {
   try {
-    const response = await fetch(`${API_URL}/profile/${userId}`);
+    // 修正API路径，从 /profile/{userId} 改为 /{userId}/profile
+    const response = await fetch(`${API_URL}/${userId}/profile`);
     
     const data = await response.json();
     
@@ -182,7 +183,8 @@ export const getUserProfile = async (userId) => {
 // 更新用户信息
 export const updateUserProfile = async (userId, userData) => {
   try {
-    const response = await fetch(`${API_URL}/profile/${userId}`, {
+    // 修正API路径
+    const response = await fetch(`${API_URL}/${userId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
