@@ -29,3 +29,6 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# 环境变量文件
+.env
