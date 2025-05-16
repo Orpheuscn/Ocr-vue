@@ -86,11 +86,15 @@ export const processSimple = async (req, res) => {
         }
       }
 
-      // 成功响应，返回OCR结果
+      // 修改：返回完整的OCR结果，包括原始Google Vision API响应
       res.json({
         success: true,
+        // 返回完整的OCR结果
+        ocrRawResult: result.ocrRawResult,
+        fullTextAnnotation: result.fullTextAnnotation,
         text: result.originalFullText || "",
         language: result.detectedLanguageCode || "und",
+        symbolsData: result.symbolsData || [],
       });
     } catch (ocrError) {
       // OCR处理错误

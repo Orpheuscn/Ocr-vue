@@ -1,5 +1,5 @@
 // src/services/apiClient.js
-const API_BASE_URL = '/api';
+const API_BASE_URL = '/api'
 
 /**
  * 简化版文件处理和OCR识别
@@ -10,56 +10,86 @@ const API_BASE_URL = '/api';
  * @param {string} userId - 可选的用户ID，用于记录OCR统计
  * @returns {Promise<object>} - 包含OCR结果文本的对象
  */
-export async function processSimple(file, languageHints = [], recognitionDirection = 'horizontal', recognitionMode = 'text', userId = null) {
+export async function processSimple(
+  file,
+  languageHints = [],
+  recognitionDirection = 'horizontal',
+  recognitionMode = 'text',
+  userId = null,
+) {
   console.log('apiClient.processSimple: 开始处理文件', {
     fileName: file?.name,
-    fileType: file?.type, 
+    fileType: file?.type,
     fileSize: file?.size,
     languageHints,
     recognitionDirection,
     recognitionMode,
-    userId
-  });
-  
+    userId,
+  })
+
   try {
-    const formData = new FormData();
-    formData.append('file', file);
-    
+    const formData = new FormData()
+    formData.append('file', file)
+
     if (languageHints.length > 0) {
-      languageHints.forEach(lang => {
-        formData.append('languageHints', lang);
-      });
+      languageHints.forEach((lang) => {
+        formData.append('languageHints', lang)
+      })
     }
-    
-    formData.append('recognitionDirection', recognitionDirection);
-    formData.append('recognitionMode', recognitionMode);
-    
+
+    formData.append('recognitionDirection', recognitionDirection)
+    formData.append('recognitionMode', recognitionMode)
+
     // 添加用户ID，用于记录OCR统计
     if (userId) {
-      formData.append('userId', userId);
+      formData.append('userId', userId)
     }
-    
-    console.log('apiClient.processSimple: 发送请求到服务器', `${API_BASE_URL}/ocr/process`);
-    
+
+    console.log('apiClient.processSimple: 发送请求到服务器', `${API_BASE_URL}/ocr/process`)
+
     const response = await fetch(`${API_BASE_URL}/ocr/process`, {
       method: 'POST',
-      body: formData
-    });
-    
-    console.log('apiClient.processSimple: 收到服务器响应', response.status);
-    
-    const result = await response.json();
-    
+      body: formData,
+    })
+
+    console.log('apiClient.processSimple: 收到服务器响应', response.status)
+
+    const result = await response.json()
+
     if (!result.success) {
-      console.error('apiClient.processSimple: 请求失败', result.message);
-      throw new Error(result.message || '请求失败');
+      console.error('apiClient.processSimple: 请求失败', result.message)
+      throw new Error(result.message || '请求失败')
     }
-    
-    console.log('apiClient.processSimple: 请求成功');
-    return result;
+
+    console.log('apiClient.processSimple: 请求成功')
+
+    // 新增输出返回的数字信息，方便调试
+    console.log('apiClient.processSimple: 服务器返回数字信息:', {
+      hasOcrRawResult: !!result.ocrRawResult,
+      hasFullTextAnnotation: !!result.fullTextAnnotation,
+      textLength: result.text?.length || 0,
+      language: result.language,
+      symbolsDataCount: result.symbolsData?.length || 0,
+    })
+
+    // 如果返回了完整的OCR结果，构造一个处理后的结果对象
+    const processedResult = {
+      success: true,
+      data: {
+        ocrRawResult: result.ocrRawResult,
+        fullTextAnnotation: result.fullTextAnnotation,
+        originalFullText: result.text,
+        detectedLanguageCode: result.language,
+        symbolsData: result.symbolsData || [],
+        // 新增其他字段，方便后续处理
+        textAnnotations: [{ description: result.text, locale: result.language }],
+      },
+    }
+
+    return processedResult
   } catch (error) {
-    console.error('apiClient.processSimple: 处理文件错误:', error);
-    throw error;
+    console.error('apiClient.processSimple: 处理文件错误:', error)
+    throw error
   }
 }
 
@@ -73,41 +103,48 @@ export async function processSimple(file, languageHints = [], recognitionDirecti
  * @param {string} userId - 可选的用户ID，用于记录OCR统计
  * @returns {Promise<object>} - 包含OCR结果的对象
  */
-export async function processFile(file, apiKey, languageHints = [], recognitionDirection = 'horizontal', recognitionMode = 'text', userId = null) {
+export async function processFile(
+  file,
+  apiKey,
+  languageHints = [],
+  recognitionDirection = 'horizontal',
+  recognitionMode = 'text',
+  userId = null,
+) {
   try {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('apiKey', apiKey);
-    
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('apiKey', apiKey)
+
     if (languageHints.length > 0) {
-      languageHints.forEach(lang => {
-        formData.append('languageHints', lang);
-      });
+      languageHints.forEach((lang) => {
+        formData.append('languageHints', lang)
+      })
     }
-    
-    formData.append('recognitionDirection', recognitionDirection);
-    formData.append('recognitionMode', recognitionMode);
-    
+
+    formData.append('recognitionDirection', recognitionDirection)
+    formData.append('recognitionMode', recognitionMode)
+
     // 添加用户ID，用于记录OCR统计
     if (userId) {
-      formData.append('userId', userId);
+      formData.append('userId', userId)
     }
-    
+
     const response = await fetch(`${API_BASE_URL}/ocr/process`, {
       method: 'POST',
-      body: formData
-    });
-    
-    const result = await response.json();
-    
+      body: formData,
+    })
+
+    const result = await response.json()
+
     if (!result.success) {
-      throw new Error(result.message || '请求失败');
+      throw new Error(result.message || '请求失败')
     }
-    
-    return result.data;
+
+    return result.data
   } catch (error) {
-    console.error('处理文件错误:', error);
-    throw error;
+    console.error('处理文件错误:', error)
+    throw error
   }
 }
 
@@ -120,7 +157,13 @@ export async function processFile(file, apiKey, languageHints = [], recognitionD
  * @param {string} recognitionMode - 识别模式，'text'或'table'
  * @returns {Promise<object>} - 包含OCR结果的对象
  */
-export async function processBase64Image(imageData, apiKey, languageHints = [], recognitionDirection = 'horizontal', recognitionMode = 'text') {
+export async function processBase64Image(
+  imageData,
+  apiKey,
+  languageHints = [],
+  recognitionDirection = 'horizontal',
+  recognitionMode = 'text',
+) {
   try {
     const response = await fetch(`${API_BASE_URL}/ocr/processBase64`, {
       method: 'POST',
@@ -132,20 +175,20 @@ export async function processBase64Image(imageData, apiKey, languageHints = [], 
         apiKey,
         languageHints,
         recognitionDirection,
-        recognitionMode
-      })
-    });
-    
-    const result = await response.json();
-    
+        recognitionMode,
+      }),
+    })
+
+    const result = await response.json()
+
     if (!result.success) {
-      throw new Error(result.message || '请求失败');
+      throw new Error(result.message || '请求失败')
     }
-    
-    return result.data;
+
+    return result.data
   } catch (error) {
-    console.error('处理图像错误:', error);
-    throw error;
+    console.error('处理图像错误:', error)
+    throw error
   }
 }
 
@@ -159,37 +202,44 @@ export async function processBase64Image(imageData, apiKey, languageHints = [], 
  * @param {string} recognitionMode - 识别模式，'text'或'table'
  * @returns {Promise<object>} - 包含OCR结果的对象
  */
-export async function processPdf(pdfFile, apiKey, languageHints = [], pageNumber = 1, recognitionDirection = 'horizontal', recognitionMode = 'text') {
+export async function processPdf(
+  pdfFile,
+  apiKey,
+  languageHints = [],
+  pageNumber = 1,
+  recognitionDirection = 'horizontal',
+  recognitionMode = 'text',
+) {
   try {
-    const formData = new FormData();
-    formData.append('pdf', pdfFile);
-    formData.append('apiKey', apiKey);
-    
+    const formData = new FormData()
+    formData.append('pdf', pdfFile)
+    formData.append('apiKey', apiKey)
+
     if (languageHints.length > 0) {
-      languageHints.forEach(lang => {
-        formData.append('languageHints', lang);
-      });
+      languageHints.forEach((lang) => {
+        formData.append('languageHints', lang)
+      })
     }
-    
-    formData.append('pageNumber', pageNumber);
-    formData.append('recognitionDirection', recognitionDirection);
-    formData.append('recognitionMode', recognitionMode);
-    
+
+    formData.append('pageNumber', pageNumber)
+    formData.append('recognitionDirection', recognitionDirection)
+    formData.append('recognitionMode', recognitionMode)
+
     const response = await fetch(`${API_BASE_URL}/ocr/processPdf`, {
       method: 'POST',
-      body: formData
-    });
-    
-    const result = await response.json();
-    
+      body: formData,
+    })
+
+    const result = await response.json()
+
     if (!result.success) {
-      throw new Error(result.message || '请求失败');
+      throw new Error(result.message || '请求失败')
     }
-    
-    return result.data;
+
+    return result.data
   } catch (error) {
-    console.error('处理PDF错误:', error);
-    throw error;
+    console.error('处理PDF错误:', error)
+    throw error
   }
 }
 
@@ -210,20 +260,20 @@ export async function getPdfPage(pdfData, pageNumber = 1, scale = 1.5) {
       body: JSON.stringify({
         pdfData,
         pageNumber,
-        scale
-      })
-    });
-    
-    const result = await response.json();
-    
+        scale,
+      }),
+    })
+
+    const result = await response.json()
+
     if (!result.success) {
-      throw new Error(result.message || '请求失败');
+      throw new Error(result.message || '请求失败')
     }
-    
-    return result.data;
+
+    return result.data
   } catch (error) {
-    console.error('获取PDF页面错误:', error);
-    throw error;
+    console.error('获取PDF页面错误:', error)
+    throw error
   }
 }
 
@@ -233,17 +283,17 @@ export async function getPdfPage(pdfData, pageNumber = 1, scale = 1.5) {
  */
 export async function getSupportedLanguages() {
   try {
-    const response = await fetch(`${API_BASE_URL}/ocr/languages`);
-    const result = await response.json();
-    
+    const response = await fetch(`${API_BASE_URL}/ocr/languages`)
+    const result = await response.json()
+
     if (!result.success) {
-      throw new Error(result.message || '获取语言列表失败');
+      throw new Error(result.message || '获取语言列表失败')
     }
-    
-    return result.data;
+
+    return result.data
   } catch (error) {
-    console.error('获取语言列表错误:', error);
-    throw error;
+    console.error('获取语言列表错误:', error)
+    throw error
   }
 }
 
@@ -262,20 +312,20 @@ export async function applyFilters(ocrResult, filters) {
       },
       body: JSON.stringify({
         ocrResult,
-        filters
-      })
-    });
-    
-    const result = await response.json();
-    
+        filters,
+      }),
+    })
+
+    const result = await response.json()
+
     if (!result.success) {
-      throw new Error(result.message || '应用过滤器失败');
+      throw new Error(result.message || '应用过滤器失败')
     }
-    
-    return result.data;
+
+    return result.data
   } catch (error) {
-    console.error('应用过滤器错误:', error);
-    throw error;
+    console.error('应用过滤器错误:', error)
+    throw error
   }
 }
 
@@ -294,20 +344,20 @@ export async function setRecognitionDirection(ocrResult, direction) {
       },
       body: JSON.stringify({
         ocrResult,
-        direction
-      })
-    });
-    
-    const result = await response.json();
-    
+        direction,
+      }),
+    })
+
+    const result = await response.json()
+
     if (!result.success) {
-      throw new Error(result.message || '设置识别方向失败');
+      throw new Error(result.message || '设置识别方向失败')
     }
-    
-    return result.data;
+
+    return result.data
   } catch (error) {
-    console.error('设置识别方向错误:', error);
-    throw error;
+    console.error('设置识别方向错误:', error)
+    throw error
   }
 }
 
@@ -326,20 +376,20 @@ export async function setDisplayMode(ocrResult, mode) {
       },
       body: JSON.stringify({
         ocrResult,
-        mode
-      })
-    });
-    
-    const result = await response.json();
-    
+        mode,
+      }),
+    })
+
+    const result = await response.json()
+
     if (!result.success) {
-      throw new Error(result.message || '设置显示模式失败');
+      throw new Error(result.message || '设置显示模式失败')
     }
-    
-    return result.data;
+
+    return result.data
   } catch (error) {
-    console.error('设置显示模式错误:', error);
-    throw error;
+    console.error('设置显示模式错误:', error)
+    throw error
   }
 }
 
@@ -358,20 +408,20 @@ export async function setTableSettings(ocrResult, settings) {
       },
       body: JSON.stringify({
         ocrResult,
-        settings
-      })
-    });
-    
-    const result = await response.json();
-    
+        settings,
+      }),
+    })
+
+    const result = await response.json()
+
     if (!result.success) {
-      throw new Error(result.message || '应用表格设置失败');
+      throw new Error(result.message || '应用表格设置失败')
     }
-    
-    return result.data;
+
+    return result.data
   } catch (error) {
-    console.error('应用表格设置错误:', error);
-    throw error;
+    console.error('应用表格设置错误:', error)
+    throw error
   }
 }
 
@@ -392,20 +442,20 @@ export async function applyMasks(image, masks, dimensions) {
       body: JSON.stringify({
         image,
         masks,
-        dimensions
-      })
-    });
-    
-    const result = await response.json();
-    
+        dimensions,
+      }),
+    })
+
+    const result = await response.json()
+
     if (!result.success) {
-      throw new Error(result.message || '应用遮罩失败');
+      throw new Error(result.message || '应用遮罩失败')
     }
-    
-    return result.data;
+
+    return result.data
   } catch (error) {
-    console.error('应用遮罩错误:', error);
-    throw error;
+    console.error('应用遮罩错误:', error)
+    throw error
   }
 }
 
@@ -415,17 +465,17 @@ export async function applyMasks(image, masks, dimensions) {
  */
 export async function checkApiStatus() {
   try {
-    const response = await fetch(`${API_BASE_URL}/ocr/apiStatus`);
-    const result = await response.json();
-    
+    const response = await fetch(`${API_BASE_URL}/ocr/apiStatus`)
+    const result = await response.json()
+
     if (!result.success) {
-      throw new Error(result.message || '获取API状态失败');
+      throw new Error(result.message || '获取API状态失败')
     }
-    
-    return result.data;
+
+    return result.data
   } catch (error) {
-    console.error('检查API状态错误:', error);
+    console.error('检查API状态错误:', error)
     // 出错时返回API不可用
-    return { apiAvailable: false, keyPrefix: null };
+    return { apiAvailable: false, keyPrefix: null }
   }
-} 
+}
