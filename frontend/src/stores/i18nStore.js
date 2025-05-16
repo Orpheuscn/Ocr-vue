@@ -8,9 +8,6 @@ const translations = {
     appTitle: 'OCR 文本识别工具',
     
     // 按钮和操作
-    settings: '设置',
-    hideSettings: '隐藏',
-    api: 'API',
     upload: '上传',
     processing: '处理中...',
     startOcr: '开始识别',
@@ -31,11 +28,7 @@ const translations = {
     loading: '加载中...',
     copyright: '版权所有',
     
-    // 配置和设置
-    apiKeyLabel: 'API 密钥',
-    apiKeyPlaceholder: '在此输入您的 Google Vision API 密钥',
-    saveApiKey: '保存',
-    clearApiKey: '清除',
+
     
     // 结果和信息
     results: '识别结果',
@@ -68,9 +61,8 @@ const translations = {
     fileLoadFailed: '文件加载失败: {error}',
     pdfRenderSuccess: 'PDF 第 {page} 页渲染完成',
     pdfRenderFailed: '渲染 PDF 第 {page} 页失败: {error}',
-    cannotStartOcr: '无法开始识别，请检查文件、API Key 和图像尺寸。',
+    cannotStartOcr: '无法开始识别，请检查文件和图像尺寸。',
     imageSizeNotLoaded: '图像尺寸尚未加载完成，请稍候。',
-    pleaseSetApiKey: '请先设置 API Key。',
     errorProcessingSymbols: '处理符号数据时出错',
     
     // PDF相关
@@ -124,12 +116,6 @@ const translations = {
     yCoordinate: 'Y坐标',
     notSet: '未设置',
     
-    // ApiSettings组件
-    welcomeToOcr: '欢迎使用OCR识别工具',
-    enterApiKeyPrompt: '请输入您的Google Cloud Vision API密钥以开始使用',
-    apiKeySavedLocally: 'API密钥将安全地保存在您的浏览器中',
-    getStarted: '开始使用',
-    
     // 语言切换
     switchLanguage: '切换语言'
   },
@@ -138,9 +124,6 @@ const translations = {
     appTitle: 'OCR Text Recognition Tool',
     
     // Buttons and Actions
-    settings: 'Settings',
-    hideSettings: 'Hide',
-    api: 'API',
     upload: 'Upload',
     processing: 'Processing...',
     startOcr: 'Start OCR',
@@ -161,11 +144,6 @@ const translations = {
     loading: 'Loading...',
     copyright: 'Copyright',
     
-    // Configuration and Settings
-    apiKeyLabel: 'API Key',
-    apiKeyPlaceholder: 'Enter your Google Vision API key here',
-    saveApiKey: 'Save',
-    clearApiKey: 'Clear',
     
     // Results and Information
     results: 'Recognition Results',
@@ -198,9 +176,8 @@ const translations = {
     fileLoadFailed: 'File loading failed: {error}',
     pdfRenderSuccess: 'PDF page {page} rendered successfully',
     pdfRenderFailed: 'Failed to render PDF page {page}: {error}',
-    cannotStartOcr: 'Cannot start recognition, please check file, API Key and image dimensions.',
+    cannotStartOcr: 'Cannot start recognition, please check file and image dimensions.',
     imageSizeNotLoaded: 'Image dimensions not yet loaded, please wait.',
-    pleaseSetApiKey: 'Please set API Key first.',
     errorProcessingSymbols: 'Error processing symbol data',
     
     // PDF Related
@@ -254,13 +231,7 @@ const translations = {
     yCoordinate: 'Y Coordinate',
     notSet: 'Not set',
     
-    // ApiSettings component
-    welcomeToOcr: 'Welcome to OCR Recognition Tool',
-    enterApiKeyPrompt: 'Please enter your Google Cloud Vision API key to get started',
-    apiKeySavedLocally: 'API key will be securely saved in your browser',
-    getStarted: 'Get Started',
-    
-    // Language Switch
+    // 语言切换
     switchLanguage: 'Switch Language'
   }
 };

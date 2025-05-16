@@ -1,6 +1,63 @@
-# OCR Vue App API
+# OCR 应用后端
 
-这是OCR Vue应用程序的后端API服务，提供OCR文本识别功能。
+这是OCR文本识别应用的后端服务，提供用户认证、图像处理和OCR文本识别功能。
+
+## 环境设置
+
+项目使用多环境配置方式，根据不同的运行环境加载不同的配置文件：
+
+- `.env.local` - 本地开发环境配置
+- `.env.production` - 生产环境配置
+- `.env.test` - 测试环境配置
+- `.env` - 默认配置（如果特定环境配置不存在）
+
+### 配置新环境
+
+1. 复制 `.env.example` 文件并重命名为相应的环境文件（如 `.env.local`）
+2. 编辑文件，设置所需的环境变量
+
+### 必要的环境变量
+
+- `JWT_SECRET` - 用于签名JWT令牌的密钥，**必须设置且保密**
+- `GOOGLE_VISION_API_KEY` - Google Vision API密钥，用于OCR功能
+
+### JWT密钥安全建议
+
+生产环境中，请使用强随机字符串作为JWT密钥。可以使用以下命令生成：
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+## 启动服务
+
+### 开发环境
+
+```bash
+# 安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev
+```
+
+### 生产环境
+
+```bash
+# 安装依赖
+npm install
+
+# 启动生产服务器
+npm run prod
+```
+
+## API文档
+
+开发环境中，API文档可通过Swagger UI访问：
+
+http://localhost:3000/api-docs
+
+在生产环境中，Swagger文档默认是禁用的，可以通过设置环境变量 `SWAGGER_ENABLED=true` 启用。
 
 ## 目录结构
 
@@ -57,42 +114,6 @@ api/
 }
 ```
 
-## 启动服务器
-
-### 安装依赖
-```bash
-npm install
-```
-
-### 启动API服务器
-```bash
-npm run server
-```
-
-服务器将在 http://localhost:3000 上运行。
-
-### 启动完整应用（前端+后端）
-```bash
-npm run dev:all
-```
-
 ## 前端集成
 
-在Vue前端应用中，可以使用 `src/services/apiClient.js` 中提供的函数来与API通信：
-
-```javascript
-import { processSimple, getSupportedLanguages } from '@/services/apiClient';
-
-// 处理图像文件
-const result = await processSimple(file, ['zh', 'en'], 'horizontal', 'text');
-console.log(result.text); // 输出识别的文本
-
-// 获取支持的语言列表
-const languages = await getSupportedLanguages();
-```
-
-## 注意事项
-
-1. 目前简化版API仅支持图像文件，不支持PDF处理
-2. 为了简化实现，API没有使用实际的OCR引擎，返回的是模拟数据
-3. 要集成实际的OCR功能，可以考虑使用Tesseract.js或其他开源OCR库 
+在Vue前端应用中，可以使用 `src/services/apiClient.js`

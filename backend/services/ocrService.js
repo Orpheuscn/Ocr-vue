@@ -1,10 +1,11 @@
 // backend/services/ocrService.js
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
-import fs from 'fs';
-import { createRequire } from 'module';
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
+import fs from "fs";
+import { createRequire } from "module";
 // 暂时注释掉canvas相关导入，这个库需要本地编译
 // import { createCanvas, loadImage } from 'canvas';
+import fetchWithProxy from "../utils/fetchHelper.js";
 
 // 获取当前文件的目录路径
 const __filename = fileURLToPath(import.meta.url);
@@ -12,67 +13,83 @@ const __dirname = dirname(__filename);
 const require = createRequire(import.meta.url);
 
 // 从项目根目录中导入Vision API服务
-const API_URL = 'https://vision.googleapis.com/v1/images:annotate';
+const API_URL = "https://vision.googleapis.com/v1/images:annotate";
 
 // 简化版OCR识别函数 - 无需API密钥
-export async function performOcrSimple(base64Image, languageHints = [], direction = 'horizontal', mode = 'text') {
+export async function performOcrSimple(
+  base64Image,
+  languageHints = [],
+  direction = "horizontal",
+  mode = "text"
+) {
   if (!base64Image) throw new Error("Base64图像数据缺失");
 
   try {
     // 由于简化版不使用Google Vision API，我们使用本地OCR识别
     // 这里模拟一个简单的OCR结果
-    const detectedLanguageCode = languageHints?.length > 0 ? languageHints[0] : 'und';
+    const detectedLanguageCode = languageHints?.length > 0 ? languageHints[0] : "und";
     const detectedLanguageName = getLanguageName(detectedLanguageCode);
-    
+
     // 这里我们可以集成其他开源OCR库，如Tesseract.js
     // 但目前我们返回一个模拟结果
     const originalFullText = "这是一个OCR识别结果示例。实际使用时，请集成Tesseract.js或其他OCR库。";
-    
+
     return {
       originalFullText,
       detectedLanguageCode,
       detectedLanguageName,
       direction,
-      mode
+      mode,
     };
   } catch (error) {
-    console.error('OCR识别错误:', error);
+    console.error("OCR识别错误:", error);
     throw error;
   }
 }
 
 // 执行OCR识别
-export async function performOcr(base64Image, apiKey, languageHints = [], direction = 'horizontal', mode = 'text') {
+export async function performOcr(
+  base64Image,
+  apiKey,
+  languageHints = [],
+  direction = "horizontal",
+  mode = "text"
+) {
   if (!apiKey) throw new Error("API Key is missing");
   if (!base64Image) throw new Error("Base64 image data is missing");
 
   try {
     console.log(`开始OCR识别请求 - 方向: ${direction}, 模式: ${mode}`);
-    console.log(`语言提示: ${languageHints.length > 0 ? languageHints.join(', ') : '无'}`);
+    console.log(`语言提示: ${languageHints.length > 0 ? languageHints.join(", ") : "无"}`);
     console.log(`API密钥前缀: ${apiKey.substring(0, 8)}...`);
-    
+
     const apiUrl = `${API_URL}?key=${apiKey}`;
     console.log(`API URL: ${API_URL}`);
-    
+
     const requestBody = {
-      requests: [{
-        image: { content: base64Image },
-        features: [
-          // 请求文本检测和文档文本检测，以获取详细结构和全文
-          { type: 'TEXT_DETECTION' },
-          { type: 'DOCUMENT_TEXT_DETECTION' }
-        ],
-        imageContext: {
-          languageHints: languageHints?.length > 0 ? languageHints : undefined
-        }
-      }]
+      requests: [
+        {
+          image: { content: base64Image },
+          features: [
+            // 请求文本检测和文档文本检测，以获取详细结构和全文
+            { type: "TEXT_DETECTION" },
+            { type: "DOCUMENT_TEXT_DETECTION" },
+          ],
+          imageContext: {
+            languageHints: languageHints?.length > 0 ? languageHints : undefined,
+          },
+        },
+      ],
     };
-    
-    console.log('发送API请求...');
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
+
+    console.log("发送API请求...");
+
+    // 使用我们的fetchWithProxy函数，它会根据环境自动处理代理
+    const response = await fetchWithProxy(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+      timeout: 30000, // 增加超时时间到30秒
     });
 
     console.log(`API响应状态: ${response.status}`);
@@ -82,27 +99,27 @@ export async function performOcr(base64Image, apiKey, languageHints = [], direct
       console.error("API错误响应:", JSON.stringify(data, null, 2));
       throw new Error(data?.error?.message || `HTTP error! status: ${response.status}`);
     }
-    
+
     if (!data.responses?.[0]) {
       console.error("无效的API响应结构:", JSON.stringify(data, null, 2));
-      throw new Error('Invalid API response structure');
+      throw new Error("Invalid API response structure");
     }
-    
+
     // 检查响应对象中是否存在错误
     if (data.responses[0].error) {
       console.error("API返回错误对象:", JSON.stringify(data.responses[0].error, null, 2));
-      throw new Error(data.responses[0].error.message || 'API returned an error');
+      throw new Error(data.responses[0].error.message || "API returned an error");
     }
 
-    console.log('API响应成功，处理OCR结果...');
+    console.log("API响应成功，处理OCR结果...");
     // 处理OCR结果和方向设置
     const result = processOcrResult(data.responses[0], direction, mode);
-    console.log('OCR结果处理完成');
+    console.log("OCR结果处理完成");
 
     return result;
   } catch (error) {
-    console.error('OCR API 请求/处理错误:', error);
-    console.error('错误堆栈:', error.stack);
+    console.error("OCR API 请求/处理错误:", error);
+    console.error("错误堆栈:", error.stack);
     throw error;
   }
 }
@@ -112,17 +129,17 @@ function processOcrResult(ocrResult, direction, mode) {
   // 提取和处理关键数据
   const fullTextAnnotation = ocrResult.fullTextAnnotation || null;
   const textAnnotations = ocrResult.textAnnotations || [];
-  
+
   // 检测语言
-  const detectedLanguageCode = textAnnotations[0]?.locale || 'und';
+  const detectedLanguageCode = textAnnotations[0]?.locale || "und";
   const detectedLanguageName = getLanguageName(detectedLanguageCode);
-  
+
   // 提取全文
-  const originalFullText = fullTextAnnotation?.text || '';
-  
+  const originalFullText = fullTextAnnotation?.text || "";
+
   // 处理OCR结果，提取符号数据，并应用方向和模式设置
   const symbolsData = extractSymbolsData(ocrResult, direction, mode);
-  
+
   return {
     ocrRawResult: ocrResult,
     fullTextAnnotation,
@@ -131,7 +148,7 @@ function processOcrResult(ocrResult, direction, mode) {
     detectedLanguageName,
     symbolsData,
     direction,
-    mode
+    mode,
   };
 }
 
@@ -141,40 +158,40 @@ function extractSymbolsData(ocrResult, direction, mode) {
   if (!ocrResult.fullTextAnnotation) {
     return [];
   }
-  
+
   const symbolsData = [];
   const pages = ocrResult.fullTextAnnotation.pages || [];
-  
+
   // 遍历所有页面、块、段落、单词和符号
-  pages.forEach(page => {
+  pages.forEach((page) => {
     const pageWidth = page.width || 1000;
     const pageHeight = page.height || 1000;
-    
-    page.blocks?.forEach(block => {
-      block.paragraphs?.forEach(paragraph => {
-        paragraph.words?.forEach(word => {
+
+    page.blocks?.forEach((block) => {
+      block.paragraphs?.forEach((paragraph) => {
+        paragraph.words?.forEach((word) => {
           word.symbols?.forEach((symbol, symbolIndex) => {
             // 如果有边界框
             if (symbol.boundingBox?.vertices) {
               const vertices = symbol.boundingBox.vertices;
-              
+
               // 计算边界框的尺寸和中心点
-              const minX = Math.min(...vertices.map(v => v?.x ?? Infinity));
-              const maxX = Math.max(...vertices.map(v => v?.x ?? -Infinity));
-              const minY = Math.min(...vertices.map(v => v?.y ?? Infinity));
-              const maxY = Math.max(...vertices.map(v => v?.y ?? -Infinity));
-              
+              const minX = Math.min(...vertices.map((v) => v?.x ?? Infinity));
+              const maxX = Math.max(...vertices.map((v) => v?.x ?? -Infinity));
+              const minY = Math.min(...vertices.map((v) => v?.y ?? Infinity));
+              const maxY = Math.max(...vertices.map((v) => v?.y ?? -Infinity));
+
               const width = maxX - minX;
               const height = maxY - minY;
               const midX = minX + width / 2;
               const midY = minY + height / 2;
-              
+
               // 检测断行符
               let detectedBreak = null;
               if (symbol.property?.detectedBreak?.type) {
                 detectedBreak = symbol.property.detectedBreak.type;
               }
-              
+
               // 将符号数据添加到数组
               symbolsData.push({
                 text: symbol.text,
@@ -188,7 +205,7 @@ function extractSymbolsData(ocrResult, direction, mode) {
                 originalIndex: symbolsData.length,
                 detectedBreak,
                 vertices,
-                confidence: symbol.confidence || 0
+                confidence: symbol.confidence || 0,
               });
             }
           });
@@ -196,12 +213,19 @@ function extractSymbolsData(ocrResult, direction, mode) {
       });
     });
   });
-  
+
   return symbolsData;
 }
 
 // 处理PDF文件
-export async function processPdf(pdfBuffer, apiKey, languageHints = [], pageNumber = 1, direction = 'horizontal', mode = 'text') {
+export async function processPdf(
+  pdfBuffer,
+  apiKey,
+  languageHints = [],
+  pageNumber = 1,
+  direction = "horizontal",
+  mode = "text"
+) {
   try {
     // API不直接处理PDF文件，我们需要在前端浏览器中使用pdfAdapter.js来处理
     // 在Node.js环境中，我们只能返回PDF缓冲区和元数据
@@ -210,58 +234,58 @@ export async function processPdf(pdfBuffer, apiKey, languageHints = [], pageNumb
       message: "PDF处理需要在浏览器端进行。请使用前端的pdfAdapter.js处理PDF文件。",
       pdf: {
         buffer: pdfBuffer,
-        requestedPage: pageNumber
-      }
+        requestedPage: pageNumber,
+      },
     };
   } catch (error) {
-    console.error('处理PDF错误:', error);
+    console.error("处理PDF错误:", error);
     throw error;
   }
 }
 
 // 渲染PDF页面 - 在服务器端不支持，仅返回错误
 export async function renderPdfPage(pdfBuffer, pageNumber = 1, scale = 1.5) {
-  throw new Error('PDF渲染功能在服务器端不可用。请在浏览器端使用pdfAdapter.js处理PDF文件。');
+  throw new Error("PDF渲染功能在服务器端不可用。请在浏览器端使用pdfAdapter.js处理PDF文件。");
 }
 
 // 应用图像过滤器
 export async function applyFilters(ocrResult, filters) {
   try {
     if (!ocrResult || !ocrResult.symbolsData) {
-      throw new Error('无效的OCR结果数据');
+      throw new Error("无效的OCR结果数据");
     }
-    
+
     if (!filters) {
-      throw new Error('无效的过滤器设置');
+      throw new Error("无效的过滤器设置");
     }
-    
+
     const { minWidth, maxWidth, minX, maxX, minY, maxY } = filters;
-    
+
     // 创建符号数据的副本
-    const filteredSymbols = ocrResult.symbolsData.map(symbol => {
+    const filteredSymbols = ocrResult.symbolsData.map((symbol) => {
       // 应用过滤器
-      const isFiltered = 
-        symbol.width >= minWidth && 
-        symbol.width <= maxWidth && 
-        symbol.x >= minX && 
-        symbol.x <= maxX && 
-        symbol.y >= minY && 
+      const isFiltered =
+        symbol.width >= minWidth &&
+        symbol.width <= maxWidth &&
+        symbol.x >= minX &&
+        symbol.x <= maxX &&
+        symbol.y >= minY &&
         symbol.y <= maxY;
-      
+
       // 返回更新后的符号数据
       return {
         ...symbol,
-        isFiltered
+        isFiltered,
       };
     });
-    
+
     // 返回更新后的OCR结果
     return {
       ...ocrResult,
-      symbolsData: filteredSymbols
+      symbolsData: filteredSymbols,
     };
   } catch (error) {
-    console.error('应用过滤器错误:', error);
+    console.error("应用过滤器错误:", error);
     throw error;
   }
 }
@@ -270,20 +294,20 @@ export async function applyFilters(ocrResult, filters) {
 export async function setRecognitionDirection(ocrResult, direction) {
   try {
     if (!ocrResult) {
-      throw new Error('无效的OCR结果数据');
+      throw new Error("无效的OCR结果数据");
     }
-    
-    if (!direction || (direction !== 'horizontal' && direction !== 'vertical')) {
-      throw new Error('无效的识别方向');
+
+    if (!direction || (direction !== "horizontal" && direction !== "vertical")) {
+      throw new Error("无效的识别方向");
     }
-    
+
     // 返回更新后的OCR结果
     return {
       ...ocrResult,
-      direction
+      direction,
     };
   } catch (error) {
-    console.error('设置识别方向错误:', error);
+    console.error("设置识别方向错误:", error);
     throw error;
   }
 }
@@ -292,20 +316,20 @@ export async function setRecognitionDirection(ocrResult, direction) {
 export async function setDisplayMode(ocrResult, mode) {
   try {
     if (!ocrResult) {
-      throw new Error('无效的OCR结果数据');
+      throw new Error("无效的OCR结果数据");
     }
-    
-    if (!mode || (mode !== 'parallel' && mode !== 'paragraph' && mode !== 'table')) {
-      throw new Error('无效的显示模式');
+
+    if (!mode || (mode !== "parallel" && mode !== "paragraph" && mode !== "table")) {
+      throw new Error("无效的显示模式");
     }
-    
+
     // 返回更新后的OCR结果
     return {
       ...ocrResult,
-      mode
+      mode,
     };
   } catch (error) {
-    console.error('设置显示模式错误:', error);
+    console.error("设置显示模式错误:", error);
     throw error;
   }
 }
@@ -314,27 +338,27 @@ export async function setDisplayMode(ocrResult, mode) {
 export async function setTableSettings(ocrResult, settings) {
   try {
     if (!ocrResult) {
-      throw new Error('无效的OCR结果数据');
+      throw new Error("无效的OCR结果数据");
     }
-    
+
     if (!settings) {
-      throw new Error('无效的表格设置');
+      throw new Error("无效的表格设置");
     }
-    
+
     // 解析表格设置
     const { columns = 0, rows = 0 } = settings;
-    
+
     // 返回更新后的OCR结果
     return {
       ...ocrResult,
       tableSettings: {
         columns,
-        rows
+        rows,
       },
-      mode: 'table' // 强制设置为表格模式
+      mode: "table", // 强制设置为表格模式
     };
   } catch (error) {
-    console.error('应用表格设置错误:', error);
+    console.error("应用表格设置错误:", error);
     throw error;
   }
 }
@@ -343,50 +367,50 @@ export async function setTableSettings(ocrResult, settings) {
 export async function applyMasks(imageBase64, masks, dimensions) {
   try {
     // 由于canvas库已被注释掉，这里提供一个临时的实现
-    console.warn('警告: applyMasks函数正在使用临时实现，因为canvas库未安装');
-    console.warn('要使用完整功能，请安装canvas库: npm install canvas');
-    
+    console.warn("警告: applyMasks函数正在使用临时实现，因为canvas库未安装");
+    console.warn("要使用完整功能，请安装canvas库: npm install canvas");
+
     // 返回原始图像，并添加一个警告说明遮罩未应用
     return {
-      imageBase64, 
-      warning: '遮罩未应用 - canvas库未安装',
+      imageBase64,
+      warning: "遮罩未应用 - canvas库未安装",
       masks,
-      dimensions
+      dimensions,
     };
-    
+
     /* 原始实现需要canvas库
     // Base64解码
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
-    
+
     // 加载图像
     const image = await loadImage(buffer);
-    
+
     // 创建Canvas并绘制原始图像
     const { width, height } = dimensions;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
-    
+
     // 绘制原始图像
     ctx.drawImage(image, 0, 0, width, height);
-    
+
     // 应用遮罩
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = 'white'; // 使用白色作为遮罩颜色
-    
+
     masks.forEach(mask => {
       const { x, y, width: maskWidth, height: maskHeight } = mask;
       ctx.fillRect(x, y, maskWidth, maskHeight);
     });
-    
+
     // 获取遮罩后的图像数据
     const maskedImageData = canvas.toDataURL('image/png');
     const maskedBase64 = maskedImageData.replace(/^data:image\/\w+;base64,/, '');
-    
+
     return maskedBase64;
     */
   } catch (error) {
-    console.error('应用遮罩错误:', error);
+    console.error("应用遮罩错误:", error);
     throw error;
   }
 }
@@ -396,35 +420,35 @@ export function getLanguages() {
   // 语言数据现在存储在frontend/src/assets/languages.json中
   try {
     // 获取语言数据文件的路径
-    const projectRoot = resolve(__dirname, '..', '..');
-    const langFilePath = resolve(projectRoot, 'frontend', 'src', 'assets', 'languages.json');
-    
+    const projectRoot = resolve(__dirname, "..", "..");
+    const langFilePath = resolve(projectRoot, "frontend", "src", "assets", "languages.json");
+
     // 如果文件不存在，返回空数组
     if (!fs.existsSync(langFilePath)) {
       console.warn(`语言文件不存在: ${langFilePath}`);
       return [];
     }
-    
+
     // 读取JSON文件
-    const languageData = JSON.parse(fs.readFileSync(langFilePath, 'utf8'));
-    
+    const languageData = JSON.parse(fs.readFileSync(langFilePath, "utf8"));
+
     // 将语言数据转换为API友好的格式
     const result = [];
-    
+
     for (const [code, names] of Object.entries(languageData)) {
       // 排除特殊值，如 'und'（未定义）和带有连字符的代码
-      if (code !== 'und' && !code.includes('-')) {
-        result.push({ 
-          code, 
-          name: names['zh'] || names['en'] || code
+      if (code !== "und" && !code.includes("-")) {
+        result.push({
+          code,
+          name: names["zh"] || names["en"] || code,
         });
       }
     }
-    
+
     // 按语言名称排序
-    return result.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+    return result.sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
   } catch (error) {
-    console.error('获取语言数据错误:', error);
+    console.error("获取语言数据错误:", error);
     return []; // 返回空数组作为备用
   }
 }
@@ -433,28 +457,28 @@ export function getLanguages() {
 export function getLanguageName(code) {
   try {
     // 获取语言数据文件的路径
-    const projectRoot = resolve(__dirname, '..', '..');
-    const langFilePath = resolve(projectRoot, 'frontend', 'src', 'assets', 'languages.json');
-    
+    const projectRoot = resolve(__dirname, "..", "..");
+    const langFilePath = resolve(projectRoot, "frontend", "src", "assets", "languages.json");
+
     // 如果文件不存在，返回代码本身或'未知'
     if (!fs.existsSync(langFilePath)) {
       console.warn(`语言文件不存在: ${langFilePath}`);
-      return code || '未知';
+      return code || "未知";
     }
-    
+
     // 读取JSON文件
-    const languageData = JSON.parse(fs.readFileSync(langFilePath, 'utf8'));
-    
+    const languageData = JSON.parse(fs.readFileSync(langFilePath, "utf8"));
+
     if (languageData[code]) {
-      return languageData[code]['zh'] || languageData[code]['en'] || code;
+      return languageData[code]["zh"] || languageData[code]["en"] || code;
     }
-    
-    const baseCode = code?.split('-')[0];
-    return languageData[baseCode] ? 
-      languageData[baseCode]['zh'] || languageData[baseCode]['en'] : 
-      code || '未知';
+
+    const baseCode = code?.split("-")[0];
+    return languageData[baseCode]
+      ? languageData[baseCode]["zh"] || languageData[baseCode]["en"]
+      : code || "未知";
   } catch (error) {
-    console.error('获取语言名称错误:', error);
-    return code || '未知';
+    console.error("获取语言名称错误:", error);
+    return code || "未知";
   }
-} 
+}

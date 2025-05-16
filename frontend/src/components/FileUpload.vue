@@ -39,7 +39,10 @@
         </button>
         <span class="text-xs opacity-50">{{ i18n.t('or') }}</span>
         <span class="text-xs flex items-center gap-1">
-          {{ i18n.t('pressCtrlV') }} <kbd class="kbd kbd-xs">Ctrl</kbd>+<kbd class="kbd kbd-xs">V</kbd>
+          {{ i18n.t('pressCtrlV') }} 
+          <kbd class="kbd kbd-xs kbd-squarer">Ctrl</kbd>
+          <span class="mx-0.5">+</span>
+          <kbd class="kbd kbd-xs kbd-squarer">V</kbd>
         </span>
       </div>
     </div>
@@ -116,18 +119,10 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.kbd {
-  background-color: var(--base-200, #eee);
-  border-radius: 3px;
-  border: 1px solid var(--base-300, #b4b4b4);
-  box-shadow: 0 1px 1px rgba(0, 0, 0, .2), 0 2px 0 0 rgba(255, 255, 255, .7) inset;
-  color: var(--base-content, #333);
-  display: inline-block;
-  font-size: .75em;
-  font-weight: 500;
-  line-height: 1;
-  padding: 2px 3px;
-  white-space: nowrap;
+/* 自定义kbd样式，减小圆角使其更方形 */
+.kbd-squarer {
+  border-radius: 2px !important; /* 减小圆角 */
+  padding: 0 4px;
 }
 
 .hover-effect {

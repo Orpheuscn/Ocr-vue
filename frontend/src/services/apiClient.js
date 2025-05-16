@@ -1,5 +1,5 @@
 // src/services/apiClient.js
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = '/api';
 
 /**
  * 简化版文件处理和OCR识别
@@ -39,9 +39,9 @@ export async function processSimple(file, languageHints = [], recognitionDirecti
       formData.append('userId', userId);
     }
     
-    console.log('apiClient.processSimple: 发送请求到服务器', `${API_BASE_URL}/api/ocr/process`);
+    console.log('apiClient.processSimple: 发送请求到服务器', `${API_BASE_URL}/ocr/process`);
     
-    const response = await fetch(`${API_BASE_URL}/api/ocr/process`, {
+    const response = await fetch(`${API_BASE_URL}/ocr/process`, {
       method: 'POST',
       body: formData
     });
@@ -93,7 +93,7 @@ export async function processFile(file, apiKey, languageHints = [], recognitionD
       formData.append('userId', userId);
     }
     
-    const response = await fetch(`${API_BASE_URL}/api/ocr/process`, {
+    const response = await fetch(`${API_BASE_URL}/ocr/process`, {
       method: 'POST',
       body: formData
     });
@@ -122,7 +122,7 @@ export async function processFile(file, apiKey, languageHints = [], recognitionD
  */
 export async function processBase64Image(imageData, apiKey, languageHints = [], recognitionDirection = 'horizontal', recognitionMode = 'text') {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/ocr/processBase64`, {
+    const response = await fetch(`${API_BASE_URL}/ocr/processBase64`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -175,7 +175,7 @@ export async function processPdf(pdfFile, apiKey, languageHints = [], pageNumber
     formData.append('recognitionDirection', recognitionDirection);
     formData.append('recognitionMode', recognitionMode);
     
-    const response = await fetch(`${API_BASE_URL}/api/ocr/processPdf`, {
+    const response = await fetch(`${API_BASE_URL}/ocr/processPdf`, {
       method: 'POST',
       body: formData
     });
@@ -202,7 +202,7 @@ export async function processPdf(pdfFile, apiKey, languageHints = [], pageNumber
  */
 export async function getPdfPage(pdfData, pageNumber = 1, scale = 1.5) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/ocr/getPdfPage`, {
+    const response = await fetch(`${API_BASE_URL}/ocr/getPdfPage`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -233,7 +233,7 @@ export async function getPdfPage(pdfData, pageNumber = 1, scale = 1.5) {
  */
 export async function getSupportedLanguages() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/ocr/languages`);
+    const response = await fetch(`${API_BASE_URL}/ocr/languages`);
     const result = await response.json();
     
     if (!result.success) {
@@ -255,7 +255,7 @@ export async function getSupportedLanguages() {
  */
 export async function applyFilters(ocrResult, filters) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/ocr/applyFilters`, {
+    const response = await fetch(`${API_BASE_URL}/ocr/applyFilters`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -287,7 +287,7 @@ export async function applyFilters(ocrResult, filters) {
  */
 export async function setRecognitionDirection(ocrResult, direction) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/ocr/setRecognitionDirection`, {
+    const response = await fetch(`${API_BASE_URL}/ocr/setRecognitionDirection`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -319,7 +319,7 @@ export async function setRecognitionDirection(ocrResult, direction) {
  */
 export async function setDisplayMode(ocrResult, mode) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/ocr/setDisplayMode`, {
+    const response = await fetch(`${API_BASE_URL}/ocr/setDisplayMode`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -351,7 +351,7 @@ export async function setDisplayMode(ocrResult, mode) {
  */
 export async function setTableSettings(ocrResult, settings) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/ocr/setTableSettings`, {
+    const response = await fetch(`${API_BASE_URL}/ocr/setTableSettings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -384,7 +384,7 @@ export async function setTableSettings(ocrResult, settings) {
  */
 export async function applyMasks(image, masks, dimensions) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/ocr/applyMasks`, {
+    const response = await fetch(`${API_BASE_URL}/ocr/applyMasks`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -415,7 +415,7 @@ export async function applyMasks(image, masks, dimensions) {
  */
 export async function checkApiStatus() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/ocr/apiStatus`);
+    const response = await fetch(`${API_BASE_URL}/ocr/apiStatus`);
     const result = await response.json();
     
     if (!result.success) {

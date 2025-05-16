@@ -7,6 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# 依赖
 node_modules
 .DS_Store
 dist
@@ -15,6 +16,7 @@ dist-ssr
 coverage
 *.local
 
+# 测试文件
 /cypress/videos/
 /cypress/screenshots/
 
@@ -32,3 +34,27 @@ coverage
 
 # 环境变量文件
 .env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# 数据库文件
+database/*.sqlite
+database/*.sqlite3
+database/*.sqlite-journal
+
+# SSL证书
+ssl/*.pem
+ssl/*.key
+ssl/backup
+
+# 临时文件
+.tmp
+.temp
+.cache
+.vite
+
+# 自动生成的文件
+*.generated.*

@@ -1,6 +1,8 @@
 import * as userService from '../services/userService.js';
 import * as ocrRecordService from '../services/ocrRecordService.js';
-import jwt from 'jsonwebtoken';
+import passport from 'passport';
+import { generateAccessToken, generateRefreshToken } from '../middleware/authMiddleware.js';
+import config from '../utils/envConfig.js';
 
 // 获取所有用户（仅用于开发环境）
 export const getAllUsers = async (req, res) => {
@@ -61,11 +63,22 @@ export const register = async (req, res) => {
     // 创建新用户
     const newUser = await userService.createUser({ username, email, password });
     
+    // 生成令牌
+    const token = generateAccessToken(newUser);
+    const refreshToken = generateRefreshToken(newUser);
+    
     // 返回成功响应
     res.status(201).json({
       success: true,
       message: '注册成功',
-      data: newUser
+      data: {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email,
+        isAdmin: newUser.isAdmin || false,
+        token,
+        refreshToken
+      }
     });
   } catch (error) {
     console.error('注册错误:', error);
@@ -78,68 +91,49 @@ export const register = async (req, res) => {
 };
 
 // 用户登录
-export const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    
-    // 验证必填字段
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: '邮箱和密码为必填项'
-      });
-    }
-    
-    // 查找用户
-    const user = await userService.findUserByEmail(email);
-    
-    // 如果用户不存在
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: '邮箱或密码不正确'
-      });
-    }
-    
-    // 验证密码
-    const isPasswordValid = await userService.verifyPassword(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: '邮箱或密码不正确'
-      });
-    }
-    
-    // 更新最后登录时间
-    await userService.updateUser(user.id, { lastLogin: new Date() });
-    
-    // 生成JWT令牌
-    const token = jwt.sign(
-      { id: user.id, isAdmin: user.isAdmin || false },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' } // 令牌24小时有效
-    );
-    
-    // 登录成功
-    res.status(200).json({
-      success: true,
-      message: '登录成功',
-      data: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        isAdmin: user.isAdmin || false,
-        token: token // 返回JWT令牌
+export const login = (req, res, next) => {
+  passport.authenticate('local', { session: false }, async (err, user, info) => {
+    try {
+      if (err) {
+        return next(err);
       }
-    });
-  } catch (error) {
-    console.error('登录错误:', error);
-    res.status(500).json({
-      success: false,
-      message: '登录失败',
-      error: error.message
-    });
-  }
+      
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: info.message || '邮箱或密码不正确'
+        });
+      }
+      
+      // 更新最后登录时间
+      await userService.updateUser(user.id, { lastLogin: new Date() });
+      
+      // 生成令牌
+      const token = generateAccessToken(user);
+      const refreshToken = generateRefreshToken(user);
+      
+      // 登录成功
+      return res.status(200).json({
+        success: true,
+        message: '登录成功',
+        data: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          isAdmin: user.isAdmin || false,
+          token,
+          refreshToken
+        }
+      });
+    } catch (error) {
+      console.error('登录错误:', error);
+      return res.status(500).json({
+        success: false,
+        message: '登录失败',
+        error: error.message
+      });
+    }
+  })(req, res, next);
 };
 
 // 获取用户信息
@@ -276,6 +270,86 @@ export const getUserOcrHistory = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '获取OCR历史记录失败',
+      error: error.message
+    });
+  }
+};
+
+// 刷新令牌
+export const refreshToken = async (req, res) => {
+  try {
+    const userId = req.userId; // 从中间件获取
+    
+    // 查找用户
+    const user = await userService.findUserById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在'
+      });
+    }
+    
+    // 生成新令牌
+    const newToken = generateAccessToken(user);
+    const newRefreshToken = generateRefreshToken(user);
+    
+    // 返回新令牌
+    res.status(200).json({
+      success: true,
+      message: '令牌刷新成功',
+      data: {
+        token: newToken,
+        refreshToken: newRefreshToken
+      }
+    });
+  } catch (error) {
+    console.error('刷新令牌错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '刷新令牌失败',
+      error: error.message
+    });
+  }
+};
+
+// 注销账户
+export const deactivateAccount = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    
+    // 确保用户只能注销自己的账户，或者管理员可以注销任何账户
+    if (req.user.id.toString() !== userId && !req.user.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: '您没有权限执行此操作'
+      });
+    }
+    
+    // 查找用户
+    const user = await userService.findUserById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在'
+      });
+    }
+    
+    // 软删除用户（使用Sequelize的paranoid特性）
+    await user.destroy();
+    
+    // 增加用户令牌版本，使所有当前的令牌失效
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save();
+    
+    res.status(200).json({
+      success: true,
+      message: '账户已成功注销'
+    });
+  } catch (error) {
+    console.error('注销账户错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '注销账户失败',
       error: error.message
     });
   }

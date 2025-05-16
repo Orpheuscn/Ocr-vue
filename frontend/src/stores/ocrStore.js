@@ -208,17 +208,18 @@ export const useOcrStore = defineStore('ocr', () => {
       // filterSettings.value = { ...filterBounds.value }; // 这需要 filterBounds 先被设置
   }
 
-  // 设置 API Key - 修改为只设置服务器API状态
-  function setApiKey(key) {
-    // 移除本地API Key设置功能，始终使用服务器API
-    localStorage.setItem('useServerApiKey', 'true');
-    useServerApiKey.value = true;
-  }
-
-  // 切换 API 设置面板显示 - 不再需要但保留避免错误
-  function toggleApiSettings() {
-    // 不再允许切换设置面板
-    return;
+  // 新增设置OCR参数函数
+  function setOcrSettings(settings) {
+    console.log('设置OCR参数:', settings);
+    if (settings.direction) {
+      initialTextDirection.value = settings.direction;
+    }
+    if (settings.mode) {
+      recognitionMode.value = settings.mode;
+    }
+    if (settings.languages) {
+      updateSelectedLanguages(settings.languages);
+    }
   }
 
   // 加载用户选择的文件
@@ -1006,20 +1007,6 @@ export const useOcrStore = defineStore('ocr', () => {
     }
   }
 
-  // 新增设置OCR参数函数
-  function setOcrSettings(settings) {
-    console.log('设置OCR参数:', settings);
-    if (settings.direction) {
-      initialTextDirection.value = settings.direction;
-    }
-    if (settings.mode) {
-      recognitionMode.value = settings.mode;
-    }
-    if (settings.languages) {
-      updateSelectedLanguages(settings.languages);
-    }
-  }
-
   // 执行OCR请求的函数
   async function performOcrRequest(base64Image, apiKey, languageHints = []) {
     console.log('执行OCR请求...');
@@ -1102,6 +1089,6 @@ export const useOcrStore = defineStore('ocr', () => {
     // Getters
     hasApiKey, canStartOcr, textStats, hasOcrResult,
     // Actions
-    setApiKey, toggleApiSettings, resetUIState, loadFiles, changePdfPage, setImageDimension, startOcrProcess, applyFilters, setTextDisplayMode, _showNotification, updateSelectedLanguages, initSelectedLanguages, applyMasksToImage, setRecognitionMode, updateTableSettings, setTableComponent, initApiStatus, setOcrSettings,
+    resetUIState, loadFiles, changePdfPage, setImageDimension, startOcrProcess, applyFilters, setTextDisplayMode, _showNotification, updateSelectedLanguages, initSelectedLanguages, applyMasksToImage, setRecognitionMode, updateTableSettings, setTableComponent, initApiStatus, setOcrSettings,
   };
 });

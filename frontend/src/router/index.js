@@ -4,6 +4,7 @@ import HomePage from '@/views/HomePage.vue'
 import LoginPage from '@/views/LoginPage.vue'
 import RegisterPage from '@/views/RegisterPage.vue'
 import AdminDashboard from '@/views/AdminDashboard.vue'
+import AccountSettings from '@/components/AccountSettings.vue'
 
 const routes = [
   {
@@ -42,6 +43,12 @@ const routes = [
     path: '/profile',
     name: 'Profile',
     component: () => import('@/components/auth/UserProfile.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/settings',
+    name: 'AccountSettings',
+    component: AccountSettings,
     meta: { requiresAuth: true }
   },
   {

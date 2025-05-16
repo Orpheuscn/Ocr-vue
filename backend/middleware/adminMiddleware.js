@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import config from '../utils/envConfig.js';
 
 // 验证用户是否为管理员的中间件
 export const isAdmin = async (req, res, next) => {
@@ -15,7 +16,7 @@ export const isAdmin = async (req, res, next) => {
 
     // 解析 token
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, config.jwtSecret);
 
     // 查找用户并检查是否为管理员
     const user = await User.findByPk(decoded.id);

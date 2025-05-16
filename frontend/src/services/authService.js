@@ -19,6 +19,11 @@ export const register = async (userData) => {
       throw new Error(data.message || '注册失败');
     }
     
+    // 保存用户信息到本地存储
+    if (data.data) {
+      localStorage.setItem('user', JSON.stringify(data.data));
+    }
+    
     return data;
   } catch (error) {
     console.error('注册服务错误:', error);
@@ -84,6 +89,46 @@ export const isAdmin = () => {
   return user !== null && user.isAdmin === true;
 };
 
+// 刷新令牌
+export const refreshToken = async () => {
+  try {
+    const user = getCurrentUser();
+    if (!user || !user.refreshToken) {
+      throw new Error('没有有效的刷新令牌');
+    }
+    
+    const response = await fetch(`${API_URL}/refresh-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ refreshToken: user.refreshToken })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || '刷新令牌失败');
+    }
+    
+    // 更新本地存储中的令牌
+    const updatedUser = {
+      ...user,
+      token: data.data.token,
+      refreshToken: data.data.refreshToken
+    };
+    
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    
+    return data;
+  } catch (error) {
+    console.error('刷新令牌错误:', error);
+    // 如果刷新失败，清除用户信息，要求重新登录
+    logout();
+    throw error;
+  }
+};
+
 // 创建带有认证头的请求
 export const fetchWithAuth = async (url, options = {}) => {
   try {
@@ -114,7 +159,24 @@ export const fetchWithAuth = async (url, options = {}) => {
     };
     
     // 发送请求
-    const response = await fetch(url, requestOptions);
+    let response = await fetch(url, requestOptions);
+    
+    // 如果响应为401（未授权），尝试刷新令牌
+    if (response.status === 401) {
+      try {
+        // 尝试刷新令牌
+        await refreshToken();
+        
+        // 使用新令牌重新发送请求
+        const refreshedUser = getCurrentUser();
+        requestOptions.headers['Authorization'] = `Bearer ${refreshedUser.token}`;
+        response = await fetch(url, requestOptions);
+      } catch (refreshError) {
+        // 刷新令牌失败，需要重新登录
+        throw new Error('会话已过期，请重新登录');
+      }
+    }
+    
     const data = await response.json();
     
     if (!response.ok) {
@@ -138,13 +200,9 @@ export const refreshUserInfo = async () => {
     
     const userId = currentUser.id;
     
-    // 获取最新的用户信息 - 修正API路径
-    const response = await fetch(`${API_URL}/${userId}/profile`);
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || '获取用户信息失败');
-    }
+    // 使用fetchWithAuth确保发送认证token
+    const url = `${API_URL}/${userId}/profile`;
+    const data = await fetchWithAuth(url);
     
     // 更新本地存储中的用户信息
     const updatedUser = {
@@ -164,14 +222,9 @@ export const refreshUserInfo = async () => {
 // 获取用户详细信息
 export const getUserProfile = async (userId) => {
   try {
-    // 修正API路径，从 /profile/{userId} 改为 /{userId}/profile
-    const response = await fetch(`${API_URL}/${userId}/profile`);
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || '获取用户信息失败');
-    }
+    // 使用fetchWithAuth而不是普通fetch，确保发送认证token
+    const url = `${API_URL}/${userId}/profile`;
+    const data = await fetchWithAuth(url);
     
     return data.data;
   } catch (error) {
@@ -183,20 +236,12 @@ export const getUserProfile = async (userId) => {
 // 更新用户信息
 export const updateUserProfile = async (userId, userData) => {
   try {
-    // 修正API路径
-    const response = await fetch(`${API_URL}/${userId}`, {
+    // 使用fetchWithAuth确保发送认证token
+    const url = `${API_URL}/${userId}`;
+    const data = await fetchWithAuth(url, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify(userData)
     });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || '更新用户信息失败');
-    }
     
     // 更新本地存储中的用户信息
     const currentUser = getCurrentUser();
@@ -212,6 +257,25 @@ export const updateUserProfile = async (userId, userData) => {
     return data.data;
   } catch (error) {
     console.error('更新用户资料错误:', error);
+    throw error;
+  }
+};
+
+// 注销账户（永久删除）
+export const deactivateAccount = async (userId) => {
+  try {
+    // 使用fetchWithAuth确保发送认证token
+    const url = `${API_URL}/${userId}/deactivate`;
+    const data = await fetchWithAuth(url, {
+      method: 'DELETE'
+    });
+    
+    // 成功注销后清除本地存储
+    logout();
+    
+    return data;
+  } catch (error) {
+    console.error('注销账户错误:', error);
     throw error;
   }
 }; 

@@ -14,6 +14,7 @@
           </label>
           <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
             <li><router-link :to="{ name: 'Profile' }">个人资料</router-link></li>
+            <li><router-link :to="{ name: 'AccountSettings' }">账户设置</router-link></li>
             <li v-if="isUserAdmin"><router-link :to="{ name: 'Admin' }">管理仪表板</router-link></li>
             <li><a @click="handleLogout">退出登录</a></li>
           </ul>

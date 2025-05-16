@@ -1,7 +1,7 @@
 <template>
   <footer class="py-4 text-center text-sm text-base-content opacity-70">
     <div>
-      <a href="#" class="text-primary hover:underline mr-2" @click.prevent="openTutorial">{{ i18n.t('tutorial') }}</a>
+      <a href="#" class="text-accent hover:underline mr-2" @click.prevent="openTutorial">{{ i18n.t('tutorial') }}</a>
       <span>|</span>
       <span class="ml-2">{{ i18n.t('copyright') }} &copy; {{ i18n.t('appTitle') }} 2025</span>
     </div>
