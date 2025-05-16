@@ -66,22 +66,12 @@
           <div class="flex items-center gap-2">
             <span class="text-sm">{{ i18n.t('blockLevel') }}:</span>
             <select v-model="selectedBlockLevel" class="select select-sm select-bordered">
-              <option value="blocks">{{ i18n.t('blocks') }}</option>
-              <option value="paragraphs">{{ i18n.t('paragraphs') }}</option>
-              <option value="words">{{ i18n.t('words') }}</option>
-              <option value="symbols">{{ i18n.t('symbols') }}</option>
-            </select>
-          </div>
-          
-          <!-- 使用GridAlignmentTool组件替换原来的对齐按钮 -->
-          <GridAlignmentTool
-            v-model:selectedBlockLevel="selectedBlockLevel"
-            :filteredSymbolsData="store.filteredSymbolsData"
-            ref="gridAlignmentToolRef"
-            :xAxisOffset="30"
-            @gridAlignChange="handleGridAlignChange"
-            v-model:alignedSymbols="alignedSymbols"
-          />
+          <option value="blocks">{{ i18n.t('blocks') }}</option>
+          <option value="paragraphs">{{ i18n.t('paragraphs') }}</option>
+          <option value="words">{{ i18n.t('words') }}</option>
+          <option value="symbols">{{ i18n.t('symbols') }}</option>
+        </select>
+      </div>
           
           <button 
             class="btn btn-sm" 
@@ -106,14 +96,12 @@
       <div
         class="coordinate-system"
         ref="coordSystemRef"
-        :class="{ 'with-grid': gridAlignmentToolRef?.showGridAlign }"
             :style="{ 
               width: systemWidth + 'px', 
               height: systemHeight + 'px',
               transform: `scale(${zoomLevel})`,
               transformOrigin: 'top left',
-              willChange: 'transform',
-              backgroundSize: gridAlignmentToolRef?.showGridAlign ? `${gridAlignmentToolRef.gridCellSize}px ${gridAlignmentToolRef.gridCellSize}px` : 'auto'
+              willChange: 'transform'
             }"
             @transitionend="handleTransformEnd"
       >
@@ -136,7 +124,7 @@
         >
           {{ label.text }}
         </div>
-        
+
         <svg class="block-svg" :viewBox="`0 0 ${systemWidth} ${systemHeight}`" preserveAspectRatio="none">
               <!-- 单层多边形设计 - 添加一个始终可点击的透明层 -->
               <g v-for="(block, index) in visibleBlockBoundaries" :key="`block-${selectedBlockLevel}-${index}`">
@@ -162,26 +150,16 @@
           />
               </g>
         </svg>
-        
-        <!-- 使用从GridAlignmentTool获取的数据渲染字符 -->
         <div
-          v-for="(symbol, index) in alignedSymbols"
+          v-for="(symbol, index) in symbolBlocksToDisplay"
           :key="`symbol-${index}`"
           class="text-block"
           :style="{
-            left: `${((symbol.x || 0) + 30)}px`, /* 加30px是Y轴标签的偏移 */
+            left: `${((symbol.x || 0) + 30)}px`,
             top: `${(symbol.y || 0)}px`,
-            width: `${symbol.width}px`,
-            height: `${symbol.height}px`,
-            fontSize: symbol.fontSize || '12px',
-            border: gridAlignmentToolRef?.showGridAlign ? '1px solid rgba(200, 200, 200, 0.3)' : 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: gridAlignmentToolRef?.showGridAlign ? 'normal' : 'inherit',
-            fontFamily: gridAlignmentToolRef?.showGridAlign ? '\'Arial\', sans-serif' : 'inherit',
-            letterSpacing: gridAlignmentToolRef?.showGridAlign ? 'normal' : 'inherit',
-            backgroundColor: symbol.backgroundColor || 'transparent'
+            width: `${Math.max(symbol.width || 0, 20)}px`,
+            height: `${Math.max(symbol.height || 0, 20)}px`,
+            fontSize: symbol.fontSize || '12px'
           }"
         >
           {{ symbol.text }}
@@ -214,15 +192,12 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
 import { useI18nStore } from '@/stores/i18nStore';
-import GridAlignmentTool from './GridAlignmentTool.vue';
 
 const store = useOcrStore();
 const i18n = useI18nStore();
 const coordSystemRef = ref(null);
 const coordSystemWrapper = ref(null);
 const coordViewContainer = ref(null);
-const gridAlignmentToolRef = ref(null); // 添加对GridAlignmentTool的引用
-const alignedSymbols = ref([]); // 存储子组件计算的对齐后符号数据
 
 // --- Local State ---
 const showBounds = ref(true); // 控制 SVG 边界显隐
@@ -277,6 +252,19 @@ const yAxisLabels = computed(() => {
     labels.push({ pos: y - 7, text: Math.round(y) });
   }
   return labels;
+});
+
+// 符号数据（带缓存）
+const symbolBlocksToDisplay = computed(() => {
+  // 只显示通过过滤的符号
+  return store.filteredSymbolsData.filter(s => s.isFiltered).map(symbol => ({
+    text: symbol.text || '',
+    x: symbol.x,
+    y: symbol.y,
+    width: symbol.width,
+    height: symbol.height,
+    fontSize: `${Math.max(12, symbol.height * 0.8)}px`
+  }));
 });
 
 // SVG 边界框数据（带缓存）
@@ -648,27 +636,6 @@ onMounted(() => {
       mousePosition.value = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
   });
-
-  // 在挂载完成后，确保gridAlignmentToolRef存在
-  nextTick(() => {
-    if (!gridAlignmentToolRef.value) {
-      console.warn('GridAlignmentTool组件引用未找到，可能影响网格对齐功能');
-    }
-  });
-
-  // 确保在组件挂载后有初始数据
-  if (store.filteredSymbolsData?.length) {
-    alignedSymbols.value = store.filteredSymbolsData
-      .filter(s => s.isFiltered)
-      .map(symbol => ({
-        text: symbol.text || '',
-        x: symbol.x,
-        y: symbol.y,
-        width: Math.max(symbol.width || 0, 20),
-        height: Math.max(symbol.height || 0, 20),
-        fontSize: `${Math.max(12, symbol.height * 0.8)}px`
-      }));
-  }
 });
 
 onUnmounted(() => {
@@ -837,34 +804,6 @@ const handleTransformEnd = () => {
     updateViewportRect();
   });
 };
-
-// 添加处理网格对齐状态变化的函数
-const handleGridAlignChange = (isAligned) => {
-  // 当网格对齐状态变化时，可以在这里执行相关操作
-  console.log(`网格对齐状态变为: ${isAligned ? '已对齐' : '未对齐'}`);
-  
-  // 强制更新视口信息，确保UI正确显示
-  nextTick(() => {
-    updateViewportRect();
-  });
-};
-
-// 监听过滤数据变化，更新字符显示
-watch(() => store.filteredSymbolsData, (newData) => {
-  // 只有在非网格对齐模式下或子组件未初始化时才手动更新
-  if (!gridAlignmentToolRef.value?.showGridAlign) {
-    alignedSymbols.value = newData
-      .filter(s => s.isFiltered)
-      .map(symbol => ({
-        text: symbol.text || '',
-        x: symbol.x,
-        y: symbol.y,
-        width: Math.max(symbol.width || 0, 20),
-        height: Math.max(symbol.height || 0, 20),
-        fontSize: `${Math.max(12, symbol.height * 0.8)}px`
-      }));
-  }
-}, { deep: true });
 </script>
 
 <style scoped>
@@ -889,22 +828,6 @@ watch(() => store.filteredSymbolsData, (newData) => {
 /* 添加平滑过渡效果 */
 .coordinate-system {
   transition: transform 0.2s cubic-bezier(0.215, 0.610, 0.355, 1.000);
-}
-
-/* 修改网格样式使用CSS背景图案 */
-.coordinate-system.with-grid {
-  background-image: 
-    linear-gradient(to right, rgba(220, 220, 220, 0.5) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(220, 220, 220, 0.5) 1px, transparent 1px);
-  background-position: 30px 0; /* Y轴的偏移 */
-  /* backgroundSize会在style中设置 */
-  background-color: transparent;
-}
-
-/* 移除原有的grid-line样式，不再需要 */
-.grid-line.horizontal,
-.grid-line.vertical {
-  display: none;
 }
 
 /* 调试信息样式 */
@@ -1037,24 +960,16 @@ watch(() => store.filteredSymbolsData, (newData) => {
 
 .text-block {
     position: absolute;
-    overflow: visible;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    background-color: rgba(255, 255, 255, 0.8);
+    color: #333;
+    word-break: break-all;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--bc, #333); /* 使用变量以支持暗色模式 */
-    font-family: 'Inter', sans-serif;
-    line-height: 1;
-    text-align: center;
-    white-space: nowrap;
-    z-index: 50;
-    cursor: default;
     user-select: none;
-    pointer-events: none; /* 使鼠标事件穿透该元素 */
-    padding: 0;
-    box-sizing: border-box;
-    /* 移除透明背景设置，允许通过style设置背景色 */
-    border: 1px solid transparent;
-    text-shadow: 0 0 2px var(--b2, white); /* 文字阴影增强可读性 */
+    transition: all 0.2s ease;
 }
 
 .block-svg {
@@ -1082,6 +997,34 @@ watch(() => store.filteredSymbolsData, (newData) => {
     stroke-width: 2px;
     stroke-dasharray: none;
     z-index: 100; /* 确保悬停时可见 */
+}
+
+.text-block {
+  position: absolute;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bc, #333); /* 使用变量以支持暗色模式 */
+  font-family: 'Inter', sans-serif;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  z-index: 50;
+  cursor: default;
+  user-select: none;
+  pointer-events: none; /* 修改为 none，使鼠标事件穿透该元素 */
+  padding: 0;
+  box-sizing: border-box;
+  /* 设置边框和背景为透明 */
+  border: 1px solid transparent;
+  background-color: transparent;
+  text-shadow: 0 0 2px var(--b2, white); /* 添加文字阴影增强可读性 */
+}
+
+.text-block:hover {
+  /* 完全移除悬停样式，因为现在字符元素不接收鼠标事件 */
+  /* z-index: 101; */
 }
 
 /* 全局通知样式 */
@@ -1212,20 +1155,5 @@ body .coordinate-tooltip {
 .btn-sm:hover {
   transform: translateY(-1px);
   box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
-}
-
-/* 添加网格对齐时的文本块样式 */
-.coordinate-system.with-grid .text-block {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  vertical-align: middle;
-  font-weight: normal;
-  font-family: 'Arial', sans-serif;
-  font-style: normal;
-  letter-spacing: normal;
-  /* 移除背景颜色的设置，改为使用内联style提供的backgroundColor */
-  border: 1px solid rgba(200, 200, 200, 0.3);
 }
 </style>

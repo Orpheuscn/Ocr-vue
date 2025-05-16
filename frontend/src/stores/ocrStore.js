@@ -915,6 +915,7 @@ export const useOcrStore = defineStore('ocr', () => {
           originalIndex: symbol.originalIndex !== undefined ? symbol.originalIndex : charIndex,
           detectedBreak: symbol.detectedBreak || null,
           vertices: symbol.vertices || [],
+          confidence: symbol.confidence || 1.0, // 添加confidence属性，默认为1.0表示最高置信度
         }
 
         // 应用过滤条件
@@ -956,6 +957,7 @@ export const useOcrStore = defineStore('ocr', () => {
                     originalIndex: charIndex,
                     detectedBreak: symbol.property?.detectedBreak?.type,
                     vertices: symbol.boundingBox?.vertices || [],
+                    confidence: symbol.confidence || 1.0, // 添加confidence属性，默认为1.0表示最高置信度
                   }
 
                   if (symbolData.vertices.length >= 4) {
