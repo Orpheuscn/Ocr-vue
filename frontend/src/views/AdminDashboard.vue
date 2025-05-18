@@ -56,9 +56,9 @@
           <span>{{ dbStatus.connected ? '已连接' : '未连接' }}</span>
         </div>
         <div class="mt-2">
-          <p>类型: {{ dbStatus.type || 'SQLite' }}</p>
-          <p>路径: {{ dbStatus.path || 'N/A' }}</p>
-          <p>大小: {{ dbStatus.size || 'N/A' }}</p>
+          <p>类型: {{ dbStatus.type || 'MongoDB' }}</p>
+          <p>URI: {{ dbStatus.uri || 'N/A' }}</p>
+          <p>认证: {{ dbStatus.auth ? '已启用' : '未启用' }}</p>
         </div>
       </div>
 
@@ -299,10 +299,10 @@
       <h2 class="text-xl font-semibold mb-4">数据库查询</h2>
       <div class="mb-4">
         <textarea
-          v-model="sqlQuery"
+          v-model="mongoQuery"
           class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           rows="3"
-          placeholder="输入SQL查询语句 (例如: SELECT * FROM Users LIMIT 10)"
+          placeholder='输入MongoDB查询 (例如: { "collection": "users", "query": {}, "limit": 10 })'
         ></textarea>
       </div>
       <div class="flex justify-between">
@@ -318,13 +318,13 @@
             @click="loadSampleQuery('users')"
             class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded"
           >
-            用户表
+            用户集合
           </button>
           <button
             @click="loadSampleQuery('ocr')"
             class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded"
           >
-            OCR记录表
+            OCR记录集合
           </button>
         </div>
       </div>
@@ -399,9 +399,9 @@ export default {
       // 数据库状态
       dbStatus: {
         connected: false,
-        type: 'SQLite',
-        path: '',
-        size: '',
+        type: 'MongoDB',
+        uri: '',
+        auth: false,
       },
 
       // API状态
@@ -435,7 +435,7 @@ export default {
       ],
 
       // 数据库查询
-      sqlQuery: '',
+      mongoQuery: '',
       queryResult: null,
       isQueryExecuting: false,
     }
@@ -588,21 +588,49 @@ export default {
       }
     },
 
-    // 执行SQL查询
+    // 执行查询
     async executeQuery() {
-      if (!this.sqlQuery.trim()) return
+      if (!this.mongoQuery.trim()) return
 
       this.isQueryExecuting = true
       try {
+        // 解析查询字符串为JSON对象
+        let queryObj
+        try {
+          queryObj = JSON.parse(this.mongoQuery)
+        } catch (parseError) {
+          this.queryResult = {
+            error: '查询格式错误: ' + parseError.message,
+            executionTime: 0,
+            rows: [],
+          }
+          return
+        }
+        
+        // 发送查询请求
         const data = await fetchWithAuth('/api/admin/execute-query', {
           method: 'POST',
-          body: JSON.stringify({ query: this.sqlQuery }),
+          body: JSON.stringify(queryObj),
         })
-        this.queryResult = data
+        
+        if (data.success) {
+          // 将结果转换为前端需要的格式
+          this.queryResult = {
+            executionTime: data.executionTime,
+            rows: data.results || [],
+            error: null,
+          }
+        } else {
+          this.queryResult = {
+            error: data.error || '查询执行失败',
+            executionTime: data.executionTime || 0,
+            rows: [],
+          }
+        }
       } catch (error) {
         console.error('执行查询失败:', error)
         this.queryResult = {
-          error: '执行查询时发生错误: ' + error.message,
+          error: '执行查询时发生错误: ' + (error.message || '请求失败'),
           executionTime: 0,
           rows: [],
         }
@@ -611,12 +639,28 @@ export default {
       }
     },
 
-    // 加载示例查询
+    // 加载样本查询
     loadSampleQuery(type) {
       if (type === 'users') {
-        this.sqlQuery = 'SELECT * FROM users LIMIT 10'
+        this.mongoQuery = JSON.stringify(
+          {
+            collection: 'users',
+            query: {},
+            limit: 10,
+          },
+          null,
+          2,
+        )
       } else if (type === 'ocr') {
-        this.sqlQuery = 'SELECT * FROM ocr_records LIMIT 10'
+        this.mongoQuery = JSON.stringify(
+          {
+            collection: 'ocrrecords',
+            query: {},
+            limit: 10,
+          },
+          null,
+          2,
+        )
       }
     },
 

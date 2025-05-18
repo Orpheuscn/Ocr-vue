@@ -44,6 +44,10 @@ backend/.env.*
 database/*.sqlite
 database/*.sqlite3
 database/*.sqlite-journal
+# MongoDB数据文件
+database/mongodb/data
+database/mongodb/mongod.conf
+database/mongodb/*.lock
 
 # SSL证书
 ssl/*.pem

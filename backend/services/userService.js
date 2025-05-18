@@ -1,5 +1,5 @@
-import User from '../models/User.js';
-import bcrypt from 'bcryptjs';
+import User from "../models/User.js";
+import bcrypt from "bcryptjs";
 
 // 创建新用户
 export const createUser = async (userData) => {
@@ -7,17 +7,17 @@ export const createUser = async (userData) => {
     // 加密密码
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(userData.password, salt);
-    
-    // 使用Sequelize创建用户
+
+    // 使用Mongoose创建用户
     const newUser = await User.create({
       username: userData.username,
       email: userData.email,
       password: hashedPassword,
-      tags: userData.tags || []
+      tags: userData.tags || [],
     });
-    
-    // 返回用户信息（排除密码）
-    return newUser.toJSON();
+
+    // 返回用户信息
+    return newUser;
   } catch (error) {
     throw error;
   }
@@ -26,7 +26,7 @@ export const createUser = async (userData) => {
 // 通过电子邮件查找用户
 export const findUserByEmail = async (email) => {
   try {
-    return await User.findOne({ where: { email } });
+    return await User.findOne({ email });
   } catch (error) {
     throw error;
   }
@@ -35,7 +35,7 @@ export const findUserByEmail = async (email) => {
 // 通过用户名查找用户
 export const findUserByUsername = async (username) => {
   try {
-    return await User.findOne({ where: { username } });
+    return await User.findOne({ username });
   } catch (error) {
     throw error;
   }
@@ -44,7 +44,12 @@ export const findUserByUsername = async (username) => {
 // 通过ID查找用户
 export const findUserById = async (id) => {
   try {
-    return await User.findByPk(id);
+    // 尝试直接查找，支持字符串ID或ObjectId
+    const user = await User.findById(id);
+    if (user) return user;
+
+    // 如果没有找到，尝试使用_id作为字符串查找
+    return await User.findOne({ _id: id });
   } catch (error) {
     throw error;
   }
@@ -53,9 +58,7 @@ export const findUserById = async (id) => {
 // 获取所有用户
 export const getAllUsers = async () => {
   try {
-    return await User.findAll({
-      attributes: { exclude: ['password'] }
-    });
+    return await User.find({});
   } catch (error) {
     throw error;
   }
@@ -78,20 +81,20 @@ export const updateUser = async (id, userData) => {
       const salt = await bcrypt.genSalt(10);
       userData.password = await bcrypt.hash(userData.password, salt);
     }
-    
-    // 使用Sequelize更新用户
-    const user = await User.findByPk(id);
+
+    // 查找并更新用户
+    const user = await User.findById(id);
     if (!user) {
       return null;
     }
-    
+
     // 更新字段
     if (userData.username) user.username = userData.username;
     if (userData.email) user.email = userData.email;
     if (userData.password) user.password = userData.password;
     if (userData.tags) user.tags = userData.tags;
     if (userData.lastLogin) user.lastLogin = userData.lastLogin || new Date();
-    
+
     await user.save();
     return user;
   } catch (error) {
@@ -104,18 +107,18 @@ export const updateUserOcrStats = async (userId, { imageCount = 0, pdfPageCount 
   try {
     // 增加统计数字，将图片和PDF页面合并计算
     const totalCount = imageCount + pdfPageCount;
-    
-    // 使用Sequelize更新统计信息
-    const user = await User.findByPk(userId);
+
+    // 查找并更新用户统计信息
+    const user = await User.findById(userId);
     if (!user) {
-      throw new Error('用户不存在');
+      throw new Error("用户不存在");
     }
-    
+
     // 获取当前统计信息，更新后保存
-    const ocrStats = user.ocrStats;
+    const ocrStats = user.ocrStats || { totalImages: 0 };
     ocrStats.totalImages = (ocrStats.totalImages || 0) + totalCount;
     user.ocrStats = ocrStats;
-    
+
     await user.save();
     return user;
   } catch (error) {
@@ -126,12 +129,32 @@ export const updateUserOcrStats = async (userId, { imageCount = 0, pdfPageCount 
 // 获取用户OCR统计信息
 export const getUserOcrStats = async (userId) => {
   try {
-    const user = await User.findByPk(userId);
+    const user = await User.findById(userId);
     if (!user) {
-      throw new Error('用户不存在');
+      throw new Error("用户不存在");
     }
     return user.ocrStats;
   } catch (error) {
     throw error;
   }
-}; 
+};
+
+// 删除用户（软删除）
+export const deleteUser = async (userId) => {
+  try {
+    // 查找用户
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error("用户不存在");
+    }
+    
+    // MongoDB中没有内置的软删除功能，我们通过更新用户状态来实现
+    user.status = "deactivated";
+    user.tokenVersion = (user.tokenVersion || 0) + 1; // 使所有当前的令牌失效
+    
+    await user.save();
+    return user;
+  } catch (error) {
+    throw error;
+  }
+};

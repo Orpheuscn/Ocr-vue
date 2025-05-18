@@ -1,13 +1,8 @@
-import User from './User.js';
-import OcrRecord from './OcrRecord.js';
-import { sequelize } from '../db/config.js';
+import User from "./User.js";
+import OcrRecord from "./OcrRecord.js";
+import { mongoose } from "../db/config.js";
 
-// 确保模型关联已经建立
-OcrRecord.belongsTo(User, { foreignKey: 'userId' });
-User.hasMany(OcrRecord, { foreignKey: 'userId' });
+// MongoDB中的关联是通过引用字段实现的
+// OcrRecord模型中的userId字段引用了User模型
 
-export {
-  sequelize,
-  User,
-  OcrRecord
-}; 
+export { mongoose, User, OcrRecord };

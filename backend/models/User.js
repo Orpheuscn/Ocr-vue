@@ -1,5 +1,4 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../db/config.js';
+import mongoose from "mongoose";
 
 /**
  * @swagger
@@ -13,7 +12,7 @@ import { sequelize } from '../db/config.js';
  *         - password
  *       properties:
  *         id:
- *           type: integer
+ *           type: string
  *           description: 用户ID（自动生成）
  *         username:
  *           type: string
@@ -61,69 +60,95 @@ import { sequelize } from '../db/config.js';
  *         ocrStats: {"totalImages": 10}
  *         lastLogin: "2023-01-01T00:00:00.000Z"
  */
-const User = sequelize.define('User', {
-  username: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true
-  },
-  email: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true,
-    validate: {
-      isEmail: true
-    }
-  },
-  password: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  isAdmin: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: false,
-    comment: '是否为管理员用户'
-  },
-  tags: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-    get() {
-      const rawValue = this.getDataValue('tags');
-      return rawValue ? JSON.parse(rawValue) : [];
+
+const userSchema = new mongoose.Schema(
+  {
+    _id: {
+      type: String, // 允许使用字符串ID以兼容迁移数据
+      required: false,
     },
-    set(value) {
-      this.setDataValue('tags', JSON.stringify(value || []));
-    }
-  },
-  ocrStats: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-    defaultValue: '{"totalImages": 0}',
-    get() {
-      const rawValue = this.getDataValue('ocrStats');
-      return rawValue ? JSON.parse(rawValue) : { totalImages: 0 };
+    username: {
+      type: String,
+      required: true,
+      unique: true,
     },
-    set(value) {
-      this.setDataValue('ocrStats', JSON.stringify(value || { totalImages: 0 }));
-    }
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, "请输入有效的电子邮件地址"],
+    },
+    password: {
+      type: String,
+      required: true,
+    },
+    isAdmin: {
+      type: Boolean,
+      default: false,
+    },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
+    tags: {
+      type: [String],
+      default: [],
+    },
+    ocrStats: {
+      type: Object,
+      default: { totalImages: 0 },
+    },
+    lastLogin: {
+      type: Date,
+      default: Date.now,
+    },
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
+    // 兼容迁移数据中可能存在的其他字段
+    settings: {
+      type: Object,
+      default: {},
+    },
+    status: {
+      type: String,
+      default: "active",
+    },
   },
-  lastLogin: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
-  },
-  tokenVersion: {
-    type: DataTypes.INTEGER,
-    defaultValue: 0,
-    comment: '令牌版本，用于追踪和失效刷新令牌'
+  {
+    timestamps: true,
+    toJSON: {
+      transform: function (doc, ret) {
+        ret.id = ret._id;
+        delete ret._id;
+        delete ret.__v;
+        delete ret.password; // 确保password不会被返回
+      },
+    },
   }
-}, {
-  // 其他模型选项
-  timestamps: true, // 创建 createdAt 和 updatedAt 字段
-  paranoid: true,   // 软删除 - 创建 deletedAt 字段
+);
+
+// 添加一个预处理钩子，确保文档有_id字段并同步isAdmin与role字段
+userSchema.pre("save", function (next) {
+  // 确保文档有_id字段
+  if (!this._id) {
+    this._id = new mongoose.Types.ObjectId().toString();
+  }
   
-  // 自定义表名
-  tableName: 'users'
+  // 如果迁移数据中有role字段但没有isAdmin字段，则根据role设置isAdmin
+  if (this.role === "admin" && this.isAdmin === undefined) {
+    this.isAdmin = true;
+  }
+  // 如果设置了isAdmin但没有role字段，则相应设置role
+  else if (this.isAdmin && this.role === undefined) {
+    this.role = "admin";
+  }
+  next();
 });
 
-export default User; 
+// 创建mongoose模型
+const User = mongoose.model("User", userSchema);
+
+export default User;

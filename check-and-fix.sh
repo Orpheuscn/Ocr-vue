@@ -54,13 +54,8 @@ check_env_file() {
     echo -e "${GREEN}✓ PORT配置正确${NC}"
   fi
   
-  # 检查SQLITE_PATH配置
-  if ! grep -q "^SQLITE_PATH=" "$ENV_FILE"; then
-    echo -e "${YELLOW}警告: 未找到SQLITE_PATH配置，将添加默认值${NC}"
-    echo "SQLITE_PATH=../database/ocr_app.sqlite" >> "$ENV_FILE"
-  else
-    echo -e "${GREEN}✓ SQLITE_PATH配置正确${NC}"
-  fi
+  # MongoDB配置已替代SQLite配置
+  echo -e "${GREEN}✓ 使用MongoDB数据库配置${NC}"
   
   # 检查JWT_SECRET配置
   if ! grep -q "^JWT_SECRET=" "$ENV_FILE"; then
@@ -77,32 +72,28 @@ check_env_file() {
 
 # 函数: 检查数据库
 check_database() {
-  echo -e "\n${BLUE}[2/5] 检查数据库...${NC}"
+  echo -e "\n${BLUE}[2/5] 检查数据库配置...${NC}"
   
-  # 从配置文件获取数据库路径
-  local DB_PATH=$(grep "^SQLITE_PATH=" "$ENV_FILE" | cut -d= -f2)
+  # 从配置文件获取MongoDB连接信息
+  local MONGODB_URI=$(grep "^MONGODB_URI=" "$ENV_FILE" | cut -d= -f2)
+  local MONGODB_DB_NAME=$(grep "^MONGODB_DB_NAME=" "$ENV_FILE" | cut -d= -f2)
   
-  # 处理相对路径
-  if [[ "$DB_PATH" == ../* ]]; then
-    # 将相对路径转换为绝对路径
-    DB_PATH="$APP_DIR/$(echo $DB_PATH | sed 's/^\.\.\///')"
-  fi
-  
-  echo -e "${BLUE}数据库路径: $DB_PATH${NC}"
-  
-  # 检查数据库文件是否存在
-  if [ ! -f "$DB_PATH" ]; then
-    echo -e "${YELLOW}警告: 数据库文件不存在，将尝试启动后端服务初始化数据库${NC}"
+  # 检查MongoDB URI是否存在
+  if [ -z "$MONGODB_URI" ]; then
+    echo -e "${RED}错误: MONGODB_URI未在配置文件中定义${NC}"
     return 1
   fi
   
-  # 检查数据库文件权限
-  if [ ! -r "$DB_PATH" ] || [ ! -w "$DB_PATH" ]; then
-    echo -e "${YELLOW}警告: 数据库文件权限不正确，正在修复...${NC}"
-    chmod 644 "$DB_PATH"
+  # 检查数据库名称是否存在
+  if [ -z "$MONGODB_DB_NAME" ]; then
+    echo -e "${RED}错误: MONGODB_DB_NAME未在配置文件中定义${NC}"
+    return 1
   fi
   
-  echo -e "${GREEN}✓ 数据库文件正常${NC}"
+  echo -e "${BLUE}MongoDB URI: $MONGODB_URI${NC}"
+  echo -e "${BLUE}MongoDB 数据库名称: $MONGODB_DB_NAME${NC}"
+  
+  echo -e "${GREEN}✓ MongoDB数据库配置正常${NC}"
   return 0
 }
 

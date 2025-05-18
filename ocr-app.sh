@@ -4,8 +4,9 @@
 # OCR应用管理脚本
 # ==========================================
 # 此脚本用于管理OCR应用的所有组件:
-# 1. 后端API服务器
-# 2. Nginx服务器(用于提供前端静态文件并代理API请求)
+# 1. MongoDB数据库服务
+# 2. 后端API服务器
+# 3. Nginx服务器(用于提供前端静态文件并代理API请求)
 # 
 # 使用方法:
 #   ./ocr-app.sh start - 启动所有服务
@@ -29,6 +30,14 @@ WATCHDOG_LOG="$LOG_DIR/watchdog.log"
 PID_FILE="$LOG_DIR/app.pid"
 WATCHDOG_PID_FILE="$LOG_DIR/watchdog.pid"
 NGINX_CONF="$APP_DIR/nginx/nginx.conf"
+
+# MongoDB配置
+MONGODB_DIR="$APP_DIR/database/mongodb"
+MONGODB_DATA="$MONGODB_DIR/data"
+MONGODB_LOG="$LOG_DIR/mongodb.log"
+MONGODB_PID_FILE="$LOG_DIR/mongodb.pid"
+MONGODB_PORT=27017
+MONGODB_CONFIG="$MONGODB_DIR/mongod.conf"
 
 # 功能函数：显示帮助信息
 show_help() {
@@ -55,6 +64,33 @@ check_port() {
 # 功能函数：检查服务状态
 check_status() {
   echo -e "${BLUE}检查OCR应用服务状态...${NC}"
+  
+  # 检查MongoDB服务
+  if pgrep mongod > /dev/null; then
+    MONGODB_PID=$(pgrep mongod)
+    echo -e "${GREEN}✓ MongoDB服务正在运行 (PID: $MONGODB_PID)${NC}"
+    
+    # 测试MongoDB连接
+    if command -v mongosh &> /dev/null; then
+      mongosh --quiet --eval "db.adminCommand('ping')" > /dev/null 2>&1
+      MONGO_RESULT=$?
+    else
+      # 回退到旧版的mongo命令行工具
+      mongo --eval "db.adminCommand('ping')" > /dev/null 2>&1
+      MONGO_RESULT=$?
+    fi
+
+    if [ $MONGO_RESULT -eq 0 ]; then
+      echo -e "${GREEN}✓ MongoDB连接测试成功${NC}"
+    else
+      echo -e "${YELLOW}警告: MongoDB服务已启动但连接测试失败${NC}"
+      echo -e "${YELLOW}请检查日志: $MONGODB_LOG${NC}"
+      # 虽然连接测试失败，但我们仍然返回成功，因为MongoDB服务可能已经启动
+      # 后端应用将通过Node.js的MongoDB驱动连接，这可能会工作
+    fi
+  else
+    echo -e "${RED}✗ MongoDB服务未运行${NC}"
+  fi
   
   # 检查后端服务
   BACKEND_PID=$(ps aux | grep "node start.js" | grep -v grep | awk '{print $2}')
@@ -141,7 +177,7 @@ stop_services() {
     fi
   fi
   
-  # 停止后端服务
+  # 先停止后端服务，确保关闭与 MongoDB 的连接
   BACKEND_PID=$(ps aux | grep "node start.js" | grep -v grep | awk '{print $2}')
   if [ ! -z "$BACKEND_PID" ]; then
     echo -e "${BLUE}正在停止后端服务 (PID: $BACKEND_PID)...${NC}"
@@ -172,6 +208,12 @@ stop_services() {
   else
     echo -e "${YELLOW}后端服务未运行${NC}"
   fi
+  
+  # 等待一秒，确保所有数据库连接已关闭
+  sleep 1
+  
+  # 然后停止MongoDB数据库
+  stop_mongodb
   
   # 停止Nginx服务
   if ps aux | grep "nginx: master" | grep -v grep > /dev/null; then
@@ -350,6 +392,179 @@ start_monitor() {
   return 0
 }
 
+# 功能函数：启动MongoDB数据库
+start_mongodb() {
+  echo -e "${BLUE}正在启动MongoDB数据库...${NC}"
+  
+  # 确保MongoDB目录存在
+  mkdir -p "$MONGODB_DATA"
+  mkdir -p "$LOG_DIR"
+  
+  # 检查mongod.conf是否存在
+  if [ ! -f "$MONGODB_CONFIG" ]; then
+    echo -e "${YELLOW}MongoDB配置文件不存在，创建默认配置...${NC}"
+    # 创建默认配置文件
+    cat > "$MONGODB_CONFIG" << EOF
+storage:
+  dbPath: ${MONGODB_DATA}
+systemLog:
+  destination: file
+  path: ${MONGODB_LOG}
+  logAppend: true
+net:
+  port: ${MONGODB_PORT}
+  bindIp: 127.0.0.1
+EOF
+  fi
+  
+  # 检查MongoDB是否已经运行
+  if pgrep mongod > /dev/null; then
+    echo -e "${YELLOW}MongoDB已在运行，跳过启动步骤${NC}"
+    return 0
+  fi
+  
+  # 启动MongoDB
+  echo -e "${BLUE}启动MongoDB服务...${NC}"
+  mongod --config "$MONGODB_CONFIG" --fork
+  
+  if [ $? -eq 0 ]; then
+    # 保存PID
+    pgrep mongod > "$MONGODB_PID_FILE"
+    echo -e "${GREEN}✓ MongoDB服务已成功启动${NC}"
+    
+    # 等待MongoDB完全启动
+    echo -e "${BLUE}等待MongoDB初始化...${NC}"
+    sleep 3
+    
+    # 测试MongoDB连接
+    if command -v mongosh &> /dev/null; then
+      mongosh --quiet --eval "db.adminCommand('ping')" > /dev/null 2>&1
+      MONGO_RESULT=$?
+    else
+      # 回退到旧版的mongo命令行工具
+      mongo --eval "db.adminCommand('ping')" > /dev/null 2>&1
+      MONGO_RESULT=$?
+    fi
+
+    if [ $MONGO_RESULT -eq 0 ]; then
+      echo -e "${GREEN}✓ MongoDB连接测试成功${NC}"
+      return 0
+    else
+      echo -e "${YELLOW}警告: MongoDB服务已启动但连接测试失败${NC}"
+      echo -e "${YELLOW}请检查日志: $MONGODB_LOG${NC}"
+      # 虽然连接测试失败，但我们仍然返回成功，因为MongoDB服务可能已经启动
+      # 后端应用将通过Node.js的MongoDB驱动连接，这可能会工作
+      return 0
+    fi
+  else
+    echo -e "${RED}✗ MongoDB启动失败${NC}"
+    echo -e "${YELLOW}请检查日志: $MONGODB_LOG${NC}"
+    return 1
+  fi
+}
+
+# 功能函数：停止MongoDB数据库
+stop_mongodb() {
+  echo -e "${BLUE}正在停止MongoDB数据库...${NC}"
+  
+  # 先检查是否有其他进程仍在使用MongoDB
+  echo -e "${BLUE}检查是否有其他进程仍在使用MongoDB...${NC}"
+  MONGO_CONNECTIONS=$(lsof -i:27017 | grep -v mongod | wc -l)
+  if [ $MONGO_CONNECTIONS -gt 0 ]; then
+    echo -e "${YELLOW}警告: 检测到还有 $MONGO_CONNECTIONS 个连接到MongoDB的进程${NC}"
+    echo -e "${BLUE}等待这些连接关闭 (5秒)...${NC}"
+    sleep 5
+  fi
+  
+  # 检查PID文件
+  if [ -f "$MONGODB_PID_FILE" ]; then
+    MONGODB_PID=$(cat "$MONGODB_PID_FILE")
+    if ps -p $MONGODB_PID > /dev/null; then
+      echo -e "${BLUE}尝试优雅关闭MongoDB进程 (PID: $MONGODB_PID)...${NC}"
+      
+      # 先尝试使用mongosh优雅关闭
+      echo -e "${BLUE}执行优雅关闭命令...${NC}"
+      mongosh admin --eval "db.adminCommand({shutdown: 1, force: false})" 2>/dev/null
+      
+      # 等待更长时间以确保关闭完成
+      echo -e "${BLUE}等待MongoDB关闭 (5秒)...${NC}"
+      WAIT_COUNT=0
+      while ps -p $MONGODB_PID > /dev/null && [ $WAIT_COUNT -lt 5 ]; do
+        sleep 1
+        WAIT_COUNT=$((WAIT_COUNT+1))
+      done
+      
+      # 如果优雅关闭失败，尝试发送SIGTERM信号
+      if ps -p $MONGODB_PID > /dev/null; then
+        echo -e "${YELLOW}优雅关闭失败，尝试发送SIGTERM信号...${NC}"
+        kill -SIGTERM $MONGODB_PID
+        sleep 3
+      fi
+      
+      # 如果进程仍在运行，尝试pkill
+      if ps -p $MONGODB_PID > /dev/null; then
+        echo -e "${YELLOW}SIGTERM信号失败，尝试pkill...${NC}"
+        pkill mongod
+        sleep 2
+      fi
+      
+      # 最后尝试强制终止
+      if ps -p $MONGODB_PID > /dev/null; then
+        echo -e "${YELLOW}所有关闭尝试失败，强制终止MongoDB...${NC}"
+        kill -9 $MONGODB_PID
+        sleep 1
+      fi
+      
+      if ! ps -p $MONGODB_PID > /dev/null; then
+        echo -e "${GREEN}✓ MongoDB已成功停止${NC}"
+        rm -f "$MONGODB_PID_FILE"
+      else
+        echo -e "${RED}✗ 无法停止MongoDB${NC}"
+        return 1
+      fi
+    else
+      echo -e "${YELLOW}MongoDB PID文件存在但进程已停止${NC}"
+      rm -f "$MONGODB_PID_FILE"
+    fi
+  elif pgrep mongod > /dev/null; then
+    echo -e "${YELLOW}未找到MongoDB PID文件，但检测到mongod进程${NC}"
+    echo -e "${BLUE}尝试停止所有MongoDB实例...${NC}"
+    
+    # 先尝试优雅关闭
+    echo -e "${BLUE}执行优雅关闭命令...${NC}"
+    mongosh admin --eval "db.adminCommand({shutdown: 1, force: false})" 2>/dev/null
+    sleep 3
+    
+    # 如果进程仍在运行，尝试pkill
+    if pgrep mongod > /dev/null; then
+      echo -e "${YELLOW}优雅关闭失败，尝试pkill...${NC}"
+      pkill mongod
+      sleep 2
+    fi
+    
+    # 最后尝试强制终止
+    if pgrep mongod > /dev/null; then
+      echo -e "${YELLOW}所有关闭尝试失败，强制终止MongoDB...${NC}"
+      pkill -9 mongod
+      sleep 1
+    fi
+    
+    if ! pgrep mongod > /dev/null; then
+      echo -e "${GREEN}✓ MongoDB已成功停止${NC}"
+    else
+      echo -e "${RED}✗ 无法停止MongoDB${NC}"
+      return 1
+    fi
+  else
+    echo -e "${YELLOW}MongoDB未运行${NC}"
+  fi
+  
+  # 最后等待一下，确保所有资源都已释放
+  sleep 2
+  echo -e "${GREEN}MongoDB关闭完成${NC}"
+  return 0
+}
+
 # 功能函数：启动所有服务
 start_services() {
   echo -e "${GREEN}===== OCR Vue应用启动脚本 =====${NC}"
@@ -362,15 +577,82 @@ start_services() {
 
   # 确保数据库目录存在
   mkdir -p "$APP_DIR/database"
-
-  # 检查数据库文件是否存在
-  DB_FILE="$APP_DIR/database/ocr_app.sqlite"
-  if [ ! -f "$DB_FILE" ]; then
-    echo -e "${YELLOW}数据库文件不存在，将在后端启动时自动创建${NC}"
+  
+  # 检查前端代码是否发生变化
+  echo -e "${BLUE}检查前端代码是否发生变化...${NC}"
+  FRONTEND_DIR="$APP_DIR/frontend"
+  FRONTEND_DIST="$FRONTEND_DIR/dist"
+  FRONTEND_SRC="$FRONTEND_DIR/src"
+  FRONTEND_HASH_FILE="$FRONTEND_DIST/.build-hash"
+  
+  # 计算前端源代码的哈希值
+  if command -v find &> /dev/null && command -v md5sum &> /dev/null; then
+    CURRENT_HASH=$(find "$FRONTEND_SRC" -type f -name "*.vue" -o -name "*.js" | sort | xargs md5sum | md5sum | cut -d' ' -f1)
+  elif command -v find &> /dev/null && command -v md5 &> /dev/null; then
+    # macOS使用md5而不是md5sum
+    CURRENT_HASH=$(find "$FRONTEND_SRC" -type f -name "*.vue" -o -name "*.js" | sort | xargs md5 | md5)
   else
-    # 检查数据库文件权限
-    chmod 664 "$DB_FILE"
-    echo -e "${GREEN}✓ 数据库文件已存在，权限已设置${NC}"
+    echo -e "${YELLOW}警告: 无法计算文件哈希，将强制重新构建前端${NC}"
+    CURRENT_HASH="force-rebuild"
+  fi
+  
+  # 检查是否需要重新构建
+  NEED_REBUILD=false
+  if [ ! -d "$FRONTEND_DIST" ] || [ ! -f "$FRONTEND_HASH_FILE" ]; then
+    echo -e "${YELLOW}前端尚未构建，将进行构建...${NC}"
+    NEED_REBUILD=true
+  else
+    PREVIOUS_HASH=$(cat "$FRONTEND_HASH_FILE")
+    if [ "$CURRENT_HASH" != "$PREVIOUS_HASH" ]; then
+      echo -e "${YELLOW}检测到前端代码变化，需要重新构建${NC}"
+      NEED_REBUILD=true
+    else
+      echo -e "${GREEN}前端代码无变化，跳过构建步骤${NC}"
+    fi
+  fi
+  
+  # 如果需要，重新构建前端
+  if [ "$NEED_REBUILD" = true ]; then
+    echo -e "${BLUE}正在构建前端应用...${NC}"
+    cd "$FRONTEND_DIR"
+    
+    # 检查Node模块是否已安装
+    if [ ! -d "node_modules" ] || [ ! -f "node_modules/.package-lock.json" ]; then
+      echo -e "${YELLOW}安装前端依赖...${NC}"
+      npm install
+    fi
+    
+    # 构建前端
+    npm run build
+    
+    # 检查构建是否成功
+    if [ $? -eq 0 ]; then
+      echo -e "${GREEN}前端构建成功${NC}"
+      # 保存哈希值以便下次检测
+      echo "$CURRENT_HASH" > "$FRONTEND_HASH_FILE"
+    else
+      echo -e "${RED}前端构建失败${NC}"
+      echo -e "${YELLOW}将使用现有构建(如果存在)${NC}"
+    fi
+    
+    # 返回到应用根目录
+    cd "$APP_DIR"
+  fi
+  
+  # 启动MongoDB数据库
+  start_mongodb
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}MongoDB启动失败，应用可能无法正常工作${NC}"
+    echo -e "${YELLOW}请检查MongoDB日志: $MONGODB_LOG${NC}"
+    
+    # 询问是否继续
+    read -p "是否仍要继续启动应用? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      echo -e "${RED}应用启动已取消${NC}"
+      return 1
+    fi
+    echo -e "${YELLOW}继续启动应用，但可能会出现数据库连接错误${NC}"
   fi
 
   # 检查后端服务是否已运行

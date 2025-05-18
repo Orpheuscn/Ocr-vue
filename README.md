@@ -25,11 +25,11 @@
 
 提供API服务，处理OCR请求和数据存储。
 
-- 技术栈：Node.js、Express、Sequelize、SQLite
+- 技术栈：Node.js、Express、Mongoose、MongoDB
 
 ### database - 数据库
 
-存储应用数据，使用SQLite本地数据库。
+存储应用数据，使用MongoDB数据库。
 
 ### nginx - Web服务器和反向代理
 

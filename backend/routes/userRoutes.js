@@ -1,7 +1,7 @@
 // api/routes/userRoutes.js
-import express from 'express';
-import * as userController from '../controllers/userController.js';
-import { authenticateJwt, refreshTokenMiddleware } from '../middleware/authMiddleware.js';
+import express from "express";
+import * as userController from "../controllers/userController.js";
+import { authenticateJwt, refreshTokenMiddleware } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -40,7 +40,7 @@ const router = express.Router();
  *       500:
  *         description: 服务器错误
  */
-router.get('/all', authenticateJwt, userController.getAllUsers);
+router.get("/all", authenticateJwt, userController.getAllUsers);
 
 /**
  * @swagger
@@ -91,7 +91,7 @@ router.get('/all', authenticateJwt, userController.getAllUsers);
  *       500:
  *         description: 服务器错误
  */
-router.post('/register', userController.register);
+router.post("/register", userController.register);
 
 /**
  * @swagger
@@ -137,7 +137,7 @@ router.post('/register', userController.register);
  *       500:
  *         description: 服务器错误
  */
-router.post('/login', userController.login);
+router.post("/login", userController.login);
 
 /**
  * @swagger
@@ -178,7 +178,7 @@ router.post('/login', userController.login);
  *       500:
  *         description: 服务器错误
  */
-router.post('/refresh-token', refreshTokenMiddleware, userController.refreshToken);
+router.post("/refresh-token", refreshTokenMiddleware, userController.refreshToken);
 
 /**
  * @swagger
@@ -215,7 +215,47 @@ router.post('/refresh-token', refreshTokenMiddleware, userController.refreshToke
  *       500:
  *         description: 服务器错误
  */
-router.get('/:id/profile', authenticateJwt, userController.getUserProfile);
+router.get("/:id/profile", authenticateJwt, userController.getUserProfile);
+
+/**
+ * @swagger
+ * /api/users/{id}/ocr-history:
+ *   get:
+ *     summary: 获取用户OCR历史记录
+ *     description: 获取指定用户的OCR历史记录
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: 用户ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: 页码
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: 每页记录数
+ *     responses:
+ *       200:
+ *         description: 成功获取OCR历史记录
+ *       401:
+ *         description: 未授权
+ *       404:
+ *         description: 用户不存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.get("/:id/ocr-history", authenticateJwt, userController.getUserOcrHistory);
 
 /**
  * @swagger
@@ -275,7 +315,7 @@ router.get('/:id/profile', authenticateJwt, userController.getUserProfile);
  *       500:
  *         description: 服务器错误
  */
-router.put('/:id', authenticateJwt, userController.updateUserProfile);
+router.put("/:id", authenticateJwt, userController.updateUserProfile);
 
 /**
  * @swagger
@@ -314,6 +354,6 @@ router.put('/:id', authenticateJwt, userController.updateUserProfile);
  *       500:
  *         description: 服务器错误
  */
-router.delete('/:id/deactivate', authenticateJwt, userController.deactivateAccount);
+router.delete("/:id/deactivate", authenticateJwt, userController.deactivateAccount);
 
-export default router; 
+export default router;

@@ -196,7 +196,7 @@
 import { computed, ref, watch, onMounted } from 'vue'
 import { useOcrStore } from '@/stores/ocrStore'
 import { useI18nStore } from '@/stores/i18nStore'
-import { isRtlLanguage, getLanguageName } from '@/services/visionApi'
+import { isRtlLanguageSync, getLanguageName } from '@/services/languageService'
 
 // Import the four specialized text components
 import TextHorizontalParallel from './TextHorizontalParallel.vue'
@@ -222,12 +222,31 @@ const copyStatus = ref('idle') // 'idle', 'success', 'error'
 const lastCopyType = ref('original') // 记录上次复制的类型，默认为原始文本
 
 // 使用计算属性获取当前语言下的语言名称
-const displayLanguageName = computed(() => {
-  if (!store.detectedLanguageCode || store.detectedLanguageCode === 'und') {
-    return i18n.t('undetermined')
-  }
-  return getLanguageName(store.detectedLanguageCode)
-})
+// 创建一个响应式变量存储语言名称
+const languageName = ref('')
+
+// 当语言代码变化时更新语言名称
+watch(
+  [() => store.detectedLanguageCode, () => i18n.currentLang],
+  async ([code, lang]) => {
+    if (!code || code === 'und') {
+      languageName.value = i18n.t('undetermined')
+      return
+    }
+    try {
+      // 使用当前界面语言作为首选语言
+      const preferredLang = i18n.currentLang === 'en' ? 'en' : 'zh'
+      languageName.value = await getLanguageName(code, preferredLang)
+    } catch (error) {
+      console.error('获取语言名称错误:', error)
+      languageName.value = code // 出错时显示语言代码
+    }
+  },
+  { immediate: true }
+)
+
+// 计算属性返回当前语言名称
+const displayLanguageName = computed(() => languageName.value)
 
 // 监听语言变化
 watch(
@@ -241,7 +260,7 @@ watch(
 // 判断是否为RTL文本
 const isRtlText = computed(() => {
   // 首先检查识别的主要语言是否为RTL语言
-  const isRtlLanguageDetected = isRtlLanguage(store.detectedLanguageCode)
+  const isRtlLanguageDetected = isRtlLanguageSync(store.detectedLanguageCode)
 
   // 如果检测到的主要语言是RTL语言，再根据文本内容确认是否需要RTL方向
   if (isRtlLanguageDetected) {
@@ -368,6 +387,11 @@ const getFilteredText = () => {
 
   if (componentType === TextVerticalParallel) {
     // 垂直平行模式
+    // 添加安全检查，确保 filteredSymbolsData 是数组
+    if (!Array.isArray(store.filteredSymbolsData)) {
+      console.error('错误: filteredSymbolsData 不是数组', store.filteredSymbolsData)
+      return ''
+    }
     return formatTextAsVerticalParallel(store.filteredSymbolsData.filter((s) => s.isFiltered))
   } else if (componentType === TextVerticalParagraph) {
     // 垂直段落模式
@@ -458,6 +482,12 @@ const formatTextAsVerticalParallel = (symbols) => {
 // 垂直段落模式的格式化函数 - 复制自TextVerticalParagraph组件的逻辑
 const formatTextAsVerticalParagraph = () => {
   if (!store.fullTextAnnotation?.pages || !store.filteredSymbolsData) {
+    return ''
+  }
+  
+  // 添加安全检查，确保 filteredSymbolsData 是数组
+  if (!Array.isArray(store.filteredSymbolsData)) {
+    console.error('错误: formatTextAsVerticalParagraph - filteredSymbolsData 不是数组', store.filteredSymbolsData)
     return ''
   }
 
@@ -587,6 +617,12 @@ const formatTextAsVerticalParagraph = () => {
 // 水平段落模式的格式化函数 - 复制自TextHorizontalParagraph组件的逻辑
 const formatTextAsHorizontalParagraph = () => {
   if (!store.fullTextAnnotation?.pages || !store.filteredSymbolsData) {
+    return ''
+  }
+  
+  // 添加安全检查，确保 filteredSymbolsData 是数组
+  if (!Array.isArray(store.filteredSymbolsData)) {
+    console.error('错误: formatTextAsHorizontalParagraph - filteredSymbolsData 不是数组', store.filteredSymbolsData)
     return ''
   }
 
@@ -732,6 +768,13 @@ const formatTextAsHorizontalParallel = () => {
 
   // 否则使用过滤后的文本 - 类似generateFilteredText函数
   const symbolsToProcess = store.filteredSymbolsData
+  
+  // 添加安全检查，确保 filteredSymbolsData 是数组
+  if (!Array.isArray(symbolsToProcess)) {
+    console.error('错误: formatTextAsHorizontalParallel - filteredSymbolsData 不是数组', symbolsToProcess)
+    return ''
+  }
+  
   if (!symbolsToProcess || symbolsToProcess.length === 0) {
     return ''
   }

@@ -1,6 +1,4 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../db/config.js';
-import User from './User.js';
+import mongoose from "mongoose";
 
 /**
  * @swagger
@@ -14,10 +12,10 @@ import User from './User.js';
  *         - fileType
  *       properties:
  *         id:
- *           type: integer
+ *           type: string
  *           description: OCR 记录 ID（自动生成）
  *         userId:
- *           type: integer
+ *           type: string
  *           description: 关联的用户 ID
  *         filename:
  *           type: string
@@ -59,7 +57,7 @@ import User from './User.js';
  *           format: date-time
  *           description: 更新时间
  *       example:
- *         userId: 1
+ *         userId: "60d0fe4f5311236168a109ca"
  *         filename: example.jpg
  *         fileType: image
  *         pageCount: 1
@@ -70,77 +68,73 @@ import User from './User.js';
  *         textLength: 1000
  *         extractedText: "这是一段示例文本..."
  */
-const OcrRecord = sequelize.define('OcrRecord', {
-  userId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: User,
-      key: 'id'
-    }
+
+const ocrRecordSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: String,
+      ref: "User",
+      required: true,
+    },
+    filename: {
+      type: String,
+      required: true,
+    },
+    fileType: {
+      type: String,
+      required: true,
+      enum: ["image", "pdf"],
+    },
+    pageCount: {
+      type: Number,
+      required: true,
+      default: 1,
+    },
+    recognitionMode: {
+      type: String,
+      required: true,
+      default: "text",
+      enum: ["text", "table", "mixed"],
+    },
+    language: {
+      type: String,
+      required: true,
+      default: "auto",
+    },
+    processingTime: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    status: {
+      type: String,
+      required: true,
+      default: "success",
+      enum: ["success", "error", "processing"],
+    },
+    textLength: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    extractedText: {
+      type: String,
+      default: "",
+    },
   },
-  filename: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  fileType: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    validate: {
-      isIn: [['image', 'pdf']]
-    }
-  },
-  pageCount: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    defaultValue: 1
-  },
-  recognitionMode: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    defaultValue: 'text',
-    validate: {
-      isIn: [['text', 'table', 'mixed']]
-    }
-  },
-  language: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    defaultValue: 'auto'
-  },
-  processingTime: {
-    type: DataTypes.FLOAT,
-    allowNull: false,
-    defaultValue: 0
-  },
-  status: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    defaultValue: 'success',
-    validate: {
-      isIn: [['success', 'error', 'processing']]
-    }
-  },
-  textLength: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    defaultValue: 0
-  },
-  extractedText: {
-    type: DataTypes.TEXT,
-    allowNull: true
+  {
+    timestamps: true,
+    toJSON: {
+      transform: function (doc, ret) {
+        ret.id = ret._id;
+        delete ret._id;
+        delete ret.__v;
+      },
+    },
   }
-}, {
-  // 其他模型选项
-  timestamps: true, // 创建 createdAt 和 updatedAt 字段
-  paranoid: true,   // 软删除 - 创建 deletedAt 字段
-  
-  // 自定义表名
-  tableName: 'ocr_records'
-});
+);
 
-// 设置关联关系
-OcrRecord.belongsTo(User, { foreignKey: 'userId' });
-User.hasMany(OcrRecord, { foreignKey: 'userId' });
+// 创建mongoose模型
+const OcrRecord = mongoose.model("OcrRecord", ocrRecordSchema);
 
-export default OcrRecord; 
+export default OcrRecord;

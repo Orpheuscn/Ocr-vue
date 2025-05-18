@@ -6,59 +6,56 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { useOcrStore } from '@/stores/ocrStore';
+import { computed } from 'vue'
+import { useOcrStore } from '@/stores/ocrStore'
 
-const props = defineProps({
-  isRtl: {
-    type: Boolean,
-    default: false
-  }
-});
+defineProps({
+  isRtl: { type: Boolean, default: false },
+})
 
-const store = useOcrStore();
+const store = useOcrStore()
 
 // 添加一个专属的标点替换函数，用于处理原始文本中的标点符号
 function replaceCJKPunctuationInRawText(text) {
-  if (!text || !store.detectedLanguageCode) return text;
-  
-  const noSpaceLanguages = ['zh', 'ja', 'ko', 'th', 'lo', 'my'];
-  if (!noSpaceLanguages.includes(store.detectedLanguageCode)) return text;
-  
+  if (!text || !store.detectedLanguageCode) return text
+
+  const noSpaceLanguages = ['zh', 'ja', 'ko', 'th', 'lo', 'my']
+  if (!noSpaceLanguages.includes(store.detectedLanguageCode)) return text
+
   // 使用正则表达式一次性替换所有标点符号
   return text
-    .replace(/,/g, '，')  // 替换逗号
+    .replace(/,/g, '，') // 替换逗号
     .replace(/-/g, '——') // 替换连字符为破折号
-    .replace(/;/g, '；')  // 替换分号
-    .replace(/!/g, '！')  // 替换感叹号
+    .replace(/;/g, '；') // 替换分号
+    .replace(/!/g, '！') // 替换感叹号
     .replace(/\?/g, '？') // 替换问号
-    .replace(/:/g, '：');  // 替换冒号
+    .replace(/:/g, '：') // 替换冒号
 }
 
 // 直接使用OCR返回的原始完整文本
 const fullText = computed(() => {
   // 从store中获取原始文本
-  const rawText = store.fullTextAnnotation?.text || '';
-  
+  const rawText = store.fullTextAnnotation?.text || ''
+
   // 如果存在文本并且过滤器设置为默认值，应用标点替换后返回完整文本
-  const isDefaultFilter = checkIfDefaultFilter();
-  
+  const isDefaultFilter = checkIfDefaultFilter()
+
   if (rawText && isDefaultFilter) {
     // 在返回原始文本前应用标点替换
-    return replaceCJKPunctuationInRawText(rawText);
+    return replaceCJKPunctuationInRawText(rawText)
   }
-  
+
   // 否则使用过滤后的文本
-  return store.originalFullText ? generateFilteredText() : '';
-});
+  return store.originalFullText ? generateFilteredText() : ''
+})
 
 // 检查是否使用默认过滤器设置
 function checkIfDefaultFilter() {
   // 简单检查过滤器设置是否为全部显示
-  const { filterSettings, filterBounds } = store;
-  
-  if (!filterSettings || !filterBounds) return true;
-  
+  const { filterSettings, filterBounds } = store
+
+  if (!filterSettings || !filterBounds) return true
+
   // 检查当前过滤器是否是最大范围（即全部显示）
   return (
     filterSettings.minWidth === filterBounds.width?.min &&
@@ -67,59 +64,59 @@ function checkIfDefaultFilter() {
     filterSettings.maxX === filterBounds.x?.max &&
     filterSettings.minY === filterBounds.y?.min &&
     filterSettings.maxY === filterBounds.y?.max
-  );
+  )
 }
 
 // 生成过滤后的文本
 function generateFilteredText() {
-  const symbolsToProcess = store.filteredSymbolsData;
+  const symbolsToProcess = store.filteredSymbolsData
   if (!symbolsToProcess || symbolsToProcess.length === 0) {
-    return '';
+    return ''
   }
-  
-  let text = '';
-  const noSpaceLanguages = ['zh', 'ja', 'ko', 'th', 'lo', 'my']; // 不使用空格的语言
-  
-  symbolsToProcess.forEach(symbol => {
+
+  let text = ''
+  const noSpaceLanguages = ['zh', 'ja', 'ko', 'th', 'lo', 'my'] // 不使用空格的语言
+
+  symbolsToProcess.forEach((symbol) => {
     if (symbol.isFiltered) {
       // 使用与 TextHorizontalParagraph 相同的逻辑直接处理 CJK 标点符号
       if (noSpaceLanguages.includes(store.detectedLanguageCode)) {
         // 替换西方标点为 CJK 标点
         if (symbol.text === ',') {
-          text += '，'; // 替换逗号
+          text += '，' // 替换逗号
         } else if (symbol.text === '-') {
-          text += '——'; // 替换连字符为破折号
+          text += '——' // 替换连字符为破折号
         } else if (symbol.text === ';') {
-          text += '；'; // 替换分号
+          text += '；' // 替换分号
         } else if (symbol.text === '!') {
-          text += '！'; // 替换感叹号
+          text += '！' // 替换感叹号
         } else if (symbol.text === '?') {
-          text += '？'; // 替换问号
+          text += '？' // 替换问号
         } else if (symbol.text === ':') {
-          text += '：'; // 替换冒号
+          text += '：' // 替换冒号
         } else {
-          text += symbol.text;
+          text += symbol.text
         }
       } else {
-        text += symbol.text;
+        text += symbol.text
       }
-      
-      const breakType = symbol.detectedBreak;
+
+      const breakType = symbol.detectedBreak
       if (breakType === 'SPACE' || breakType === 'EOL_SURE_SPACE') {
-        text += ' ';
+        text += ' '
       } else if (breakType === 'LINE_BREAK' || breakType === 'HYPHEN') {
-        text += '\n';
+        text += '\n'
       }
     }
-  });
-  
-  return text.replace(/ +/g, ' ').replace(/\n+/g, '\n').trim();
+  })
+
+  return text.replace(/ +/g, ' ').replace(/\n+/g, '\n').trim()
 }
 
 // 无结果时的提示信息
 const noResultsMessage = computed(() => {
-  return store.hasOcrResult ? '(无符合当前过滤条件的文本)' : '(无识别结果)';
-});
+  return store.hasOcrResult ? '(无符合当前过滤条件的文本)' : '(无识别结果)'
+})
 </script>
 
 <style scoped>

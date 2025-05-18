@@ -2,7 +2,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 // 确保正确导入你的 API 服务文件路径
-import { getAllLanguages } from '@/services/visionApi'
+import { processSimple } from '@/services/apiClient'
 // 导入PDF适配器
 import { renderPdfPage, getPdfPageCount } from '@/utils/pdfAdapter'
 // 导入i18n存储
@@ -11,7 +11,6 @@ import { useI18nStore } from '@/stores/i18nStore'
 import { isHeic, heicTo } from 'heic-to'
 // 不再需要导入PDF.js，使用全局对象
 // worker设置已经在main.js中完成
-import { processSimple } from '@/services/apiClient'
 
 export const useOcrStore = defineStore('ocr', () => {
   // --- 私有辅助函数 ---
@@ -74,7 +73,7 @@ export const useOcrStore = defineStore('ocr', () => {
   // 添加使用服务器端API密钥的状态
   const useServerApiKey = ref(true) // 始终使用服务器API
   // 如果设置为使用服务器端API密钥，则不显示API设置
-  const showApiSettings = ref(false) // 不再需要显示API设置
+  // const showApiSettings = ref(false) // 不再需要显示API设置
   // 添加服务器API可用状态
   const serverApiAvailable = ref(false)
 
@@ -193,26 +192,19 @@ export const useOcrStore = defineStore('ocr', () => {
 
   // 重置整个 UI 状态（例如，上传新文件时）
   function resetUIState() {
-    currentFiles.value = []
-    filePreviewUrl.value = '' // 清除预览 URL
-    resetPdfState()
+    // 重置UI状态但保留API设置
     resetOcrData()
+    resetPdfState()
     imageDimensions.value = { width: 0, height: 0 } // 重置尺寸
     isDimensionsKnown.value = false // **重要：重置尺寸已知状态**
-    isLoading.value = false
-    loadingMessage.value = i18n.t('processing')
-    // 清空遮挡区域
-    maskedAreas.value = []
+    maskedAreas.value = [] // 重置蒙版区域
+
     // 重置表格设置
     tableSettings.value = { columns: 0, rows: 0 }
     // 重置识别模式
     recognitionMode.value = 'text'
     // 重置表格组件为方案1
     currentTableComponent.value = 'planA'
-    // 可以选择是否重置 API 设置显示状态
-    // showApiSettings.value = !hasApiKey.value;
-    // 重置过滤器到最大范围（如果需要）
-    // filterSettings.value = { ...filterBounds.value }; // 这需要 filterBounds 先被设置
   }
 
   // 新增设置OCR参数函数
@@ -628,13 +620,24 @@ export const useOcrStore = defineStore('ocr', () => {
       const textAnns = result.textAnnotations || []
       originalFullText.value = fullTextAnnotation.value?.text || textAnns[0]?.description || ''
 
-      // 检测语言
+      // 2. 检测到的语言代码
       const langCode =
-        fullTextAnnotation.value?.pages?.[0]?.property?.detectedLanguages?.[0]?.languageCode ||
+        result.detectedLanguageCode ||
+        ocrRawResult.value?.fullTextAnnotation?.pages?.[0]?.property?.detectedLanguages?.[0]
+          ?.languageCode ||
         textAnns[0]?.locale
       detectedLanguageCode.value = langCode || 'und'
-      detectedLanguageName.value = getLanguageName(langCode)
-      console.log(`检测到语言: ${detectedLanguageName.value} (${detectedLanguageCode.value})`)
+
+      // 异步获取语言名称
+      getLanguageName(langCode)
+        .then((name) => {
+          detectedLanguageName.value = name
+        })
+        .catch(() => {
+          detectedLanguageName.value = langCode || '未确定'
+        })
+
+      console.log(`检测到语言: ${detectedLanguageCode.value}`)
 
       // 设置过滤器范围
       setupFilterBounds(processDimensions.width, processDimensions.height)
@@ -1225,19 +1228,23 @@ export const useOcrStore = defineStore('ocr', () => {
   }
 
   // 根据语言代码获取语言名称
-  function getLanguageName(langCode) {
+  async function getLanguageName(langCode) {
     if (!langCode) return '未确定'
 
-    const languages = getAllLanguages()
-    const lang = languages.find((l) => l.code === langCode)
-    return lang ? lang.name : langCode
+    try {
+      // 导入函数 - 使用动态导入避免循环依赖
+      const { getLanguageName } = await import('@/services/languageService')
+      return await getLanguageName(langCode)
+    } catch (error) {
+      console.error('获取语言名称错误:', error)
+      return langCode || '未确定'
+    }
   }
 
   // --- 返回 Store 的 state, getters, actions ---
   return {
     // State
     apiKey,
-    showApiSettings,
     currentFiles,
     filePreviewUrl,
     isPdfFile,
