@@ -6,7 +6,7 @@
       v-if="store.hasOcrResult || store.currentFiles.length > 0"
     >
       <button
-        class="btn btn-circle btn-warning shadow-lg hover-effect"
+        class="btn btn-circle btn-warning shadow-lg hover-effect masking-btn"
         @click="openMaskingModal"
         :title="i18n.t('addMaskingArea')"
       >
@@ -820,7 +820,13 @@ onUnmounted(() => {
   transition: all 0.3s ease;
 }
 
-.hover-effect:hover {
+/* 控制初始状态为黑色 */
+.masking-btn {
+  color: black;
+}
+
+/* 悬停时为白色 */
+.masking-btn:hover {
   transform: translateY(-3px);
   box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
   background-color: #f59e0b; /* 悬停时加深黄色 */
