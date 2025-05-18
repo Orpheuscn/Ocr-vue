@@ -1,0 +1,6 @@
+flask
+flask-cors
+huggingface-hub
+numpy
+Pillow
+torch

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 // 翻译数据
 const translations = {
@@ -243,10 +243,12 @@ export const useI18nStore = defineStore('i18n', () => {
     }
   }
 
+  // 当前语言的翻译数据（响应式）
+  const currentTranslations = computed(() => translations[currentLang.value] || {})
+
   // 获取翻译
   function t(key) {
-    const langData = translations[currentLang.value]
-    return langData[key] || key
+    return currentTranslations.value[key] || key
   }
 
   // 格式化翻译，替换占位符
@@ -270,6 +272,7 @@ export const useI18nStore = defineStore('i18n', () => {
 
   return {
     currentLang,
+    currentTranslations,
     setLanguage,
     toggleLanguage,
     t,

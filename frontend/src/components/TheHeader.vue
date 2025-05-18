@@ -1,7 +1,7 @@
 <template>
   <header class="navbar bg-base-100 shadow-md px-4 sm:px-6">
     <div class="flex-1">
-      <h1 class="text-xl font-semibold text-base-content">{{ i18n.t('appTitle') }}</h1>
+      <h1 class="text-xl font-semibold text-base-content">{{ appTitle }}</h1>
     </div>
     <div class="flex-none flex items-center gap-2">
       <!-- 认证相关按钮 -->
@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useI18nStore } from '@/stores/i18nStore'
 import { getCurrentUser, isAdmin, refreshUserInfo } from '@/services/authService'
 import ThemeToggle from './ThemeToggle.vue'
@@ -45,6 +45,9 @@ import LanguageToggle from './LanguageToggle.vue'
 
 // Store
 const i18n = useI18nStore()
+
+// 添加对标题的响应式计算，这样当语言变化时，标题会自动更新
+const appTitle = computed(() => i18n.t('appTitle'))
 
 // 获取当前登录状态和用户信息
 const isLoggedIn = computed(() => {
@@ -80,6 +83,14 @@ onMounted(async () => {
     await refreshUserInfo()
   }
 })
+
+// 监听语言变化
+watch(
+  () => i18n.currentLang.value,
+  () => {
+    // 当语言变化时，标题等会自动通过计算属性更新
+  },
+)
 </script>
 
 <style scoped>

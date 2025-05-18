@@ -92,6 +92,7 @@
 <script setup>
 import { useOcrStore } from '@/stores/ocrStore'
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { useI18nStore } from '@/stores/i18nStore'
 
 // 导入组件
 import TheHeader from './components/TheHeader.vue'
@@ -109,6 +110,7 @@ import TheFooter from './components/TheFooter.vue'
 import Tutorial from './components/Tutorial.vue'
 
 const store = useOcrStore()
+const i18n = useI18nStore()
 const imageCanvasRef = ref(null)
 const imageContainerHeight = ref(0)
 let resizeObserver = null
@@ -520,4 +522,14 @@ const handleStartOcr = (params) => {
     store._showNotification(`OCR处理失败: ${error.message}`, 'error')
   }
 }
+
+// 监听语言变化
+watch(
+  () => i18n.currentLang.value,
+  (newLang) => {
+    // 当语言变化时，通知应用其他部分可能需要更新
+    debugLog(`语言已切换为: ${newLang}`)
+    // 不需要强制重新渲染，因为响应式机制会自动处理
+  },
+)
 </script>

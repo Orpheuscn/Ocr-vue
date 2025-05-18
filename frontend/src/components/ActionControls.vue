@@ -2,7 +2,7 @@
   <div class="card bg-base-100 shadow-sm p-4">
     <div class="flex flex-col md:flex-row items-center justify-between gap-4">
       <div class="flex items-center gap-4">
-        <span class="text-sm font-medium">{{ i18n.t('recognitionDirection') }}:</span>
+        <span class="text-sm font-medium">{{ uiTexts.recognitionDirection }}:</span>
         <div class="btn-group">
           <button
             :class="[
@@ -14,7 +14,7 @@
             :disabled="isProcessing"
             @click="selectHorizontal"
           >
-            {{ i18n.t('horizontal') }}
+            {{ uiTexts.horizontal }}
           </button>
           <button
             :class="[
@@ -26,14 +26,14 @@
             :disabled="isProcessing"
             @click="selectVertical"
           >
-            {{ i18n.t('vertical') }}
+            {{ uiTexts.vertical }}
           </button>
           <button
             :class="['btn btn-sm', selectedMode === 'table' ? 'btn-accent' : 'btn-outline']"
             :disabled="isProcessing"
             @click="selectTable"
           >
-            {{ i18n.t('table') || '表格' }}
+            {{ uiTexts.table }}
           </button>
         </div>
       </div>
@@ -41,10 +41,10 @@
       <!-- 语言选择下拉框 -->
       <div class="form-control w-full max-w-xs">
         <label class="label">
-          <span class="label-text text-sm font-medium">{{ i18n.t('languageHint') }}:</span>
+          <span class="label-text text-sm font-medium">{{ uiTexts.languageHint }}:</span>
           <span class="label-text-alt text-xs">
             <button class="btn btn-xs btn-ghost" @click="clearLanguages" :disabled="isProcessing">
-              {{ i18n.t('clear') }}
+              {{ uiTexts.clear }}
             </button>
           </span>
         </label>
@@ -70,7 +70,7 @@
                 <input
                   type="text"
                   v-model="languageSearch"
-                  :placeholder="i18n.t('searchLanguage')"
+                  :placeholder="uiTexts.searchLanguage"
                   class="input input-sm input-bordered w-full"
                   @input="filterLanguages"
                 />
@@ -103,7 +103,7 @@
           </div>
         </div>
         <label class="label">
-          <span class="label-text-alt text-xs">{{ i18n.t('languageTip') }}</span>
+          <span class="label-text-alt text-xs">{{ uiTexts.languageTip }}</span>
         </label>
       </div>
 
@@ -113,7 +113,7 @@
         :disabled="!canStart || isProcessing"
         @click="startOcr"
       >
-        {{ isProcessing ? i18n.t('processing') : i18n.t('startOcr') }}
+        {{ isProcessing ? uiTexts.processing : uiTexts.startOcr }}
       </button>
     </div>
   </div>
@@ -135,6 +135,21 @@ const props = defineProps({
 const emit = defineEmits(['start-ocr'])
 const store = useOcrStore()
 const i18n = useI18nStore()
+
+// 添加UI文本的计算属性
+const uiTexts = computed(() => ({
+  recognitionDirection: i18n.t('recognitionDirection'),
+  horizontal: i18n.t('horizontal'),
+  vertical: i18n.t('vertical'),
+  table: i18n.t('table') || '表格',
+  languageHint: i18n.t('languageHint'),
+  clear: i18n.t('clear'),
+  searchLanguage: i18n.t('searchLanguage'),
+  languageTip: i18n.t('languageTip'),
+  processing: i18n.t('processing'),
+  startOcr: i18n.t('startOcr'),
+  autoDetectLanguage: i18n.t('autoDetectLanguage'),
+}))
 
 const selectedDirection = ref(props.initialDirection)
 const selectedMode = ref(props.initialMode)
@@ -198,16 +213,20 @@ const loadLanguageList = async () => {
 onMounted(async () => {
   // 确保存储已初始化语言设置
   if (typeof store.initSelectedLanguages === 'function') {
-    store.initSelectedLanguages()
+    await store.initSelectedLanguages()
+    if (store.selectedLanguages) {
+      selectedLanguages.value = [...store.selectedLanguages]
+    }
   }
 
-  // 从存储复制当前选择的语言
-  selectedLanguages.value = [...store.selectedLanguages]
+  // 设置初始方向
+  selectedDirection.value = props.initialDirection
+  selectedMode.value = props.initialMode
 
   // 加载语言列表
   await loadLanguageList()
 
-  // 添加点击外部关闭下拉菜单的事件监听
+  // 设置点击外部关闭下拉菜单的事件监听器
   document.addEventListener('click', handleClickOutside)
 })
 
@@ -216,15 +235,13 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 
-// 监听语言变化，更新语言列表
+// 添加对语言变化的监听
 watch(
-  () => i18n.currentLang,
-  () => {
-    // 移除未使用的参数
-    // (newLang) => {
-    // 语言切换时重新获取语言列表
-    availableLanguages.value = getAllLanguages()
-    // 更新过滤后的语言列表
+  () => i18n.currentLang.value,
+  async () => {
+    // 当语言变化时，需要重新加载语言列表以获取正确的语言名称
+    await loadLanguageList()
+    // 过滤器也需要重新应用
     filterLanguages()
   },
 )
@@ -282,7 +299,7 @@ const handleClickOutside = (event) => {
 // 显示当前选择的语言
 const selectedLanguagesDisplay = computed(() => {
   if (selectedLanguages.value.length === 0) {
-    return i18n.t('autoDetectLanguage')
+    return uiTexts.value.autoDetectLanguage
   }
 
   // 获取最新的语言列表以确保展示正确的语言名称

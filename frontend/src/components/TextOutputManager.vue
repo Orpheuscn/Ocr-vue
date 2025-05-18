@@ -2,19 +2,27 @@
   <div class="card bg-base-100 shadow-md w-full h-full flex flex-col" ref="textManagerRef">
     <div class="card-body p-4 flex flex-col h-full overflow-hidden">
       <!-- 信息标题区 -->
-      <div class="flex flex-wrap justify-between text-xs text-opacity-70 mb-2 flex-shrink-0">
-        <div class="badge badge-neutral">
-          {{ i18n.t('size') }}: {{ store.imageDimensions.width || '?' }}×{{
+      <div
+        v-if="store.hasOcrResult"
+        class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs overflow-hidden text-gray-500 mb-2"
+      >
+        <!-- 图片尺寸 -->
+        <div class="flex items-center overflow-hidden whitespace-nowrap">
+          {{ uiTexts.size }}: {{ store.imageDimensions.width || '?' }}×{{
             store.imageDimensions.height || '?'
           }}px
         </div>
-        <div class="badge badge-neutral">
-          {{ i18n.t('language') }}: {{ displayLanguageName }} ({{ store.detectedLanguageCode }})
+
+        <!-- 语言信息 -->
+        <div class="flex items-center overflow-hidden whitespace-nowrap">
+          {{ uiTexts.language }}: {{ displayLanguageName }} ({{ store.detectedLanguageCode }})
           <span v-if="isRtlText" class="ml-1">←</span>
         </div>
-        <div class="badge badge-neutral">
-          {{ i18n.t('statistics') }}: {{ store.textStats.words }} {{ i18n.t('words') }},
-          {{ store.textStats.chars }} {{ i18n.t('characters') }}
+
+        <!-- 文本统计 -->
+        <div class="flex items-center overflow-hidden whitespace-nowrap">
+          {{ uiTexts.statistics }}: {{ store.textStats.words }} {{ uiTexts.words }},
+          {{ store.textStats.chars }} {{ uiTexts.characters }}
         </div>
       </div>
 
@@ -28,7 +36,7 @@
             ]"
             @click="updateDisplayMode('parallel')"
           >
-            {{ i18n.t('parallel') }}
+            {{ uiTexts.parallel }}
           </button>
           <button
             :class="[
@@ -37,7 +45,7 @@
             ]"
             @click="updateDisplayMode('paragraph')"
           >
-            {{ i18n.t('paragraph') }}
+            {{ uiTexts.paragraph }}
           </button>
         </div>
 
@@ -50,7 +58,7 @@
             ]"
             @click="setTableComponent('planA')"
           >
-            {{ i18n.t('planA') }}
+            {{ uiTexts.planA }}
           </button>
           <button
             :class="[
@@ -59,7 +67,7 @@
             ]"
             @click="setTableComponent('planB')"
           >
-            {{ i18n.t('planB') }}
+            {{ uiTexts.planB }}
           </button>
         </div>
 
@@ -91,16 +99,14 @@
             tabindex="0"
             class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52"
           >
-            <li v-if="store.recognitionMode === 'table'">
-              <a @click="copyText('markdown')">{{
-                i18n.t('copyMarkdownTable') || '复制Markdown表格'
-              }}</a>
+            <li v-if="store.recognitionMode === 'table' && activeTextComponent === TextTable">
+              <a @click="copyText('markdown')">{{ uiTexts.copyMarkdownTable }}</a>
             </li>
             <li>
-              <a @click="copyText('original')">{{ i18n.t('copyOriginalText') }}</a>
+              <a @click="copyText('original')">{{ uiTexts.copyOriginalText }}</a>
             </li>
             <li>
-              <a @click="copyText('filtered')">{{ i18n.t('copyFilteredText') }}</a>
+              <a @click="copyText('filtered')">{{ uiTexts.copyFilteredText }}</a>
             </li>
           </ul>
         </div>
@@ -132,7 +138,7 @@
               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          <p>{{ i18n.t('pleaseStartOcr') }}</p>
+          <p>{{ uiTexts.pleaseStartOcr }}</p>
         </div>
 
         <div
@@ -140,7 +146,7 @@
           class="flex flex-col items-center justify-center h-full text-center"
         >
           <span class="loading loading-dots loading-md"></span>
-          <p class="mt-2">{{ i18n.t('recognizing') }}</p>
+          <p class="mt-2">{{ uiTexts.recognizing }}</p>
         </div>
 
         <div v-else-if="store.hasOcrResult">
@@ -162,9 +168,9 @@
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
               />
             </svg>
-            <p>{{ i18n.t('noFilteredText') || '无符合当前过滤条件的文本' }}</p>
+            <p>{{ uiTexts.noFilteredText }}</p>
             <button class="btn btn-sm btn-outline mt-4" @click="resetFilters">
-              {{ i18n.t('resetFilters') || '重置过滤器' }}
+              {{ uiTexts.resetFilters }}
             </button>
           </div>
           <component v-else :is="activeTextComponent" ref="textComponent" :is-rtl="isRtlText" />
@@ -185,7 +191,7 @@
               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          <p>{{ i18n.t('resultsWillShowHere') }}</p>
+          <p>{{ uiTexts.resultsWillShowHere }}</p>
         </div>
       </div>
     </div>
@@ -221,28 +227,55 @@ const textContentRef = ref(null) // 添加对文本内容区域的引用
 const copyStatus = ref('idle') // 'idle', 'success', 'error'
 const lastCopyType = ref('original') // 记录上次复制的类型，默认为原始文本
 
+// 创建计算属性来响应式地获取UI文本
+const uiTexts = computed(() => ({
+  size: i18n.t('size'),
+  language: i18n.t('language'),
+  statistics: i18n.t('statistics'),
+  words: i18n.t('words'),
+  characters: i18n.t('characters'),
+  parallel: i18n.t('parallel'),
+  paragraph: i18n.t('paragraph'),
+  planA: i18n.t('planA'),
+  planB: i18n.t('planB'),
+  copyMarkdownTable: i18n.t('copyMarkdownTable'),
+  copyOriginalText: i18n.t('copyOriginalText'),
+  copyFilteredText: i18n.t('copyFilteredText'),
+  pleaseStartOcr: i18n.t('pleaseStartOcr'),
+  recognizing: i18n.t('recognizing'),
+  noFilteredText: i18n.t('noFilteredText') || '无符合当前过滤条件的文本',
+  resetFilters: i18n.t('resetFilters') || '重置过滤器',
+  resultsWillShowHere: i18n.t('resultsWillShowHere'),
+  undetermined: i18n.t('undetermined'),
+  copy: i18n.t('copy'),
+  copied: i18n.t('copied'),
+  textCopied: i18n.t('textCopied'),
+  copyFailed: i18n.t('copyFailed'),
+  filtersReset: i18n.t('filtersReset') || '过滤器已重置',
+}))
+
 // 使用计算属性获取当前语言下的语言名称
 // 创建一个响应式变量存储语言名称
 const languageName = ref('')
 
-// 当语言代码变化时更新语言名称
+// 当语言代码或界面语言变化时更新语言名称
 watch(
   [() => store.detectedLanguageCode, () => i18n.currentLang],
-  async ([code, lang]) => {
+  async ([code, currentLang]) => {
     if (!code || code === 'und') {
-      languageName.value = i18n.t('undetermined')
+      languageName.value = uiTexts.value.undetermined
       return
     }
     try {
       // 使用当前界面语言作为首选语言
-      const preferredLang = i18n.currentLang === 'en' ? 'en' : 'zh'
+      const preferredLang = currentLang === 'en' ? 'en' : 'zh'
       languageName.value = await getLanguageName(code, preferredLang)
     } catch (error) {
       console.error('获取语言名称错误:', error)
       languageName.value = code // 出错时显示语言代码
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 计算属性返回当前语言名称
@@ -252,9 +285,19 @@ const displayLanguageName = computed(() => languageName.value)
 watch(
   () => i18n.currentLang,
   () => {
-    // 语言切换时更新语言名称会自动通过计算属性更新
+    // 语言切换时更新语言名称
+    if (store.detectedLanguageCode) {
+      // 重新触发语言名称更新
+      const preferredLang = i18n.currentLang === 'en' ? 'en' : 'zh'
+      getLanguageName(store.detectedLanguageCode, preferredLang)
+        .then((name) => {
+          languageName.value = name
+        })
+        .catch((error) => {
+          console.error('更新语言名称失败:', error)
+        })
+    }
   },
-  { immediate: true },
 )
 
 // 判断是否为RTL文本
@@ -484,10 +527,13 @@ const formatTextAsVerticalParagraph = () => {
   if (!store.fullTextAnnotation?.pages || !store.filteredSymbolsData) {
     return ''
   }
-  
+
   // 添加安全检查，确保 filteredSymbolsData 是数组
   if (!Array.isArray(store.filteredSymbolsData)) {
-    console.error('错误: formatTextAsVerticalParagraph - filteredSymbolsData 不是数组', store.filteredSymbolsData)
+    console.error(
+      '错误: formatTextAsVerticalParagraph - filteredSymbolsData 不是数组',
+      store.filteredSymbolsData,
+    )
     return ''
   }
 
@@ -619,10 +665,13 @@ const formatTextAsHorizontalParagraph = () => {
   if (!store.fullTextAnnotation?.pages || !store.filteredSymbolsData) {
     return ''
   }
-  
+
   // 添加安全检查，确保 filteredSymbolsData 是数组
   if (!Array.isArray(store.filteredSymbolsData)) {
-    console.error('错误: formatTextAsHorizontalParagraph - filteredSymbolsData 不是数组', store.filteredSymbolsData)
+    console.error(
+      '错误: formatTextAsHorizontalParagraph - filteredSymbolsData 不是数组',
+      store.filteredSymbolsData,
+    )
     return ''
   }
 
@@ -768,13 +817,16 @@ const formatTextAsHorizontalParallel = () => {
 
   // 否则使用过滤后的文本 - 类似generateFilteredText函数
   const symbolsToProcess = store.filteredSymbolsData
-  
+
   // 添加安全检查，确保 filteredSymbolsData 是数组
   if (!Array.isArray(symbolsToProcess)) {
-    console.error('错误: formatTextAsHorizontalParallel - filteredSymbolsData 不是数组', symbolsToProcess)
+    console.error(
+      '错误: formatTextAsHorizontalParallel - filteredSymbolsData 不是数组',
+      symbolsToProcess,
+    )
     return ''
   }
-  
+
   if (!symbolsToProcess || symbolsToProcess.length === 0) {
     return ''
   }
@@ -812,17 +864,17 @@ const replaceCJKPunctuation = (text) => {
     .replace(/:/g, '：') // 替换冒号
 }
 
-// 复制按钮文本
+// 重新定义copyButtonText计算属性使用uiTexts
 const copyButtonText = computed(() => {
   if (copyStatus.value === 'success') {
-    return i18n.t('copied')
+    return uiTexts.value.copied
   }
 
   if (store.recognitionMode === 'table') {
-    return i18n.t('copyMarkdownTable') || '复制表格'
+    return uiTexts.value.copyMarkdownTable
   }
 
-  return i18n.t('copy')
+  return uiTexts.value.copy
 })
 
 // 复制文本方法，根据类型选择复制内容
@@ -867,13 +919,13 @@ const copyText = async (type = '') => {
     }, 3000)
 
     // 显示成功提示
-    store._showNotification(i18n.t('textCopied'), 'success')
+    store._showNotification(uiTexts.value.textCopied, 'success')
   } catch (e) {
     copyStatus.value = 'error'
     console.error('复制失败:', e)
 
     // 显示错误提示
-    store._showNotification(i18n.t('copyFailed'), 'error')
+    store._showNotification(uiTexts.value.copyFailed, 'error')
 
     // 3秒后重置状态
     setTimeout(() => {
@@ -915,7 +967,7 @@ const resetFilters = () => {
   store.applyFilters(resetSettings)
 
   // 显示通知
-  store._showNotification(i18n.t('filtersReset') || '过滤器已重置', 'info')
+  store._showNotification(uiTexts.value.filtersReset, 'info')
 }
 </script>
 
