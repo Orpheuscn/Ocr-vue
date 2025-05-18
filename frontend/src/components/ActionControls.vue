@@ -94,7 +94,7 @@
                       @click.stop
                       @change="toggleLanguage(lang.code, $event)"
                     />
-                    <span class="label-text">{{ lang.name }}</span>
+                    <span class="label-text text-xs">{{ lang.name }}</span>
                     <span class="text-xs opacity-60">({{ lang.code }})</span>
                   </label>
                 </div>
@@ -162,7 +162,7 @@ const loadLanguageList = async () => {
         console.error('解析缓存的语言列表失败:', e)
       }
     }
-    
+
     // 从服务器获取最新语言列表
     const languages = await getAllLanguages()
     if (languages && languages.length > 0) {
@@ -181,7 +181,7 @@ const loadLanguageList = async () => {
         { code: 'fr', name: '法语' },
         { code: 'de', name: '德语' },
         { code: 'ru', name: '俄语' },
-        { code: 'es', name: '西班牙语' }
+        { code: 'es', name: '西班牙语' },
       ]
       availableLanguages.value = defaultLanguages
       filteredLanguages.value = [...defaultLanguages]
@@ -206,7 +206,7 @@ onMounted(async () => {
 
   // 加载语言列表
   await loadLanguageList()
-  
+
   // 添加点击外部关闭下拉菜单的事件监听
   document.addEventListener('click', handleClickOutside)
 })
@@ -255,15 +255,15 @@ const toggleDropdown = async () => {
     if (showDropdown.value) {
       // 在显示下拉菜单时，重置搜索状态并刷新语言列表
       languageSearch.value = ''
-      
+
       // 如果语言列表为空，尝试重新加载
       if (availableLanguages.value.length === 0 && !isLoadingLanguages.value) {
         await loadLanguageList()
       }
-      
+
       // 应用过滤器
       filterLanguages()
-      
+
       // 如果语言列表仍然为空，显示错误消息
       if (availableLanguages.value.length === 0) {
         console.warn('语言列表为空，可能无法连接到后端服务')

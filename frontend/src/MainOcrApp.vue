@@ -39,7 +39,7 @@
                 />
               </transition>
               <ImageCanvas
-                :src="store.filePreviewUrl"
+                :src="store.processedPreviewUrl || store.filePreviewUrl"
                 :is-pdf="store.isPdfFile"
                 @dimensions-known="handleDimensionsKnown"
                 @container-height-update="updateImageContainerHeight"

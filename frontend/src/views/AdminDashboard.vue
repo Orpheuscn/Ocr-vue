@@ -61,7 +61,7 @@
           <div class="mt-2 space-y-1">
             <p>类型: {{ dbStatus.type || 'MongoDB' }}</p>
             <p>URI: {{ dbStatus.uri || 'N/A' }}</p>
-            <p>认证: {{ dbStatus.auth ? '已启用' : '未启用' }}</p>
+            <p>认证: {{ dbStatus.authentication || '未启用' }}</p>
           </div>
         </div>
       </div>
@@ -321,7 +321,8 @@ export default {
         connected: false,
         type: 'MongoDB',
         uri: '',
-        auth: false,
+        authentication: '未启用',
+        authEnabled: false,
       },
 
       // API状态

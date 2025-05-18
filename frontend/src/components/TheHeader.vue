@@ -3,15 +3,15 @@
     <div class="flex-1">
       <h1 class="text-xl font-semibold text-base-content">{{ i18n.t('appTitle') }}</h1>
     </div>
-    <div class="flex-none gap-2">
+    <div class="flex-none flex items-center gap-2">
       <!-- 认证相关按钮 -->
       <div class="mr-2">
         <div v-if="isLoggedIn" class="dropdown dropdown-end">
-          <label tabindex="0" class="btn btn-ghost btn-circle avatar">
-            <div
-              class="w-10 h-10 rounded-full bg-accent text-accent-content flex items-center justify-center"
-            >
-              <span class="text-lg font-bold">{{ userInitials }}</span>
+          <label tabindex="0" class="btn btn-ghost btn-circle">
+            <div class="avatar avatar-placeholder avatar-online">
+              <div class="w-10 rounded-full bg-accent text-neutral-content grid place-items-center">
+                <span class="text-lg font-bold">{{ userInitials }}</span>
+              </div>
             </div>
           </label>
           <ul
@@ -100,17 +100,29 @@ h1 {
   margin: 0; /* Reset margin */
 }
 
-/* 确保用户头像正确居中 */
-.avatar .w-10 {
+/* 确保右侧元素正确对齐 */
+.flex-none {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* 调整头像按钮样式 */
+.btn-circle .avatar {
+  height: 100%;
+  width: 100%;
 }
 
 @media (max-width: 480px) {
   header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .flex-none {
+    margin-top: 0.5rem;
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 </style>

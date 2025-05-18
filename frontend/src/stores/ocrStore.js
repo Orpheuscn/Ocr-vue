@@ -105,6 +105,10 @@ export const useOcrStore = defineStore('ocr', () => {
   const detectedLanguageCode = ref('und')
   const detectedLanguageName = ref('未确定')
 
+  // 添加处理后的图片预览URL
+  const processedPreviewUrl = ref('') // 存储处理后的图片URL (带遮挡区域)
+  const maskedImageUrl = ref('') // 存储遮挡处理后的图片
+
   // 过滤和显示相关
   const filterSettings = ref({
     minWidth: 0,
@@ -510,16 +514,43 @@ export const useOcrStore = defineStore('ocr', () => {
         base64Image = filePreviewUrl.value.split(',')[1]
       } else {
         console.log('处理图像文件...')
-        // 对于图片，将 File 对象转换为 Base64
-        base64Image = await fileToBase64(currentFiles.value[0])
+
+        // 优先使用已处理的图片（有遮挡区域的图片）
+        if (processedPreviewUrl.value && processedPreviewUrl.value.startsWith('data:image/')) {
+          console.log('使用已处理的图片进行OCR识别（带遮挡区域）...')
+          base64Image = processedPreviewUrl.value.split(',')[1]
+          console.log(
+            '成功获取处理后的图片数据，大小约:',
+            Math.round(base64Image.length / 1024),
+            'KB',
+          )
+        } else {
+          // 如果没有处理后的图片，则使用原始文件
+          console.log('未找到处理后的图片，使用原始图片...')
+          try {
+            base64Image = await fileToBase64(currentFiles.value[0])
+            console.log('成功从原始文件提取图片数据')
+          } catch (e) {
+            console.error('从原始文件提取Base64失败，尝试使用预览URL:', e)
+            // 如果无法转换，尝试使用预览URL
+            if (filePreviewUrl.value.startsWith('data:image/')) {
+              base64Image = filePreviewUrl.value.split(',')[1]
+              console.log('成功从预览URL提取图片数据')
+            } else {
+              throw new Error(`无法转换图像为Base64: ${e.message}`)
+            }
+          }
+        }
       }
-      console.log('图像已转换为Base64格式')
 
       // 应用遮挡区域 (如果有)
-      if (maskedAreas.value.length > 0) {
+      // 由于现在我们优先使用处理后的图片，因此只有在使用原图时才需要应用遮挡区域
+      if (maskedAreas.value.length > 0 && !processedPreviewUrl.value) {
         console.log(`应用${maskedAreas.value.length}个遮挡区域...`)
         loadingMessage.value = i18n.tf('processingMasks', { count: maskedAreas.value.length })
         base64Image = await applyMasksToImage(base64Image, processDimensions)
+      } else if (maskedAreas.value.length > 0 && processedPreviewUrl.value) {
+        console.log('图片已包含遮挡区域，无需再次应用')
       }
 
       // 准备API请求参数
@@ -1266,6 +1297,7 @@ export const useOcrStore = defineStore('ocr', () => {
     initialTextDirection,
     textDisplayMode,
     notification,
+    notificationKey: computed(() => notification.value.key),
     isDimensionsKnown,
     maskedAreas,
     recognitionMode,
@@ -1273,6 +1305,8 @@ export const useOcrStore = defineStore('ocr', () => {
     currentTableComponent,
     useServerApiKey,
     serverApiAvailable,
+    processedPreviewUrl,
+    maskedImageUrl,
     // Getters
     hasApiKey,
     canStartOcr,

@@ -1,14 +1,16 @@
 // src/services/apiClient.js
+import { useOcrStore } from '@/stores/ocrStore'
+
 const API_BASE_URL = '/api'
 
 /**
- * 简化版文件处理和OCR识别
- * @param {File} file - 要处理的图像文件
+ * 使用服务器端API密钥进行简单OCR识别
+ * @param {File} file - 要处理的文件对象（图片或PDF）
  * @param {string[]} languageHints - 可选的语言提示数组
  * @param {string} recognitionDirection - 识别方向，'horizontal'或'vertical'
  * @param {string} recognitionMode - 识别模式，'text'或'table'
  * @param {string} userId - 可选的用户ID，用于记录OCR统计
- * @returns {Promise<object>} - 包含OCR结果文本的对象
+ * @returns {Promise<object>} - 包含OCR结果的对象
  */
 export async function processSimple(
   file,
@@ -17,19 +19,41 @@ export async function processSimple(
   recognitionMode = 'text',
   userId = null,
 ) {
-  console.log('apiClient.processSimple: 开始处理文件', {
-    fileName: file?.name,
-    fileType: file?.type,
-    fileSize: file?.size,
-    languageHints,
-    recognitionDirection,
-    recognitionMode,
-    userId,
-  })
-
   try {
+    // 从store中获取处理后的图片数据
+    const ocrStore = useOcrStore ? useOcrStore() : null
+    let processedImage = null
+
+    // 如果store存在且有处理后的图片，使用处理后的图片
+    if (ocrStore && ocrStore.processedPreviewUrl) {
+      console.log('API Client: 检测到处理后的图片，优先使用')
+
+      try {
+        // 从base64转换为File对象
+        const base64Data = ocrStore.processedPreviewUrl.split(',')[1]
+        const byteString = window.atob(base64Data)
+        const ab = new ArrayBuffer(byteString.length)
+        const ia = new Uint8Array(ab)
+
+        for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i)
+        }
+
+        processedImage = new File([ab], 'processed_image.jpg', { type: 'image/jpeg' })
+        console.log('API Client: 成功从处理后的图片创建文件对象')
+      } catch (error) {
+        console.error('API Client: 处理后的图片转换失败:', error)
+        // 转换失败时，回退到原始文件
+        processedImage = null
+      }
+    }
+
+    // 使用处理后的图片或原始文件
+    const imageToProcess = processedImage || file
+    console.log('API Client: 使用', processedImage ? '处理后的图片' : '原始图片', '进行OCR处理')
+
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', imageToProcess)
 
     if (languageHints.length > 0) {
       languageHints.forEach((lang) => {
@@ -45,32 +69,16 @@ export async function processSimple(
       formData.append('userId', userId)
     }
 
-    console.log('apiClient.processSimple: 发送请求到服务器', `${API_BASE_URL}/ocr/process`)
-
     const response = await fetch(`${API_BASE_URL}/ocr/process`, {
       method: 'POST',
       body: formData,
     })
 
-    console.log('apiClient.processSimple: 收到服务器响应', response.status)
-
     const result = await response.json()
 
     if (!result.success) {
-      console.error('apiClient.processSimple: 请求失败', result.message)
-      throw new Error(result.message || '请求失败')
+      throw new Error(result.message || '处理请求失败')
     }
-
-    console.log('apiClient.processSimple: 请求成功')
-
-    // 新增输出返回的数字信息，方便调试
-    console.log('apiClient.processSimple: 服务器返回数字信息:', {
-      hasOcrRawResult: !!result.ocrRawResult,
-      hasFullTextAnnotation: !!result.fullTextAnnotation,
-      textLength: result.text?.length || 0,
-      language: result.language,
-      symbolsDataCount: result.symbolsData?.length || 0,
-    })
 
     // 如果返回了完整的OCR结果，构造一个处理后的结果对象
     const processedResult = {
@@ -88,7 +96,7 @@ export async function processSimple(
 
     return processedResult
   } catch (error) {
-    console.error('apiClient.processSimple: 处理文件错误:', error)
+    console.error('处理简单OCR请求错误:', error)
     throw error
   }
 }

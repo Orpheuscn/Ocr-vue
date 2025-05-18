@@ -78,6 +78,41 @@ export async function getDbStatus(req, res) {
     // 测试数据库连接状态
     const connected = mongoose.connection.readyState === 1;
 
+    // 检查MongoDB认证状态
+    let authEnabled = false;
+    let authStatus = "未启用";
+
+    if (connected) {
+      try {
+        // 尝试执行一个需要管理员权限的命令来检测认证状态
+        // 这将在无认证的MongoDB上成功，但在启用认证的MongoDB上失败（没有正确凭据时）
+        const testNoAuth = new mongoose.mongo.Admin(mongoose.connection.db);
+        await testNoAuth.serverStatus();
+
+        // 如果上面的命令成功了，我们需要进一步检查连接字符串是否包含认证信息
+        const connStr = process.env.MONGODB_URI || "";
+        if (
+          connStr.includes("@") &&
+          (connStr.includes("authSource") || connStr.includes("?auth"))
+        ) {
+          authEnabled = true;
+          authStatus = "已启用";
+        }
+      } catch (authError) {
+        // 如果命令失败，且错误消息包含认证相关信息，说明认证已启用
+        if (
+          authError.message &&
+          (authError.message.includes("auth") ||
+            authError.message.includes("Authentication") ||
+            authError.message.includes("authorization") ||
+            authError.message.includes("not authorized"))
+        ) {
+          authEnabled = true;
+          authStatus = "已启用";
+        }
+      }
+    }
+
     return res.json({
       success: true,
       status: {
@@ -85,6 +120,8 @@ export async function getDbStatus(req, res) {
         type: "MongoDB",
         uri: process.env.MONGODB_URI,
         name: mongoose.connection.name,
+        authentication: authStatus,
+        authEnabled,
       },
     });
   } catch (error) {
@@ -98,6 +135,8 @@ export async function getDbStatus(req, res) {
         type: "MongoDB",
         uri: "",
         name: "",
+        authentication: "未知",
+        authEnabled: false,
       },
     });
   }
@@ -158,9 +197,9 @@ export async function getUsers(req, res) {
 export async function getOcrRecords(req, res) {
   try {
     const records = await OcrRecord.find({}, "_id userId filename language createdAt");
-    
+
     // 将记录转换为普通对象并使用数字ID
-    const formattedRecords = records.map(record => {
+    const formattedRecords = records.map((record) => {
       const plainRecord = record.toObject();
       // 如果记录有_id属性，将其转换为id
       if (plainRecord._id) {
@@ -243,8 +282,12 @@ export async function executeQuery(req, res) {
     const db = mongoose.connection.db;
 
     // 确保查询和投影是对象而不是字符串
-    const queryObj = typeof query === 'string' ? JSON.parse(query) : query;
-    const projectionObj = projection ? (typeof projection === 'string' ? JSON.parse(projection) : projection) : {};
+    const queryObj = typeof query === "string" ? JSON.parse(query) : query;
+    const projectionObj = projection
+      ? typeof projection === "string"
+        ? JSON.parse(projection)
+        : projection
+      : {};
 
     // 执行查询，限制最多返回的文档
     let results = await db
@@ -253,20 +296,23 @@ export async function executeQuery(req, res) {
       .project(projectionObj)
       .limit(limit)
       .toArray();
-      
+
     // 如果是OCR记录集合，处理ID和用户名
-    if (collection.toLowerCase() === 'ocrrecords') {
+    if (collection.toLowerCase() === "ocrrecords") {
       // 获取所有用户ID和用户名的映射
-      const users = await db.collection('users').find({}, { projection: { _id: 1, username: 1 } }).toArray();
+      const users = await db
+        .collection("users")
+        .find({}, { projection: { _id: 1, username: 1 } })
+        .toArray();
       const userMap = {};
-      users.forEach(user => {
+      users.forEach((user) => {
         userMap[user._id.toString()] = user.username;
       });
-      
+
       // 处理每个记录
-      results = results.map(record => {
+      results = results.map((record) => {
         const formattedRecord = { ...record };
-        
+
         // 处理ID，将ObjectId转换为数字ID
         if (formattedRecord._id) {
           formattedRecord.id = formattedRecord._id.toString();
@@ -276,14 +322,14 @@ export async function executeQuery(req, res) {
           }
           delete formattedRecord._id;
         }
-        
+
         // 将用户ID替换为用户名
         if (formattedRecord.userId && userMap[formattedRecord.userId.toString()]) {
           formattedRecord.username = userMap[formattedRecord.userId.toString()];
           // 保留原始用户ID作为参考
           formattedRecord.userId = formattedRecord.userId.toString();
         }
-        
+
         return formattedRecord;
       });
     }

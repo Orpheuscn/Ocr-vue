@@ -45,22 +45,6 @@
                 </div>
 
                 <div class="form-control">
-                  <label for="email" class="label">
-                    <span class="label-text">邮箱</span>
-                  </label>
-                  <input
-                    id="email"
-                    v-model="formData.email"
-                    type="email"
-                    required
-                    disabled
-                    class="input input-bordered w-full opacity-70"
-                    placeholder="邮箱不可修改"
-                  />
-                  <p class="text-xs text-base-content/60 mt-1">邮箱地址不可修改</p>
-                </div>
-
-                <div class="form-control">
                   <div class="label">
                     <span class="label-text">兴趣标签</span>
                   </div>
@@ -114,9 +98,11 @@
               <!-- 用户信息展示 -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="flex items-center gap-4">
-                  <div class="avatar placeholder">
-                    <div class="bg-accent text-accent-content rounded-full w-16">
-                      <span class="text-xl">{{ userInitials }}</span>
+                  <div class="avatar avatar-placeholder avatar-online">
+                    <div
+                      class="w-16 rounded-full bg-accent text-neutral-content grid place-items-center"
+                    >
+                      <span class="text-2xl font-bold">{{ userInitials }}</span>
                     </div>
                   </div>
                   <div>
@@ -241,11 +227,23 @@
         </div>
       </div>
     </div>
-    
+
     <!-- 退出登录确认提示 -->
     <div v-if="showLogoutAlert" class="toast toast-center">
       <div class="alert alert-warning">
-        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="stroke-current shrink-0 h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
         <div>
           <h3 class="font-bold">确定要退出登录吗？</h3>
         </div>
@@ -444,19 +442,19 @@ export default {
 
     // 退出登录相关状态
     const showLogoutAlert = ref(false)
-    
+
     // 显示退出登录确认框
     const confirmLogout = () => {
       showLogoutAlert.value = true
     }
-    
+
     // 确认退出登录
     const handleLogout = () => {
       logout()
       showLogoutAlert.value = false
       router.push({ name: 'Login' })
     }
-    
+
     // 取消退出登录
     const cancelLogout = () => {
       showLogoutAlert.value = false
@@ -477,10 +475,6 @@ export default {
 
         // 关闭注销模态框
         showDeactivateModal.value = false
-        
-        // 显示成功提示
-        const successMessage = '您的账户已成功注销'
-        // 这里我们直接跳转，不显示成功提示，因为用户已经注销
 
         // 重定向到登录页
         router.push({ name: 'Login' })
