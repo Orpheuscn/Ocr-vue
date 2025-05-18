@@ -44,13 +44,13 @@
       <div class="flex items-center justify-between mt-2">
         <div class="form-control">
           <label class="label cursor-pointer">
-            <input type="checkbox" v-model="rememberMe" class="checkbox checkbox-primary" />
+            <input type="checkbox" v-model="rememberMe" class="checkbox checkbox-accent" />
             <span class="label-text ml-2">记住我</span>
           </label>
         </div>
         
         <div class="text-sm">
-          <a href="#" class="link link-primary">忘记密码?</a>
+          <a href="#" class="link link-accent">忘记密码?</a>
         </div>
       </div>
       
@@ -58,7 +58,7 @@
         <button
           type="submit"
           :disabled="isLoading"
-          class="btn btn-primary w-full"
+          class="btn btn-accent w-full"
         >
           <span v-if="isLoading">
             <span class="loading loading-spinner"></span>
@@ -71,7 +71,7 @@
       <div class="text-center mt-4">
         <p class="text-sm text-base-content/70">
           还没有账号? 
-          <router-link :to="{ name: 'Register' }" class="link link-primary">
+          <router-link :to="{ name: 'Register' }" class="link link-accent">
             立即注册
           </router-link>
         </p>

@@ -12,14 +12,38 @@ import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 // 获取当前文件的目录路径
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// 确定当前环境
+const env = process.env.NODE_ENV || "development";
+
+// 根据环境选择配置文件
+let envFile = ".env.local";
+if (env === "production") {
+  envFile = ".env.production";
+} else if (env === "test") {
+  envFile = ".env.test";
+}
+
+// 尝试加载环境变量文件
+const envPath = path.resolve(__dirname, `../backend/${envFile}`);
+const defaultEnvPath = path.resolve(__dirname, "../backend/.env");
+
 // 加载环境变量
-const envPath = path.resolve(__dirname, "../.env");
-dotenv.config({ path: envPath });
+if (fs.existsSync(envPath)) {
+  console.log(`加载环境变量文件: ${envPath}`);
+  dotenv.config({ path: envPath });
+} else if (fs.existsSync(defaultEnvPath)) {
+  console.log(`加载默认环境变量文件: ${defaultEnvPath}`);
+  dotenv.config({ path: defaultEnvPath });
+} else {
+  console.log("未找到环境变量文件，使用默认设置");
+  dotenv.config();
+}
 
 // 颜色定义
 const colors = {

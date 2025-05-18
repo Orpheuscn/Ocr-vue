@@ -30,346 +30,266 @@
 
     <!-- 系统状态卡片 -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      <div class="bg-white rounded-lg shadow-md p-6 border-t-4 border-blue-500">
-        <h2 class="text-xl font-semibold mb-2">系统状态</h2>
-        <div class="flex items-center">
-          <div
-            class="w-3 h-3 rounded-full mr-2"
-            :class="serverStatus.online ? 'bg-green-500' : 'bg-red-500'"
-          ></div>
-          <span>{{ serverStatus.online ? '在线' : '离线' }}</span>
-        </div>
-        <div class="mt-2">
-          <p>API版本: {{ serverStatus.version || 'N/A' }}</p>
-          <p>启动时间: {{ formatUptime(serverStatus.uptime) || 'N/A' }}</p>
-          <p>环境: {{ serverStatus.environment || 'N/A' }}</p>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-lg shadow-md p-6 border-t-4 border-green-500">
-        <h2 class="text-xl font-semibold mb-2">数据库状态</h2>
-        <div class="flex items-center">
-          <div
-            class="w-3 h-3 rounded-full mr-2"
-            :class="dbStatus.connected ? 'bg-green-500' : 'bg-red-500'"
-          ></div>
-          <span>{{ dbStatus.connected ? '已连接' : '未连接' }}</span>
-        </div>
-        <div class="mt-2">
-          <p>类型: {{ dbStatus.type || 'MongoDB' }}</p>
-          <p>URI: {{ dbStatus.uri || 'N/A' }}</p>
-          <p>认证: {{ dbStatus.auth ? '已启用' : '未启用' }}</p>
+      <div class="card bg-base-100 shadow-xl border-t-4 border-accent">
+        <div class="card-body">
+          <h2 class="card-title">系统状态</h2>
+          <div class="flex items-center">
+            <div
+              class="badge badge-sm mr-2"
+              :class="serverStatus.online ? 'badge-success' : 'badge-error'"
+            ></div>
+            <span>{{ serverStatus.online ? '在线' : '离线' }}</span>
+          </div>
+          <div class="mt-2 space-y-1">
+            <p>API版本: {{ serverStatus.version || 'N/A' }}</p>
+            <p>启动时间: {{ formatUptime(serverStatus.uptime) || 'N/A' }}</p>
+            <p>环境: {{ serverStatus.environment || 'N/A' }}</p>
+          </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-md p-6 border-t-4 border-purple-500">
-        <h2 class="text-xl font-semibold mb-2">API 健康状态</h2>
-        <div class="mt-2">
-          <p>总请求数: {{ apiStatus.totalRequests || 0 }}</p>
-          <p>成功率: {{ apiStatus.successRate || '0%' }}</p>
-          <p>平均响应时间: {{ apiStatus.avgResponseTime || 'N/A' }}</p>
+      <div class="card bg-base-100 shadow-xl border-t-4 border-success">
+        <div class="card-body">
+          <h2 class="card-title">数据库状态</h2>
+          <div class="flex items-center">
+            <div
+              class="badge badge-sm mr-2"
+              :class="dbStatus.connected ? 'badge-success' : 'badge-error'"
+            ></div>
+            <span>{{ dbStatus.connected ? '已连接' : '未连接' }}</span>
+          </div>
+          <div class="mt-2 space-y-1">
+            <p>类型: {{ dbStatus.type || 'MongoDB' }}</p>
+            <p>URI: {{ dbStatus.uri || 'N/A' }}</p>
+            <p>认证: {{ dbStatus.auth ? '已启用' : '未启用' }}</p>
+          </div>
         </div>
-        <button
-          @click="refreshData"
-          class="mt-4 bg-purple-500 hover:bg-purple-600 text-white py-1 px-3 rounded text-sm"
-        >
-          刷新数据
-        </button>
+      </div>
+
+      <div class="card bg-base-100 shadow-xl border-t-4 border-secondary">
+        <div class="card-body">
+          <h2 class="card-title">API 健康状态</h2>
+          <div class="mt-2 space-y-1">
+            <p>总请求数: {{ apiStatus.totalRequests || 0 }}</p>
+            <p>成功率: {{ apiStatus.successRate || '0%' }}</p>
+            <p>平均响应时间: {{ apiStatus.avgResponseTime || 'N/A' }}</p>
+          </div>
+          <div class="card-actions justify-end mt-4">
+            <button @click="refreshData" class="btn btn-secondary btn-sm">刷新数据</button>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- 数据统计标签页 -->
-    <div class="bg-white rounded-lg shadow-md mb-8">
-      <div class="border-b border-gray-200">
-        <nav class="flex -mb-px">
+    <div class="card bg-base-100 shadow-xl mb-8">
+      <div class="card-body">
+        <div class="tabs tabs-boxed mb-4">
           <button
             v-for="tab in tabs"
             :key="tab.id"
             @click="activeTab = tab.id"
-            class="py-4 px-6 text-center border-b-2 font-medium text-sm"
-            :class="
-              activeTab === tab.id
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            "
+            class="tab"
+            :class="activeTab === tab.id ? 'tab-active' : ''"
           >
             {{ tab.name }}
           </button>
-        </nav>
-      </div>
-
-      <!-- 用户数据 -->
-      <div v-if="activeTab === 'users'" class="p-6">
-        <h3 class="text-lg font-medium mb-4">用户统计</h3>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  ID
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  用户名
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  邮箱
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  创建时间
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  上次登录
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="user in users" :key="user.id">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ user.id }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {{ user.username }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ user.email }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ formatDate(user.createdAt) }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ formatDate(user.lastLogin) }}
-                </td>
-              </tr>
-              <tr v-if="users.length === 0">
-                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">无用户数据</td>
-              </tr>
-            </tbody>
-          </table>
         </div>
-      </div>
 
-      <!-- OCR记录数据 -->
-      <div v-if="activeTab === 'ocr'" class="p-6">
-        <h3 class="text-lg font-medium mb-4">OCR记录统计</h3>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  ID
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  用户
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  文件名
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  识别语言
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  创建时间
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="record in ocrRecords" :key="record.id">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ record.id }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {{ record.userId }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ decodeFilename(record.filename) }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ record.language }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ formatDate(record.createdAt) }}
-                </td>
-              </tr>
-              <tr v-if="ocrRecords.length === 0">
-                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
-                  无OCR记录数据
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- API请求日志 -->
-      <div v-if="activeTab === 'logs'" class="p-6">
-        <h3 class="text-lg font-medium mb-4">API请求日志</h3>
-        <div class="mb-4 flex items-center justify-between">
-          <div class="flex space-x-2">
-            <button
-              v-for="filter in logFilters"
-              :key="filter.type"
-              @click="currentLogFilter = filter.type"
-              class="px-3 py-1 rounded text-sm"
-              :class="
-                currentLogFilter === filter.type ? filter.activeClass : 'bg-gray-200 text-gray-700'
-              "
-            >
-              {{ filter.label }}
-            </button>
+        <!-- 用户数据 -->
+        <div v-if="activeTab === 'users'" class="p-2">
+          <h3 class="text-lg font-medium mb-4">用户统计</h3>
+          <div class="overflow-x-auto">
+            <table class="table table-zebra">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>用户名</th>
+                  <th>邮箱</th>
+                  <th>创建时间</th>
+                  <th>上次登录</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="user in users" :key="user.id">
+                  <td>{{ user.id }}</td>
+                  <td>{{ user.username }}</td>
+                  <td>{{ user.email }}</td>
+                  <td>{{ formatDate(user.createdAt) }}</td>
+                  <td>{{ formatDate(user.lastLogin) }}</td>
+                </tr>
+                <tr v-if="users.length === 0">
+                  <td colspan="5" class="text-center">无用户数据</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <button
-            @click="clearLogs"
-            class="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded text-sm"
-          >
-            清除日志
-          </button>
         </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  时间
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  方法
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  路径
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  状态
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  响应时间
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="(log, index) in filteredLogs" :key="index" :class="getLogRowClass(log)">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ formatTime(log.timestamp) }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <span :class="getMethodClass(log.method)">{{ log.method }}</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ log.path }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                  <span :class="getStatusClass(log.status)">{{ log.status }}</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ log.responseTime }}ms
-                </td>
-              </tr>
-              <tr v-if="filteredLogs.length === 0">
-                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">无日志数据</td>
-              </tr>
-            </tbody>
-          </table>
+
+        <!-- OCR记录数据 -->
+        <div v-if="activeTab === 'ocr'" class="p-2">
+          <h3 class="text-lg font-medium mb-4">OCR记录统计</h3>
+          <div class="overflow-x-auto">
+            <table class="table w-full">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>用户</th>
+                  <th>文件名</th>
+                  <th>识别语言</th>
+                  <th>创建时间</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="record in ocrRecords" :key="record.id">
+                  <td>{{ record.id }}</td>
+                  <td>{{ record.userId }}</td>
+                  <td>{{ decodeFilename(record.filename) }}</td>
+                  <td>{{ record.language }}</td>
+                  <td>{{ formatDate(record.createdAt) }}</td>
+                </tr>
+                <tr v-if="ocrRecords.length === 0">
+                  <td colspan="5" class="text-center">无OCR记录数据</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- API请求日志 -->
+        <div v-if="activeTab === 'logs'" class="p-6">
+          <h3 class="text-lg font-medium mb-4">API请求日志</h3>
+          <div class="mb-4 flex items-center justify-between">
+            <div class="flex space-x-2">
+              <button
+                v-for="filter in logFilters"
+                :key="filter.type"
+                @click="currentLogFilter = filter.type"
+                class="btn btn-sm"
+                :class="currentLogFilter === filter.type ? filter.activeClass : 'btn-ghost'"
+              >
+                {{ filter.label }}
+              </button>
+            </div>
+            <button @click="clearLogs" class="btn btn-sm btn-error">清除日志</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="table table-zebra w-full">
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>方法</th>
+                  <th>路径</th>
+                  <th>状态</th>
+                  <th>响应时间</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(log, index) in filteredLogs" :key="index" :class="getLogRowClass(log)">
+                  <td>{{ formatTime(log.timestamp) }}</td>
+                  <td>
+                    <span :class="getMethodClass(log.method)">{{ log.method }}</span>
+                  </td>
+                  <td>{{ log.path }}</td>
+                  <td>
+                    <span :class="getStatusClass(log.status)">{{ log.status }}</span>
+                  </td>
+                  <td>{{ log.responseTime }}ms</td>
+                </tr>
+                <tr v-if="filteredLogs.length === 0">
+                  <td colspan="5" class="text-center">无日志数据</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- 数据库查询工具 -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <h2 class="text-xl font-semibold mb-4">数据库查询</h2>
-      <div class="mb-4">
-        <textarea
-          v-model="mongoQuery"
-          class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-          rows="3"
-          placeholder='输入MongoDB查询 (例如: { "collection": "users", "query": {}, "limit": 10 })'
-        ></textarea>
-      </div>
-      <div class="flex justify-between">
-        <button
-          @click="executeQuery"
-          class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
-          :disabled="isQueryExecuting"
-        >
-          {{ isQueryExecuting ? '执行中...' : '执行查询' }}
-        </button>
-        <div class="flex space-x-2">
-          <button
-            @click="loadSampleQuery('users')"
-            class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded"
-          >
-            用户集合
-          </button>
-          <button
-            @click="loadSampleQuery('ocr')"
-            class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded"
-          >
-            OCR记录集合
-          </button>
+    <div class="card bg-base-100 shadow-xl mb-8">
+      <div class="card-body">
+        <h2 class="card-title">数据库查询</h2>
+        <div class="form-control mb-4">
+          <textarea
+            v-model="mongoQuery"
+            class="textarea textarea-bordered w-full"
+            rows="3"
+            placeholder='输入MongoDB查询 (例如: { "collection": "users", "query": {}, "limit": 10 })'
+          ></textarea>
         </div>
-      </div>
-
-      <!-- 查询结果 -->
-      <div v-if="queryResult" class="mt-6">
-        <h3 class="text-lg font-medium mb-2">查询结果</h3>
-        <div class="text-sm text-gray-500 mb-2">
-          执行时间: {{ queryResult.executionTime }}ms | 返回行数:
-          {{ queryResult.rows ? queryResult.rows.length : 0 }}
-        </div>
-        <div class="overflow-x-auto">
-          <table
-            v-if="queryResult.rows && queryResult.rows.length > 0"
-            class="min-w-full divide-y divide-gray-200"
-          >
-            <thead class="bg-gray-50">
-              <tr>
-                <th
-                  v-for="column in Object.keys(queryResult.rows[0])"
-                  :key="column"
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  {{ column }}
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="(row, rowIndex) in queryResult.rows" :key="rowIndex">
-                <td
-                  v-for="column in Object.keys(row)"
-                  :key="column"
-                  class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
-                >
-                  {{ row[column] }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div v-else-if="queryResult.error" class="p-4 bg-red-50 text-red-500 rounded">
-            <p class="font-medium">查询错误</p>
-            <p>{{ queryResult.error }}</p>
+        <div class="flex justify-between">
+          <button @click="executeQuery" class="btn btn-accent" :disabled="isQueryExecuting">
+            {{ isQueryExecuting ? '执行中...' : '执行查询' }}
+          </button>
+          <div class="flex space-x-2">
+            <button @click="loadSampleQuery('users')" class="btn btn-ghost">用户集合</button>
+            <button @click="loadSampleQuery('ocr')" class="btn btn-ghost">OCR记录集合</button>
           </div>
-          <div v-else class="p-4 bg-blue-50 text-blue-500 rounded">
-            查询执行成功，但没有返回数据。
+        </div>
+
+        <!-- 查询结果 -->
+        <div v-if="queryResult" class="mt-6">
+          <h3 class="text-lg font-medium mb-2">查询结果</h3>
+          <div class="badge badge-neutral mb-2">
+            执行时间: {{ queryResult.executionTime }}ms | 返回行数:
+            {{ queryResult.rows ? queryResult.rows.length : 0 }}
+          </div>
+          <div class="overflow-x-auto">
+            <table
+              v-if="queryResult.rows && queryResult.rows.length > 0"
+              class="table table-zebra w-full"
+            >
+              <thead>
+                <tr>
+                  <th v-for="column in Object.keys(queryResult.rows[0])" :key="column">
+                    {{ column }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, rowIndex) in queryResult.rows" :key="rowIndex">
+                  <td v-for="column in Object.keys(row)" :key="column">
+                    {{ row[column] }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-else-if="queryResult.error" class="alert alert-error">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="stroke-current shrink-0 h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <div>
+                <h3 class="font-bold">查询错误</h3>
+                <div class="text-xs">{{ queryResult.error }}</div>
+              </div>
+            </div>
+            <div v-else class="alert alert-info">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                class="stroke-current shrink-0 w-6 h-6"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+              <span>查询执行成功，但没有返回数据。</span>
+            </div>
           </div>
         </div>
       </div>
@@ -429,9 +349,9 @@ export default {
       logs: [],
       currentLogFilter: 'all',
       logFilters: [
-        { type: 'all', label: '全部', activeClass: 'bg-blue-500 text-white' },
-        { type: 'error', label: '错误', activeClass: 'bg-red-500 text-white' },
-        { type: 'success', label: '成功', activeClass: 'bg-green-500 text-white' },
+        { type: 'all', label: '全部', activeClass: 'btn-primary' },
+        { type: 'error', label: '错误', activeClass: 'btn-error' },
+        { type: 'success', label: '成功', activeClass: 'btn-success' },
       ],
 
       // 数据库查询
@@ -606,13 +526,13 @@ export default {
           }
           return
         }
-        
+
         // 发送查询请求
         const data = await fetchWithAuth('/api/admin/execute-query', {
           method: 'POST',
           body: JSON.stringify(queryObj),
         })
-        
+
         if (data.success) {
           // 将结果转换为前端需要的格式
           this.queryResult = {

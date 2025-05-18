@@ -10,21 +10,28 @@ const __dirname = dirname(__filename);
 
 // 如果环境变量尚未加载（通过 start.js），则加载环境变量
 if (!process.env.ENV_LOADED) {
-  // 尝试加载多个可能的.env文件位置
-  const envLocalPath = resolve(__dirname, "../.env.local");
-  const envPath = resolve(__dirname, "../.env");
-  const rootEnvPath = resolve(__dirname, "../../config/.env");
+  // 确定当前环境
+  const env = process.env.NODE_ENV || "development";
+
+  // 根据环境选择配置文件
+  let envFile = ".env.local";
+  if (env === "production") {
+    envFile = ".env.production";
+  } else if (env === "test") {
+    envFile = ".env.test";
+  }
+
+  // 尝试加载环境变量文件
+  const envPath = resolve(__dirname, `../${envFile}`);
+  const defaultEnvPath = resolve(__dirname, "../.env");
 
   // 按优先级加载环境变量文件
-  if (fs.existsSync(envLocalPath)) {
-    dotenv.config({ path: envLocalPath });
-    console.log("已加载本地环境变量文件:", envLocalPath);
-  } else if (fs.existsSync(envPath)) {
+  if (fs.existsSync(envPath)) {
     dotenv.config({ path: envPath });
-    console.log("已加载环境变量文件:", envPath);
-  } else if (fs.existsSync(rootEnvPath)) {
-    dotenv.config({ path: rootEnvPath });
-    console.log("已加载根目录环境变量文件:", rootEnvPath);
+    console.log(`已加载环境变量文件: ${envPath}`);
+  } else if (fs.existsSync(defaultEnvPath)) {
+    dotenv.config({ path: defaultEnvPath });
+    console.log("已加载默认环境变量文件:", defaultEnvPath);
   } else {
     dotenv.config();
     console.log("已加载默认环境变量");

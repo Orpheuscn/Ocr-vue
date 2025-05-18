@@ -73,8 +73,8 @@
       
       <div class="form-control mt-4">
         <label class="label cursor-pointer justify-start">
-          <input type="checkbox" v-model="agreeTerms" class="checkbox checkbox-primary" />
-          <span class="label-text ml-2">我已阅读并同意<a href="#" class="link link-primary">服务条款</a>和<a href="#" class="link link-primary">隐私政策</a></span>
+          <input type="checkbox" v-model="agreeTerms" class="checkbox checkbox-accent" />
+          <span class="label-text ml-2">我已阅读并同意<a href="#" class="link link-accent">服务条款</a>和<a href="#" class="link link-accent">隐私政策</a></span>
         </label>
       </div>
       
@@ -82,7 +82,7 @@
         <button
           type="submit"
           :disabled="isLoading || !agreeTerms"
-          class="btn btn-primary w-full"
+          class="btn btn-accent w-full"
         >
           <span v-if="isLoading">
             <span class="loading loading-spinner"></span>
@@ -95,7 +95,7 @@
       <div class="text-center mt-4">
         <p class="text-sm text-base-content/70">
           已有账号? 
-          <router-link :to="{ name: 'Login' }" class="link link-primary">
+          <router-link :to="{ name: 'Login' }" class="link link-accent">
             立即登录
           </router-link>
         </p>

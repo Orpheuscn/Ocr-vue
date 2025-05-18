@@ -35,15 +35,11 @@ coverage
 # 环境变量文件
 .env
 .env.*
-!.env.example
 backend/.env
 backend/.env.*
 !backend/.env.example
 
-# 数据库文件
-database/*.sqlite
-database/*.sqlite3
-database/*.sqlite-journal
+
 # MongoDB数据文件
 database/mongodb/data
 database/mongodb/mongod.conf
@@ -62,3 +58,10 @@ ssl/backup
 
 # 自动生成的文件
 *.generated.*
+
+# 工具脚本文件夹
+/tools/
+
+# Markdown文档（除了根目录的README.md）
+**/*.md
+!README.md

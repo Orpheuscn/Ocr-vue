@@ -25,7 +25,6 @@ if (env === "production") {
 // 检查并加载环境变量文件
 const envPath = path.resolve(rootDir, envFile);
 const defaultEnvPath = path.resolve(rootDir, ".env");
-const rootEnvPath = path.resolve(rootDir, "../config/.env");
 
 if (fs.existsSync(envPath)) {
   console.log(`加载 ${envFile} 环境变量文件`);
@@ -33,9 +32,6 @@ if (fs.existsSync(envPath)) {
 } else if (fs.existsSync(defaultEnvPath)) {
   console.log("加载 .env 环境变量文件");
   dotenv.config({ path: defaultEnvPath });
-} else if (fs.existsSync(rootEnvPath)) {
-  console.log("加载 config/.env 环境变量文件");
-  dotenv.config({ path: rootEnvPath });
 } else {
   console.log("未找到 .env 文件，使用默认环境变量");
   dotenv.config();
