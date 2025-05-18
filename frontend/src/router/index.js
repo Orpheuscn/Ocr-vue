@@ -4,6 +4,7 @@ import HomePage from '@/views/HomePage.vue'
 import LoginPage from '@/views/LoginPage.vue'
 import RegisterPage from '@/views/RegisterPage.vue'
 import AdminDashboard from '@/views/AdminDashboard.vue'
+import PythonServicePage from '@/views/PythonServicePage.vue'
 
 const routes = [
   {
@@ -32,6 +33,13 @@ const routes = [
     name: 'Admin',
     component: AdminDashboard,
     meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  // Python服务页面
+  {
+    path: '/python-service',
+    name: 'PythonService',
+    component: PythonServicePage,
+    meta: { requiresAuth: true },
   },
   // 保留原来的/auth路径，重定向到登录
   {

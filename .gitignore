@@ -65,3 +65,6 @@ ssl/backup
 # Markdown文档（除了根目录的README.md）
 **/*.md
 !README.md
+
+# Python虚拟环境
+python-service/venv/

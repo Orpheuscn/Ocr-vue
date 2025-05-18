@@ -67,6 +67,22 @@ check_api_health() {
   return 1
 }
 
+# 检查Python服务健康状态
+check_python_health() {
+  # 请求Python服务根路径
+  local response=$(curl -s -m 5 http://localhost:5000)
+  local curl_status=$?
+  
+  # 检查curl是否成功
+  if [ $curl_status -eq 0 ] && [ ! -z "$response" ]; then
+    log "${GREEN}Python服务健康检查成功${NC}"
+    return 0
+  else
+    log "${YELLOW}Python服务健康检查失败${NC}"
+    return 1
+  fi
+}
+
 # 启动后端服务
 start_backend() {
   log "${BLUE}正在启动后端服务...${NC}"
@@ -88,6 +104,34 @@ start_backend() {
   fi
 }
 
+# 启动Python服务
+start_python_service() {
+  log "${BLUE}正在启动Python服务...${NC}"
+  cd "$APP_DIR/python-service"
+  
+  # 确保uploads目录存在
+  mkdir -p "$APP_DIR/python-service/uploads/results"
+  
+  # 激活虚拟环境并启动Python服务
+  (
+    source "$APP_DIR/python-service/venv/bin/activate"
+    python server.py > "$APP_DIR/logs/python-service-$(date '+%Y%m%d-%H%M%S').log" 2>&1 &
+    echo $! > "$APP_DIR/logs/python-service.pid"
+  )
+  
+  # 等待服务启动
+  sleep 5
+  
+  # 检查服务是否成功启动
+  if check_python_health; then
+    log "${GREEN}Python服务启动成功并响应健康检查${NC}"
+    return 0
+  else
+    log "${RED}Python服务启动后未能通过健康检查${NC}"
+    return 1
+  fi
+}
+
 # 主函数
 main() {
   log "${BLUE}开始监控检查...${NC}"
@@ -99,7 +143,6 @@ main() {
     # 检查API健康状态
     if check_api_health; then
       log "${GREEN}后端API健康状态正常${NC}"
-      exit 0
     else
       log "${YELLOW}警告: 后端进程存在但API健康检查失败${NC}"
       
@@ -117,6 +160,32 @@ main() {
   else
     log "${YELLOW}后端服务未运行，正在启动...${NC}"
     start_backend
+  fi
+  
+  # 检查Python服务进程
+  if check_process "python.*server.py"; then
+    log "${GREEN}Python服务进程正在运行${NC}"
+    
+    # 检查Python服务健康状态
+    if check_python_health; then
+      log "${GREEN}Python服务健康状态正常${NC}"
+    else
+      log "${YELLOW}警告: Python服务进程存在但健康检查失败${NC}"
+      
+      # 获取进程ID并终止
+      PYTHON_PID=$(pgrep -f "python.*server.py")
+      if [ ! -z "$PYTHON_PID" ]; then
+        log "${YELLOW}正在终止异常的Python服务进程 (PID: $PYTHON_PID)...${NC}"
+        kill $PYTHON_PID
+        sleep 2
+      fi
+      
+      # 启动新的Python服务
+      start_python_service
+    fi
+  else
+    log "${YELLOW}Python服务未运行，正在启动...${NC}"
+    start_python_service
   fi
   
   # 检查Nginx是否运行

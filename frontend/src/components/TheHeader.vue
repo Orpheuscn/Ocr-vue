@@ -4,6 +4,41 @@
       <h1 class="text-xl font-semibold text-base-content">{{ appTitle }}</h1>
     </div>
     <div class="flex-none flex items-center gap-2">
+      <!-- 主导航链接 -->
+      <div class="hidden sm:flex mr-4">
+        <router-link :to="{ name: 'Home' }" class="btn btn-ghost btn-sm mr-2">主页</router-link>
+        <router-link :to="{ name: 'PythonService' }" class="btn btn-ghost btn-sm"
+          >图像坐标工具</router-link
+        >
+      </div>
+
+      <!-- 移动设备下拉菜单 -->
+      <div class="sm:hidden dropdown dropdown-end mr-2">
+        <label tabindex="0" class="btn btn-ghost btn-sm">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h7"
+            />
+          </svg>
+        </label>
+        <ul
+          tabindex="0"
+          class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
+        >
+          <li><router-link :to="{ name: 'Home' }">主页</router-link></li>
+          <li><router-link :to="{ name: 'PythonService' }">图像坐标工具</router-link></li>
+        </ul>
+      </div>
+
       <!-- 认证相关按钮 -->
       <div class="mr-2">
         <div v-if="isLoggedIn" class="dropdown dropdown-end">

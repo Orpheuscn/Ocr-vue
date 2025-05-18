@@ -7,6 +7,7 @@
 # 1. MongoDB数据库服务
 # 2. 后端API服务器
 # 3. Nginx服务器(用于提供前端静态文件并代理API请求)
+# 4. Python服务器(用于图像坐标映射功能)
 # 
 # 使用方法:
 #   ./ocr-app.sh start - 启动所有服务
@@ -38,6 +39,13 @@ MONGODB_LOG="$LOG_DIR/mongodb.log"
 MONGODB_PID_FILE="$LOG_DIR/mongodb.pid"
 MONGODB_PORT=27017
 MONGODB_CONFIG="$MONGODB_DIR/mongod.conf"
+
+# Python服务配置
+PYTHON_SERVICE_DIR="$APP_DIR/python-service"
+PYTHON_VENV="$PYTHON_SERVICE_DIR/venv"
+PYTHON_LOG="$LOG_DIR/python-service.log"
+PYTHON_PID_FILE="$LOG_DIR/python-service.pid"
+PYTHON_PORT=5000
 
 # 功能函数：显示帮助信息
 show_help() {
@@ -117,6 +125,29 @@ check_status() {
     echo -e "${RED}✗ Nginx服务未运行${NC}"
   fi
   
+  # 检查Python服务
+  PYTHON_PID=$(pgrep -f "python.*server.py")
+  if [ ! -z "$PYTHON_PID" ]; then
+    echo -e "${GREEN}✓ Python服务正在运行 (PID: $PYTHON_PID)${NC}"
+    
+    # 检查Python服务端口
+    PORT_USAGE=$(check_port $PYTHON_PORT)
+    if [ ! -z "$PORT_USAGE" ]; then
+      echo -e "${GREEN}  - 端口 $PYTHON_PORT 已绑定${NC}"
+    else
+      echo -e "${YELLOW}  - 警告: 端口 $PYTHON_PORT 未绑定${NC}"
+    fi
+    
+    # 尝试请求Python服务
+    if curl -s http://localhost:$PYTHON_PORT > /dev/null; then
+      echo -e "${GREEN}  - Python服务响应正常${NC}"
+    else
+      echo -e "${YELLOW}  - 警告: Python服务端口已绑定但服务未响应${NC}"
+    fi
+  else
+    echo -e "${RED}✗ Python服务未运行${NC}"
+  fi
+  
   # 检查持续监控服务
   if [ -f "$WATCHDOG_PID_FILE" ]; then
     MONITOR_PID=$(cat "$WATCHDOG_PID_FILE")
@@ -175,6 +206,12 @@ stop_services() {
       echo -e "${YELLOW}持续监控服务PID文件存在但进程已停止${NC}"
       rm -f "$WATCHDOG_PID_FILE"
     fi
+  fi
+  
+  # 停止Python服务
+  stop_python_service
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}Python服务停止失败，继续停止其他服务${NC}"
   fi
   
   # 先停止后端服务，确保关闭与 MongoDB 的连接
@@ -565,6 +602,147 @@ stop_mongodb() {
   return 0
 }
 
+# 功能函数：启动Python服务
+start_python_service() {
+  echo -e "${BLUE}正在启动Python服务...${NC}"
+  
+  # 检查Python服务是否已经运行
+  if pgrep -f "python.*server.py" > /dev/null; then
+    echo -e "${YELLOW}Python服务已在运行，跳过启动步骤${NC}"
+    return 0
+  fi
+  
+  # 确保Python服务目录存在
+  if [ ! -d "$PYTHON_SERVICE_DIR" ]; then
+    echo -e "${RED}错误: Python服务目录不存在: $PYTHON_SERVICE_DIR${NC}"
+    return 1
+  fi
+  
+  # 检查虚拟环境是否存在
+  if [ ! -d "$PYTHON_VENV" ]; then
+    echo -e "${YELLOW}Python虚拟环境不存在，正在创建...${NC}"
+    cd "$PYTHON_SERVICE_DIR"
+    python3.9 -m venv venv
+    
+    if [ $? -ne 0 ]; then
+      echo -e "${RED}错误: 无法创建Python虚拟环境${NC}"
+      return 1
+    fi
+  fi
+  
+  # 准备启动Python服务
+  cd "$PYTHON_SERVICE_DIR"
+  
+  # 确保uploads目录存在
+  mkdir -p "$PYTHON_SERVICE_DIR/uploads/results"
+  
+  echo -e "${BLUE}激活虚拟环境并启动Python服务...${NC}"
+  # 启动Python服务并记录日志
+  (
+    source "$PYTHON_VENV/bin/activate"
+    python server.py > "$PYTHON_LOG" 2>&1 &
+    echo $! > "$PYTHON_PID_FILE"
+  )
+  
+  # 检查进程是否启动
+  if [ -f "$PYTHON_PID_FILE" ]; then
+    PYTHON_PID=$(cat "$PYTHON_PID_FILE")
+    if ps -p $PYTHON_PID > /dev/null; then
+      echo -e "${GREEN}✓ Python服务已成功启动 (PID: $PYTHON_PID)${NC}"
+      
+      # 等待服务完全启动
+      echo -e "${BLUE}等待Python服务初始化...${NC}"
+      sleep 5
+      
+      # 验证服务是否响应
+      if curl -s http://localhost:$PYTHON_PORT > /dev/null; then
+        echo -e "${GREEN}✓ Python服务响应正常${NC}"
+        return 0
+      else
+        echo -e "${YELLOW}警告: Python服务已启动但尚未响应请求${NC}"
+        echo -e "${YELLOW}请等待一段时间或检查日志: $PYTHON_LOG${NC}"
+        # 仍返回成功，服务可能只是需要更多时间初始化
+        return 0
+      fi
+    else
+      echo -e "${RED}✗ Python服务进程启动失败${NC}"
+      echo -e "${YELLOW}请检查日志: $PYTHON_LOG${NC}"
+      return 1
+    fi
+  else
+    echo -e "${RED}✗ Python服务启动失败${NC}"
+    return 1
+  fi
+}
+
+# 功能函数：停止Python服务
+stop_python_service() {
+  echo -e "${BLUE}正在停止Python服务...${NC}"
+  
+  # 检查PID文件
+  if [ -f "$PYTHON_PID_FILE" ]; then
+    PYTHON_PID=$(cat "$PYTHON_PID_FILE")
+    if ps -p $PYTHON_PID > /dev/null; then
+      echo -e "${BLUE}尝试停止Python服务 (PID: $PYTHON_PID)...${NC}"
+      
+      # 首先尝试优雅停止（SIGTERM）
+      kill -SIGTERM $PYTHON_PID
+      
+      # 等待进程退出
+      echo -e "${BLUE}等待Python服务停止...${NC}"
+      WAIT_COUNT=0
+      while ps -p $PYTHON_PID > /dev/null && [ $WAIT_COUNT -lt 10 ]; do
+        sleep 1
+        WAIT_COUNT=$((WAIT_COUNT+1))
+      done
+      
+      # 如果进程仍在运行，强制终止
+      if ps -p $PYTHON_PID > /dev/null; then
+        echo -e "${YELLOW}Python服务未响应SIGTERM信号，正在强制终止...${NC}"
+        kill -9 $PYTHON_PID
+        sleep 1
+      fi
+      
+      if ! ps -p $PYTHON_PID > /dev/null; then
+        echo -e "${GREEN}✓ Python服务已停止${NC}"
+        rm -f "$PYTHON_PID_FILE"
+      else
+        echo -e "${RED}✗ 无法停止Python服务${NC}"
+        return 1
+      fi
+    else
+      echo -e "${YELLOW}Python服务PID文件存在但进程已停止${NC}"
+      rm -f "$PYTHON_PID_FILE"
+    fi
+  elif pgrep -f "python.*server.py" > /dev/null; then
+    echo -e "${YELLOW}未找到Python服务PID文件，但检测到Python服务进程${NC}"
+    PYTHON_PID=$(pgrep -f "python.*server.py")
+    echo -e "${BLUE}尝试终止Python服务进程 (PID: $PYTHON_PID)...${NC}"
+    
+    # 尝试终止进程
+    kill $PYTHON_PID
+    sleep 2
+    
+    # 如果进程仍在运行，强制终止
+    if ps -p $PYTHON_PID > /dev/null; then
+      echo -e "${YELLOW}Python服务未响应，尝试强制终止...${NC}"
+      kill -9 $PYTHON_PID
+      sleep 1
+    fi
+    
+    if ! ps -p $PYTHON_PID > /dev/null; then
+      echo -e "${GREEN}✓ Python服务已停止${NC}"
+    else
+      echo -e "${RED}✗ 无法停止Python服务${NC}"
+      return 1
+    fi
+  else
+    echo -e "${YELLOW}Python服务未运行${NC}"
+  fi
+  
+  return 0
+}
+
 # 功能函数：启动所有服务
 start_services() {
   echo -e "${GREEN}===== OCR Vue应用启动脚本 =====${NC}"
@@ -743,6 +921,13 @@ start_services() {
   if [ $? -ne 0 ]; then
     echo -e "${RED}Nginx启动失败，但后端服务已成功启动${NC}"
     echo -e "${YELLOW}您可能需要手动启动Nginx${NC}"
+  fi
+
+  # 启动Python服务
+  start_python_service
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}Python服务启动失败，但其他服务已成功启动${NC}"
+    echo -e "${YELLOW}您可能需要手动启动Python服务${NC}"
   fi
 
   # 启动持续监控服务
