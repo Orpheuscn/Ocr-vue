@@ -633,7 +633,7 @@ start_python_service() {
   # 准备启动Python服务
   cd "$PYTHON_SERVICE_DIR"
   
-  # 确保uploads目录存在
+  # 确保upload目录存在
   mkdir -p "$PYTHON_SERVICE_DIR/uploads/results"
   
   echo -e "${BLUE}激活虚拟环境并启动Python服务...${NC}"
@@ -645,34 +645,53 @@ start_python_service() {
   )
   
   # 检查进程是否启动
-  if [ -f "$PYTHON_PID_FILE" ]; then
-    PYTHON_PID=$(cat "$PYTHON_PID_FILE")
-    if ps -p $PYTHON_PID > /dev/null; then
-      echo -e "${GREEN}✓ Python服务已成功启动 (PID: $PYTHON_PID)${NC}"
-      
-      # 等待服务完全启动
-      echo -e "${BLUE}等待Python服务初始化...${NC}"
-      sleep 5
-      
-      # 验证服务是否响应
-      if curl -s http://localhost:$PYTHON_PORT > /dev/null; then
-        echo -e "${GREEN}✓ Python服务响应正常${NC}"
-        return 0
-      else
-        echo -e "${YELLOW}警告: Python服务已启动但尚未响应请求${NC}"
-        echo -e "${YELLOW}请等待一段时间或检查日志: $PYTHON_LOG${NC}"
-        # 仍返回成功，服务可能只是需要更多时间初始化
-        return 0
-      fi
-    else
-      echo -e "${RED}✗ Python服务进程启动失败${NC}"
-      echo -e "${YELLOW}请检查日志: $PYTHON_LOG${NC}"
-      return 1
-    fi
-  else
+  if [ ! -f "$PYTHON_PID_FILE" ]; then
     echo -e "${RED}✗ Python服务启动失败${NC}"
     return 1
   fi
+  
+  PYTHON_PID=$(cat "$PYTHON_PID_FILE")
+  if ! ps -p $PYTHON_PID > /dev/null; then
+    echo -e "${RED}✗ Python服务进程启动失败${NC}"
+    echo -e "${YELLOW}请检查日志: $PYTHON_LOG${NC}"
+    return 1
+  fi
+  
+  echo -e "${GREEN}✓ Python服务已成功启动 (PID: $PYTHON_PID)${NC}"
+  
+  # 等待服务完全启动
+  echo -e "${BLUE}等待Python服务初始化...${NC}"
+  
+  # 设置最大等待时间和尝试间隔
+  MAX_WAIT_TIME=60  # 最长等徆60秒
+  INTERVAL=5        # 每5秒检查一次
+  ELAPSED=0
+  
+  # 循环等待直到服务响应或超时
+  while [ $ELAPSED -lt $MAX_WAIT_TIME ]; do
+    if curl -s http://localhost:$PYTHON_PORT/test > /dev/null 2>&1; then
+      echo -e "${GREEN}✓ Python服务响应正常，用时 $ELAPSED 秒${NC}"
+      return 0
+    fi
+    
+    # 如果服务还没有响应，等待一段时间再次尝试
+    echo -e "${BLUE}Python服务正在启动中... (已等待 $ELAPSED 秒)${NC}"
+    sleep $INTERVAL
+    ELAPSED=$((ELAPSED + INTERVAL))
+    
+    # 检查进程是否仍然存在
+    if ! ps -p $PYTHON_PID > /dev/null; then
+      echo -e "${RED}✗ Python服务进程已终止${NC}"
+      echo -e "${YELLOW}请检查日志: $PYTHON_LOG${NC}"
+      return 1
+    fi
+  done
+  
+  # 如果超时但进程仍然存在，继续执行
+  echo -e "${YELLOW}警告: Python服务已启动但在 $MAX_WAIT_TIME 秒内未响应请求${NC}"
+  echo -e "${YELLOW}服务可能需要更多时间初始化，继续执行后续步骤${NC}"
+  echo -e "${YELLOW}如需调试，请检查日志: $PYTHON_LOG${NC}"
+  return 0
 }
 
 # 功能函数：停止Python服务
