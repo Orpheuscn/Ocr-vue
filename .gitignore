@@ -66,5 +66,10 @@ ssl/backup
 **/*.md
 !README.md
 
-# Python虚拟环境
+# Python虚拟环境和相关文件
 python-service/venv/
+python-service/output/
+python-service/uploads/
+python-service/__pycache__/
+python-service/*.log
+python-service/**/__pycache__/

@@ -4,7 +4,7 @@ import HomePage from '@/views/HomePage.vue'
 import LoginPage from '@/views/LoginPage.vue'
 import RegisterPage from '@/views/RegisterPage.vue'
 import AdminDashboard from '@/views/AdminDashboard.vue'
-import PythonServicePage from '@/views/PythonServicePage.vue'
+import ImageCoordinateTool from '@/components/ImageCoordinateTool.vue'
 
 const routes = [
   {
@@ -34,11 +34,11 @@ const routes = [
     component: AdminDashboard,
     meta: { requiresAuth: true, requiresAdmin: true },
   },
-  // Python服务页面
+  // 图片坐标映射工具 - 直接使用组件
   {
-    path: '/python-service',
-    name: 'PythonService',
-    component: PythonServicePage,
+    path: '/doc-detection',
+    name: 'DocDetection',
+    component: ImageCoordinateTool,
     meta: { requiresAuth: true },
   },
   // 保留原来的/auth路径，重定向到登录
