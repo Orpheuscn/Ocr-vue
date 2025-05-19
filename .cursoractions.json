@@ -1,0 +1,64 @@
+{
+  "actions": [
+    {
+      "name": "启动前端开发服务器",
+      "command": "cd frontend && npm run dev",
+      "showInCommandPalette": true,
+      "description": "启动Vue前端开发服务器"
+    },
+    {
+      "name": "启动后端开发服务器",
+      "command": "cd backend && npm run dev",
+      "showInCommandPalette": true,
+      "description": "启动Node.js后端开发服务器"
+    },
+    {
+      "name": "构建前端",
+      "command": "cd frontend && npm run build",
+      "showInCommandPalette": true,
+      "description": "构建前端生产版本"
+    },
+    {
+      "name": "启动完整应用",
+      "command": "sh ocr-app.sh",
+      "showInCommandPalette": true,
+      "description": "启动完整OCR应用（前端+后端）"
+    },
+    {
+      "name": "前端Lint修复",
+      "command": "cd frontend && npm run lint",
+      "showInCommandPalette": true,
+      "description": "运行ESLint修复前端代码问题"
+    },
+    {
+      "name": "前端格式化",
+      "command": "cd frontend && npm run format",
+      "showInCommandPalette": true,
+      "description": "使用Prettier格式化前端代码"
+    },
+    {
+      "name": "部署到生产环境",
+      "command": "cd backend && npm run prod",
+      "showInCommandPalette": true,
+      "description": "以生产模式启动后端服务器"
+    },
+    {
+      "name": "运行数据库迁移",
+      "command": "cd backend && npm run migrate",
+      "showInCommandPalette": true,
+      "description": "运行数据库迁移脚本"
+    },
+    {
+      "name": "安装所有依赖",
+      "command": "(cd frontend && npm install) && (cd backend && npm install)",
+      "showInCommandPalette": true,
+      "description": "同时安装前端和后端依赖"
+    },
+    {
+      "name": "检查MongoDB配置",
+      "command": "cd backend && npm run check-mongodb",
+      "showInCommandPalette": true,
+      "description": "检查MongoDB配置是否正确"
+    }
+  ]
+}

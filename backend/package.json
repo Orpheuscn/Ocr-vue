@@ -9,7 +9,8 @@
     "prod": "node start.js prod",
     "test": "node start.js test",
     "migrate": "node ../tools/migrate-to-mongodb.js",
-    "check-mongodb": "node ../tools/check-mongodb-config.js"
+    "check-mongodb": "node ../tools/check-mongodb-config.js",
+    "normalize-data": "node ../tools/normalize-mongodb-data.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

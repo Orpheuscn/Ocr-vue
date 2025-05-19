@@ -13,6 +13,10 @@ import logging
 import torch
 import numpy as np
 from PIL import Image
+from pathlib import Path
+
+# 导入日志客户端
+from utils.log_client import info, error
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -45,19 +49,29 @@ class DocumentDetector:
     def load_model(self):
         """加载YOLO模型"""
         logger.info("正在加载DocLayout-YOLO模型...")
+        info("正在加载DocLayout-YOLO模型...")
+        
         self.device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
         logger.info(f"使用设备: {self.device}")
+        info(f"使用设备: {self.device}")
         
-        # 下载预训练模型
-        model_path = hf_hub_download(
-            repo_id="juliozhao/DocLayout-YOLO-DocStructBench", 
-            filename="doclayout_yolo_docstructbench_imgsz1024.pt"
-        )
-        logger.info(f"模型已下载到: {model_path}")
-        
-        # 加载模型
-        self.model = YOLOv10(model_path)
-        logger.info("模型加载完成")
+        try:
+            # 下载预训练模型
+            model_path = hf_hub_download(
+                repo_id="juliozhao/DocLayout-YOLO-DocStructBench", 
+                filename="doclayout_yolo_docstructbench_imgsz1024.pt"
+            )
+            logger.info(f"模型已下载到: {model_path}")
+            info(f"模型已下载到: {model_path}")
+            
+            # 加载模型
+            self.model = YOLOv10(model_path)
+            logger.info("模型加载完成")
+            info("DocLayout-YOLO模型加载完成")
+        except Exception as e:
+            logger.error(f"加载模型时出错: {e}")
+            error(f"加载DocLayout-YOLO模型时出错: {e}")
+            raise
     
     def detect(self, image_path, imgsz=1024, conf=0.2):
         """
@@ -72,6 +86,7 @@ class DocumentDetector:
             检测结果字典
         """
         logger.info(f"开始检测图片: {image_path}")
+        info(f"开始检测图片: {image_path}", metadata={'imgsz': imgsz, 'conf': conf})
         
         try:
             # 进行预测
@@ -120,6 +135,9 @@ class DocumentDetector:
             annotated_frame = result.plot(pil=True, line_width=5, font_size=20)
             annotated_frame = Image.fromarray(annotated_frame)
             
+            info(f"检测完成，找到 {len(formatted_results)} 个对象", 
+                 metadata={'image_path': str(image_path), 'objects_count': len(formatted_results)})
+            
             return {
                 "success": True,
                 "width": image_width,
@@ -132,6 +150,8 @@ class DocumentDetector:
             logger.error(f"检测图片时发生错误: {str(e)}")
             import traceback
             logger.error(traceback.format_exc())
+            error(f"检测图片时发生错误: {str(e)}", 
+                  metadata={'image_path': str(image_path), 'traceback': traceback.format_exc()})
             return {
                 "success": False,
                 "error": str(e)

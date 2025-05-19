@@ -1,0 +1,91 @@
+{
+  "extensions": {
+    "recommendations": [
+      "vue.volar",
+      "dbaeumer.vscode-eslint",
+      "editorconfig.editorconfig",
+      "esbenp.prettier-vscode",
+      "bradlc.vscode-tailwindcss",
+      "antfu.iconify",
+      "christian-kohler.path-intellisense",
+      "ms-azuretools.vscode-docker",
+      "mongodb.mongodb-vscode"
+    ]
+  },
+  "settings": {
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.patterns": {
+      "tsconfig.json": "tsconfig.*.json, env.d.ts",
+      "vite.config.*": "jsconfig*, vitest.config.*, cypress.config.*, playwright.config.*",
+      "package.json": "package-lock.json, pnpm*, .yarnrc*, yarn*, .eslint*, eslint*, .oxlint*, oxlint*, .prettier*, prettier*, .editorconfig"
+    },
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit"
+    },
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "git.ignoreLimitWarning": true,
+    "css.validate": false,
+    "tailwindCSS.emmetCompletions": true,
+    "editor.quickSuggestions": {
+      "strings": true
+    },
+    "tailwindCSS.includeLanguages": {
+      "vue": "html",
+      "javascript": "javascript"
+    },
+    "editor.fontFamily": "JetBrains Mono, Monaco, 'Courier New', monospace",
+    "editor.fontSize": 14,
+    "editor.lineHeight": 1.5,
+    "editor.tabSize": 2,
+    "editor.bracketPairColorization.enabled": true,
+    "editor.guides.bracketPairs": "active",
+    "editor.minimap.enabled": true,
+    "editor.wordWrap": "on",
+    "files.associations": {
+      "*.vue": "vue"
+    },
+    "vue.updateImportsOnFileMove.enabled": "always",
+    "javascript.updateImportsOnFileMove.enabled": "always",
+    "javascript.format.enable": false,
+    "eslint.validate": ["javascript", "javascriptreact", "vue"],
+    "terminal.integrated.env.osx": {
+      "PATH": "${env:PATH}"
+    }
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "启动前端",
+        "type": "shell",
+        "command": "cd frontend && npm run dev",
+        "problemMatcher": [],
+        "group": {
+          "kind": "build",
+          "isDefault": false
+        }
+      },
+      {
+        "label": "启动后端",
+        "type": "shell",
+        "command": "cd backend && npm run dev",
+        "problemMatcher": [],
+        "group": {
+          "kind": "build",
+          "isDefault": false
+        }
+      },
+      {
+        "label": "启动完整应用",
+        "type": "shell",
+        "command": "sh ocr-app.sh",
+        "problemMatcher": [],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        }
+      }
+    ]
+  }
+}

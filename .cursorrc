@@ -1,0 +1,79 @@
+{
+  "editor": {
+    "tabSize": 2,
+    "insertSpaces": true,
+    "wordWrap": "on",
+    "formatOnSave": true,
+    "formatOnPaste": true,
+    "detectIndentation": true,
+    "trimTrailingWhitespace": true,
+    "autoClosingBrackets": "always",
+    "autoIndent": "full"
+  },
+  "files": {
+    "exclude": {
+      "**/.git": true,
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/.vite": true
+    },
+    "trimTrailingWhitespace": true,
+    "insertFinalNewline": true,
+    "associations": {
+      "*.vue": "vue"
+    }
+  },
+  "search": {
+    "exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/.git": true,
+      "**/.vite": true
+    }
+  },
+  "code_language_specific": {
+    "vue": {
+      "tabSize": 2,
+      "formatOnSave": true,
+      "defaultFormatter": "prettier"
+    },
+    "javascript": {
+      "tabSize": 2,
+      "formatOnSave": true,
+      "defaultFormatter": "eslint"
+    },
+    "typescript": {
+      "tabSize": 2,
+      "formatOnSave": true,
+      "defaultFormatter": "eslint"
+    },
+    "css": {
+      "tabSize": 2,
+      "formatOnSave": true
+    },
+    "json": {
+      "tabSize": 2,
+      "formatOnSave": true
+    },
+    "html": {
+      "tabSize": 2,
+      "formatOnSave": true
+    },
+    "markdown": {
+      "tabSize": 2,
+      "formatOnSave": true,
+      "wordWrap": "on"
+    }
+  },
+  "ai": {
+    "completionModel": "Claude 3 Sonnet",
+    "chatModel": "Claude 3 Sonnet"
+  },
+  "terminal": {
+    "integrated": {
+      "shell": {
+        "osx": "/bin/zsh"
+      }
+    }
+  }
+} 

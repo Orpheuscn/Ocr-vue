@@ -1,0 +1,15 @@
+# 核心依赖
+Flask==2.3.3
+Flask-Cors==4.0.0
+gunicorn==20.1.0
+python-dotenv==1.0.0
+flask-limiter==3.5.0
+
+# OCR相关依赖
+pytesseract==0.3.10
+pillow==10.2.0
+numpy==1.26.4
+
+# 其他必要依赖
+requests==2.32.3
+PyYAML==6.0.2

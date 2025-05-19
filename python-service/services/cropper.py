@@ -16,6 +16,10 @@ import numpy as np
 from PIL import Image
 import zipfile
 from pathlib import Path
+import traceback
+
+# 导入日志客户端
+from utils.log_client import info, error
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -65,11 +69,14 @@ class ImageCropper:
             裁剪结果字典
         """
         logger.info(f"开始裁剪图片 {image_id}，共 {len(rectangles)} 个矩形")
+        info(f"开始裁剪图片 {image_id}，共 {len(rectangles)} 个矩形", 
+             metadata={'rectangles_count': len(rectangles)})
         
         try:
             # 查找原始图片
             image_path = self.find_original_image(image_id)
             if not image_path:
+                error(f"找不到原始图片，image_id: {image_id}")
                 return {
                     'success': False,
                     'error': '找不到原始图片'
@@ -85,6 +92,7 @@ class ImageCropper:
             ocr_crops_dir = os.path.join(self.upload_folder, image_id, 'crops')
             os.makedirs(ocr_crops_dir, exist_ok=True)
             logger.info(f"创建OCR专用目录: {ocr_crops_dir}")
+            info(f"创建OCR专用目录: {ocr_crops_dir}")
             
             # 转换前端坐标格式为后端格式
             detected_objects = []
@@ -119,6 +127,7 @@ class ImageCropper:
             # 执行切割
             image_cv = cv2.imread(image_path)
             if image_cv is None:
+                error(f"无法读取图像: {image_path}")
                 return {
                     'success': False,
                     'error': f'无法读取图像: {image_path}'
@@ -202,6 +211,9 @@ class ImageCropper:
                         arcname = os.path.relpath(file_path, self.results_folder)
                         zipf.write(file_path, arcname)
             
+            info(f"裁剪成功，image_id: {image_id}, 共裁剪 {elements_count} 个元素", 
+                 metadata={'elements_count': elements_count, 'crop_id': crop_id})
+            
             return {
                 'success': True,
                 'message': f'成功切割 {elements_count} 个元素',
@@ -214,8 +226,9 @@ class ImageCropper:
         
         except Exception as e:
             logger.error(f"裁剪图片时发生错误: {str(e)}")
-            import traceback
             logger.error(traceback.format_exc())
+            error(f"裁剪图片时发生错误: {str(e)}", 
+                  metadata={'image_id': image_id, 'traceback': traceback.format_exc()})
             return {
                 'success': False,
                 'error': f'裁剪图片时发生错误: {str(e)}'
