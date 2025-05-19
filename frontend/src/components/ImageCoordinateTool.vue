@@ -245,10 +245,10 @@
                           </svg>
                         </button>
 
-                        <!-- 坐标按钮 -->
+                        <!-- JSON按钮 -->
                         <button
                           class="btn btn-xs btn-outline"
-                          :class="{ 'btn-primary': rect.showJson }"
+                          :class="{ 'btn-primary': rect.showJson || (!rect.showText) }"
                           @click="toggleJsonView(rect)"
                         >
                           <svg
@@ -290,18 +290,11 @@
                       </div>
                     </div>
 
-                    <!-- 坐标信息 -->
-                    <div class="text-sm" v-if="!rect.showJson && !rect.showText">
-                      <div>左上角: ({{ rect.coords.topLeft.x }}, {{ rect.coords.topLeft.y }})</div>
-                      <div>
-                        右下角: ({{ rect.coords.bottomRight.x }}, {{ rect.coords.bottomRight.y }})
-                      </div>
-                      <div>宽度: {{ rect.coords.width }}px, 高度: {{ rect.coords.height }}px</div>
-                    </div>
+                    <!-- 坐标信息已移除，默认显示JSON信息 -->
 
                     <!-- JSON格式显示 -->
                     <pre
-                      v-if="rect.showJson"
+                      v-if="rect.showJson || (!rect.showText)"
                       class="text-xs bg-base-300 p-3 rounded overflow-auto"
                       >{{ formatRectToJSON(rect) }}</pre
                     >
@@ -1076,7 +1069,7 @@ const setupCanvasEventListeners = () => {
       rect: currentRect.value,
       coords: calculateCoordinates(currentRect.value),
       class: 'unknown', // 添加默认类别
-      showJson: false,
+      showJson: true,
       showText: false,
       isHighlighted: false,
       ocrText: null, // OCR识别的文本
@@ -1160,7 +1153,7 @@ const addDetectedRectangles = (detectedRects) => {
       coords: calculateCoordinates(rect),
       class: rectData.class,
       confidence: rectData.confidence,
-      showJson: false,
+      showJson: true,
       showText: false,
       isHighlighted: false,
       ocrText: null, // OCR识别的文本
@@ -1193,10 +1186,13 @@ const findRectangleByFabricObject = (fabricObject) => {
 
 // 切换JSON视图
 const toggleJsonView = (rect) => {
-  rect.showJson = !rect.showJson
-  // 如果显示JSON，则隐藏文本
-  if (rect.showJson) {
+  // 如果当前显示的是文本，切换到JSON
+  if (rect.showText) {
     rect.showText = false
+    rect.showJson = true
+  } else {
+    // 默认情况下已经显示JSON，不需要做任何改变
+    rect.showJson = true
   }
 }
 
@@ -1206,6 +1202,9 @@ const toggleTextView = (rect) => {
   // 如果显示文本，则隐藏JSON
   if (rect.showText) {
     rect.showJson = false
+  } else {
+    // 如果不显示文本，则显示JSON
+    rect.showJson = true
   }
 }
 
