@@ -74,4 +74,8 @@ python-service/__pycache__/
 python-service/*.log
 python-service/**/__pycache__/
 python-service/temp/
-python-service/static/
+python-service/results/
+python-service/crops/
+python-service/data/
+python-service/downloads/
+python-service/logs/
