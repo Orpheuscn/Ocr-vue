@@ -73,3 +73,5 @@ python-service/uploads/
 python-service/__pycache__/
 python-service/*.log
 python-service/**/__pycache__/
+python-service/temp/
+python-service/static/
