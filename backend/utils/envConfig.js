@@ -68,17 +68,46 @@ export default {
 
   // 数据库配置
   mongodbUri: process.env.MONGODB_URI,
+  mongodbDbName: process.env.MONGODB_DB_NAME || "ocr_app",
 
   // JWT配置
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "24h",
   refreshTokenExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "30d",
 
+  // Cookie配置
+  cookieSecret: process.env.COOKIE_SECRET || process.env.JWT_SECRET,
+  sessionSecret: process.env.SESSION_SECRET || "ocr-app-session-secret",
+
+  // CSRF保护配置
+  csrfSecret: process.env.CSRF_SECRET || process.env.JWT_SECRET,
+
+  // 速率限制配置
+  rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000"),
+  rateLimitMaxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "30"),
+  authRateLimitWindowMs: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS || "900000"),
+  authRateLimitMaxRequests: parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || "10"),
+  ocrRateLimitWindowMs: parseInt(process.env.OCR_RATE_LIMIT_WINDOW_MS || "60000"),
+  ocrRateLimitMaxRequests: parseInt(process.env.OCR_RATE_LIMIT_MAX_REQUESTS || "5"),
+
+  // 日志配置
+  logLevel: process.env.LOG_LEVEL || (env === "production" ? "info" : "debug"),
+  logDir: process.env.LOG_DIR || "../logs",
+
+  // CORS配置
+  corsOrigins: process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(",")
+    : ["http://localhost:8080", "https://localhost:8443"],
+
+  // 文件上传配置
+  maxFileSize: parseInt(process.env.MAX_FILE_SIZE || "25000000"),
+  allowedFileTypes: process.env.ALLOWED_FILE_TYPES
+    ? process.env.ALLOWED_FILE_TYPES.split(",")
+    : ["image/jpeg", "image/png", "image/gif", "image/webp", "image/heic", "application/pdf"],
+  uploadDir: process.env.UPLOAD_DIR || "../uploads",
+
   // API密钥
   googleVisionApiKey: process.env.GOOGLE_VISION_API_KEY,
-
-  // 会话配置
-  sessionSecret: process.env.SESSION_SECRET || "ocr-app-session-secret",
 
   // Swagger配置
   swaggerEnabled: process.env.SWAGGER_ENABLED === "true" || env !== "production",

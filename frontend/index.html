@@ -7,6 +7,14 @@
     <meta name="description" content="OCR文本识别工具" />
     <meta name="theme-color" content="#ffffff" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- 暂时禁用内容安全策略 -->
+    <!-- <script src="/csp-meta.js"></script> -->
+    <!-- 添加XSS保护 -->
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    <!-- 防止MIME类型嗅探 -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <!-- 引用策略 -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>OCR文本识别工具</title>
     <script src="/pdf.js/pdf.min.js"></script>
     <script src="/pdf.js/pdf.worker.min.js"></script>

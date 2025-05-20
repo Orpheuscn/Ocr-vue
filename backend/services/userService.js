@@ -67,8 +67,27 @@ export const getAllUsers = async () => {
 // 验证用户密码
 export const verifyPassword = async (password, hashedPassword) => {
   try {
-    return await bcrypt.compare(password, hashedPassword);
+    console.log("开始验证密码", {
+      passwordLength: password?.length,
+      hashedPasswordLength: hashedPassword?.length,
+      passwordType: typeof password,
+      hashedPasswordType: typeof hashedPassword,
+    });
+
+    // 确保密码和哈希值都是有效的
+    if (!password || !hashedPassword) {
+      console.error("密码验证失败：密码或哈希值为空", {
+        passwordEmpty: !password,
+        hashedPasswordEmpty: !hashedPassword,
+      });
+      return false;
+    }
+
+    const result = await bcrypt.compare(password, hashedPassword);
+    console.log("密码验证结果", { result });
+    return result;
   } catch (error) {
+    console.error("密码验证出错", error);
     throw error;
   }
 };
@@ -147,11 +166,30 @@ export const deleteUser = async (userId) => {
     if (!user) {
       throw new Error("用户不存在");
     }
-    
+
     // MongoDB中没有内置的软删除功能，我们通过更新用户状态来实现
     user.status = "deactivated";
     user.tokenVersion = (user.tokenVersion || 0) + 1; // 使所有当前的令牌失效
-    
+
+    await user.save();
+    return user;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// 增加用户的令牌版本，使所有现有令牌失效
+export const incrementTokenVersion = async (userId) => {
+  try {
+    // 查找用户
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error("用户不存在");
+    }
+
+    // 增加令牌版本
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+
     await user.save();
     return user;
   } catch (error) {

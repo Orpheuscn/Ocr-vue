@@ -28,6 +28,7 @@ limiter = Limiter(
 # 导入路由
 from api.routes.ocr_routes import ocr_bp
 from api.routes.upload_routes import upload_bp
+from api.routes.image_proxy_routes import image_proxy_bp
 from utils.log_client import info, error
 
 def create_app(config: Optional[dict] = None) -> Flask:
@@ -45,8 +46,8 @@ def create_app(config: Optional[dict] = None) -> Flask:
 
     # 配置CORS - 限制跨域请求
     # 从环境变量获取允许的域名，默认只允许本地域名
-    allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:8080,http://127.0.0.1:8080').split(',')
-    CORS(app, resources={r"/*": {"origins": allowed_origins}})
+    allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:8080,http://127.0.0.1:8080,https://localhost:8443').split(',')
+    CORS(app, resources={r"/*": {"origins": allowed_origins}}, supports_credentials=True)
 
     # 配置速率限制器
     limiter.init_app(app)
@@ -77,9 +78,20 @@ def create_app(config: Optional[dict] = None) -> Flask:
     Path(app.config['UPLOAD_FOLDER']).mkdir(parents=True, exist_ok=True)
     Path(app.config['RESULTS_FOLDER']).mkdir(parents=True, exist_ok=True)
 
-    # 注册蓝图
+    # 注册蓝图 - 不使用前缀
     app.register_blueprint(ocr_bp)
     app.register_blueprint(upload_bp)
+    app.register_blueprint(image_proxy_bp)
+
+    # 健康检查端点
+    @app.route('/health')
+    def health_check():
+        """健康检查端点"""
+        return jsonify({
+            'status': 'healthy',
+            'service': 'OCR Python Service',
+            'version': '1.0.0'
+        })
 
     # 注册请求前处理器
     @app.before_request
@@ -132,10 +144,10 @@ def create_app(config: Optional[dict] = None) -> Flask:
             'status': 'running'
         })
 
-    # 健康检查端点
+    # 旧的健康检查端点（保留向后兼容性）
     @app.route('/health')
-    def health_check():
-        """健康检查端点"""
+    def health_check_legacy():
+        """旧的健康检查端点（保留向后兼容性）"""
         return jsonify({
             'status': 'healthy',
             'timestamp': time.time()

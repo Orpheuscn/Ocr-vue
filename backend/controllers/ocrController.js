@@ -6,7 +6,17 @@ import * as ocrRecordService from "../services/ocrRecordService.js";
 // 简化版OCR处理 - 使用服务器端API密钥
 export const processSimple = async (req, res) => {
   try {
+    console.log("OCR处理请求开始", {
+      headers: req.headers,
+      hasFile: !!req.file,
+      body: req.body,
+      method: req.method,
+      path: req.path,
+      csrfToken: req.headers["x-csrf-token"] || req.body._csrf || "未提供",
+    });
+
     if (!req.file) {
+      console.error("OCR处理失败：没有上传文件");
       return res.status(400).json({
         success: false,
         message: "请上传图像文件",
@@ -86,18 +96,35 @@ export const processSimple = async (req, res) => {
         }
       }
 
-      // 修改：返回完整的OCR结果，包括原始Google Vision API响应
-      res.json({
+      // 构建响应数据
+      const responseData = {
         success: true,
         // 返回完整的OCR结果
+        data: {
+          ocrRawResult: result.ocrRawResult,
+          fullTextAnnotation: result.fullTextAnnotation,
+          originalFullText: result.originalFullText || "",
+          detectedLanguageCode: result.detectedLanguageCode || "und",
+          symbolsData: result.symbolsData || [],
+        },
+        // 兼容旧格式
         ocrRawResult: result.ocrRawResult,
         fullTextAnnotation: result.fullTextAnnotation,
         text: result.originalFullText || "",
         language: result.detectedLanguageCode || "und",
         symbolsData: result.symbolsData || [],
+      };
+
+      console.log("OCR处理成功", {
+        textLength: (result.originalFullText || "").length,
+        language: result.detectedLanguageCode || "und",
+        processingTime: Date.now() - startTime,
       });
+
+      res.json(responseData);
     } catch (ocrError) {
       // OCR处理错误
+      console.error("OCR识别错误:", ocrError);
       return res.status(500).json({
         success: false,
         message: "识别文本时出错",
@@ -106,6 +133,17 @@ export const processSimple = async (req, res) => {
     }
   } catch (error) {
     console.error("处理文件错误:", error);
+
+    // 检查是否为CSRF错误
+    if (error.message && error.message.includes("CSRF")) {
+      console.error("CSRF验证失败:", error);
+      return res.status(403).json({
+        success: false,
+        message: "CSRF验证失败，请刷新页面后重试",
+        error: "CSRF_VALIDATION_FAILED",
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "处理文件时出错",

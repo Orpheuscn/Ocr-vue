@@ -1,0 +1,45 @@
+{
+  "image_id": "10e69015-4b8d-42ab-904a-290e5fe8a971",
+  "image_filename": "2903981701.jpg",
+  "image_path": "./uploads/10e69015-4b8d-42ab-904a-290e5fe8a971_2903981701.jpg",
+  "width": 604,
+  "height": 970,
+  "detected_objects": [
+    {
+      "id": 0,
+      "class": "figure",
+      "class_id": 3,
+      "confidence": 0.6316827535629272,
+      "bbox": {
+        "x_min": 9,
+        "y_min": 218,
+        "x_max": 604,
+        "y_max": 967
+      }
+    },
+    {
+      "id": 1,
+      "class": "plain text",
+      "class_id": 1,
+      "confidence": 0.3034215569496155,
+      "bbox": {
+        "x_min": 48,
+        "y_min": 327,
+        "x_max": 480,
+        "y_max": 444
+      }
+    },
+    {
+      "id": 2,
+      "class": "plain text",
+      "class_id": 1,
+      "confidence": 0.24037213623523712,
+      "bbox": {
+        "x_min": 10,
+        "y_min": 18,
+        "x_max": 466,
+        "y_max": 187
+      }
+    }
+  ]
+}

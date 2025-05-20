@@ -1,7 +1,13 @@
 // api/routes/userRoutes.js
 import express from "express";
 import * as userController from "../controllers/userController.js";
-import { authenticateJwt, refreshTokenMiddleware } from "../middleware/authMiddleware.js";
+import {
+  authenticateJwt,
+  refreshTokenMiddleware,
+  verifyAdminStatus,
+} from "../middleware/authMiddleware.js";
+import { authRateLimit, apiRateLimit } from "../middleware/rateLimitMiddleware.js";
+import { csrfProtection, addCsrfToken } from "../middleware/csrfMiddleware.js";
 
 const router = express.Router();
 
@@ -355,5 +361,59 @@ router.put("/:id", authenticateJwt, userController.updateUserProfile);
  *         description: 服务器错误
  */
 router.delete("/:id/deactivate", authenticateJwt, userController.deactivateAccount);
+
+/**
+ * @swagger
+ * /api/users/verify-admin:
+ *   get:
+ *     summary: 验证用户是否为管理员
+ *     description: 验证当前登录用户是否具有管理员权限
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 验证成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 isAdmin:
+ *                   type: boolean
+ *       401:
+ *         description: 未授权
+ *       500:
+ *         description: 服务器错误
+ */
+router.get("/verify-admin", authenticateJwt, apiRateLimit, verifyAdminStatus);
+
+/**
+ * @swagger
+ * /api/users/logout:
+ *   post:
+ *     summary: 用户登出
+ *     description: 清除用户的认证令牌
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 登出成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: 服务器错误
+ */
+router.post("/logout", csrfProtection, userController.logout);
 
 export default router;

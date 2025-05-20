@@ -248,7 +248,7 @@
                         <!-- JSON按钮 -->
                         <button
                           class="btn btn-xs btn-outline"
-                          :class="{ 'btn-primary': rect.showJson || (!rect.showText) }"
+                          :class="{ 'btn-primary': rect.showJson || !rect.showText }"
                           @click="toggleJsonView(rect)"
                         >
                           <svg
@@ -294,7 +294,7 @@
 
                     <!-- JSON格式显示 -->
                     <pre
-                      v-if="rect.showJson || (!rect.showText)"
+                      v-if="rect.showJson || !rect.showText"
                       class="text-xs bg-base-300 p-3 rounded overflow-auto"
                       >{{ formatRectToJSON(rect) }}</pre
                     >
@@ -820,8 +820,15 @@ const handleImageUpload = (e) => {
             addDetectedRectangles(data.rectangles)
           }
         }
-        // 修改此处，使用正确的URL路径
-        img.src = `/api/python${data.original_image_url}`
+        // 使用图片代理服务
+        // 这样可以避免URL编码问题，并且支持图片处理功能
+        const proxyUrl = `/api/python/images/${data.image_id}`
+        img.src = proxyUrl
+
+        console.log('使用图片代理URL:', proxyUrl)
+        console.log('原始URL:', data.original_image_url)
+        console.log('图片ID:', data.image_id)
+        console.log('文件名:', data.filename)
         img.onerror = (err) => {
           console.error('图片加载错误:', err) // 增加错误日志
           statusText.value = '图片加载失败，请重试'
@@ -906,8 +913,15 @@ const processImageFile = (file) => {
             addDetectedRectangles(data.rectangles)
           }
         }
-        // 修改此处，使用正确的URL路径
-        img.src = `/api/python${data.original_image_url}`
+        // 使用图片代理服务
+        // 这样可以避免URL编码问题，并且支持图片处理功能
+        const proxyUrl = `/api/python/images/${data.image_id}`
+        img.src = proxyUrl
+
+        console.log('使用图片代理URL:', proxyUrl)
+        console.log('原始URL:', data.original_image_url)
+        console.log('图片ID:', data.image_id)
+        console.log('文件名:', data.filename)
         img.onerror = (err) => {
           console.error('图片加载错误:', err) // 增加错误日志
           statusText.value = '图片加载失败，请重试'
@@ -1332,18 +1346,33 @@ const submitCrop = () => {
         // 设置结果对话框数据
         resultMessage.value = data.message || '切割成功！'
 
-        // 如果有标注图像URL，需要加上API前缀
+        // 如果有标注图像URL，确保路径正确
         if (data.annotated_image_url) {
-          annotatedImageUrl.value = `/api/python${data.annotated_image_url}`
+          // 直接构建完整的URL路径
+          let annotatedUrl = `/api/python${data.annotated_image_url}`
+          console.log('构建标注图像URL:', annotatedUrl)
+          annotatedImageUrl.value = annotatedUrl
         } else {
           annotatedImageUrl.value = ''
         }
 
-        // 如果有ZIP文件URL，需要加上API前缀
+        // 如果有ZIP文件URL，确保路径正确
         if (data.zip_url) {
-          zipUrl.value = `/api/python${data.zip_url}`
+          // 直接构建完整的URL路径，确保路径格式正确
+          // 后端返回的路径格式是 /results/filename.zip
+          let zipUrlPath = `/api/python${data.zip_url}`
+
+          // 打印详细信息用于调试
+          console.log('ZIP文件URL信息:', {
+            backendPath: data.zip_url,
+            constructedPath: zipUrlPath,
+            expectedFormat: '/api/python/results/filename.zip',
+          })
+
+          zipUrl.value = zipUrlPath
         } else {
           zipUrl.value = ''
+          console.warn('后端未返回ZIP文件URL')
         }
 
         // 显示结果对话框
@@ -1365,18 +1394,37 @@ const downloadZipFile = () => {
 
   // 显示下载中状态
   const originalZipUrl = zipUrl.value
+  console.log('开始下载ZIP文件，URL:', originalZipUrl)
   zipUrl.value = null
   resultMessage.value = '正在准备下载，请稍候...'
 
   // 获取文件
-  fetch(originalZipUrl)
+  fetch(originalZipUrl, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/zip, application/octet-stream',
+    },
+    credentials: 'same-origin',
+  })
     .then((response) => {
+      console.log('ZIP文件下载响应:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries([...response.headers.entries()]),
+        url: response.url,
+      })
+
       if (!response.ok) {
-        throw new Error('下载失败')
+        throw new Error(`下载失败: ${response.status} ${response.statusText}`)
       }
       return response.blob()
     })
     .then((blob) => {
+      console.log('成功获取ZIP文件Blob:', {
+        size: blob.size,
+        type: blob.type,
+      })
+
       // 创建临时下载链接
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -1386,6 +1434,7 @@ const downloadZipFile = () => {
       // 从URL中提取文件名
       const fileName = originalZipUrl.split('/').pop() || 'crop_result.zip'
       a.download = fileName
+      console.log('设置下载文件名:', fileName)
 
       // 添加到文档并触发点击
       document.body.appendChild(a)

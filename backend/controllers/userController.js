@@ -3,6 +3,14 @@ import * as ocrRecordService from "../services/ocrRecordService.js";
 import passport from "passport";
 import { generateAccessToken, generateRefreshToken } from "../middleware/authMiddleware.js";
 import config from "../utils/envConfig.js";
+import { getLogger } from "../utils/logger.js";
+import {
+  clearAuthCookies,
+  setAccessTokenCookie,
+  setRefreshTokenCookie,
+} from "../middleware/cookieMiddleware.js";
+
+const logger = getLogger("user");
 
 // 获取所有用户（仅用于开发环境）
 export const getAllUsers = async (req, res) => {
@@ -67,7 +75,13 @@ export const register = async (req, res) => {
     const token = generateAccessToken(newUser);
     const refreshToken = generateRefreshToken(newUser);
 
-    // 返回成功响应
+    // 设置HttpOnly Cookie
+    setAccessTokenCookie(res, token);
+    setRefreshTokenCookie(res, refreshToken);
+
+    logger.info("用户注册成功", { userId: newUser.id, email });
+
+    // 返回成功响应，同时在响应体中返回令牌（向后兼容）
     res.status(201).json({
       success: true,
       message: "注册成功",
@@ -81,29 +95,43 @@ export const register = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("注册错误:", error);
+    logger.error("注册错误", { error });
     res.status(500).json({
       success: false,
       message: "注册失败",
-      error: error.message,
+      error: process.env.NODE_ENV === "production" ? "服务器错误" : error.message,
     });
   }
 };
 
 // 用户登录
 export const login = (req, res, next) => {
+  console.log("登录请求开始处理", {
+    body: req.body,
+    headers: req.headers,
+    cookies: req.cookies,
+    method: req.method,
+    path: req.path,
+  });
+
   passport.authenticate("local", { session: false }, async (err, user, info) => {
     try {
       if (err) {
+        console.error("登录认证错误", err);
+        logger.error("登录认证错误", { error: err });
         return next(err);
       }
 
       if (!user) {
+        console.warn("登录失败：用户名或密码错误", { email: req.body.email, info });
+        logger.warn("登录失败：用户名或密码错误", { email: req.body.email, info });
         return res.status(401).json({
           success: false,
           message: info.message || "邮箱或密码不正确",
         });
       }
+
+      console.log("用户验证成功", { userId: user.id || user._id, email: user.email });
 
       // 更新最后登录时间
       await userService.updateUser(user.id || user._id, { lastLogin: new Date() });
@@ -112,8 +140,21 @@ export const login = (req, res, next) => {
       const token = generateAccessToken(user);
       const refreshToken = generateRefreshToken(user);
 
-      // 登录成功
-      return res.status(200).json({
+      console.log("令牌生成成功", {
+        tokenLength: token.length,
+        refreshTokenLength: refreshToken.length,
+      });
+
+      // 设置HttpOnly Cookie
+      setAccessTokenCookie(res, token);
+      setRefreshTokenCookie(res, refreshToken);
+
+      console.log("Cookie设置完成");
+
+      logger.info("用户登录成功", { userId: user.id || user._id });
+
+      // 登录成功，同时在响应体中返回令牌（向后兼容）
+      const responseData = {
         success: true,
         message: "登录成功",
         data: {
@@ -124,13 +165,16 @@ export const login = (req, res, next) => {
           token,
           refreshToken,
         },
-      });
+      };
+
+      console.log("准备发送登录成功响应");
+      return res.status(200).json(responseData);
     } catch (error) {
-      console.error("登录错误:", error);
+      logger.error("登录处理错误", { error });
       return res.status(500).json({
         success: false,
         message: "登录失败",
-        error: error.message,
+        error: process.env.NODE_ENV === "production" ? "服务器错误" : error.message,
       });
     }
   })(req, res, next);
@@ -277,37 +321,77 @@ export const getUserOcrHistory = async (req, res) => {
 
 // 刷新令牌
 export const refreshToken = async (req, res) => {
+  console.log("刷新令牌控制器开始处理", {
+    userId: req.userId,
+    tokenVersion: req.tokenVersion,
+  });
+
   try {
     const userId = req.userId; // 从中间件获取
 
     // 查找用户
+    console.log("查找用户:", userId);
     const user = await userService.findUserById(userId);
     if (!user) {
+      console.warn("刷新令牌失败：用户不存在", { userId });
+      logger.warn("刷新令牌失败：用户不存在", { userId });
       return res.status(404).json({
         success: false,
         message: "用户不存在",
       });
     }
 
+    console.log("用户找到:", {
+      id: user.id,
+      email: user.email,
+      tokenVersion: user.tokenVersion,
+    });
+
+    // 检查令牌版本
+    if (user.tokenVersion !== req.tokenVersion) {
+      console.warn("刷新令牌失败：令牌版本不匹配", {
+        userTokenVersion: user.tokenVersion,
+        requestTokenVersion: req.tokenVersion,
+      });
+      return res.status(401).json({
+        success: false,
+        message: "令牌已失效，请重新登录",
+      });
+    }
+
     // 生成新令牌
+    console.log("生成新令牌...");
     const newToken = generateAccessToken(user);
     const newRefreshToken = generateRefreshToken(user);
 
-    // 返回新令牌
+    // 设置HttpOnly Cookie
+    console.log("设置HttpOnly Cookie...");
+    setAccessTokenCookie(res, newToken);
+    setRefreshTokenCookie(res, newRefreshToken);
+
+    console.log("令牌刷新成功");
+    logger.info("令牌刷新成功", { userId });
+
+    // 返回新令牌（向后兼容）
     res.status(200).json({
       success: true,
       message: "令牌刷新成功",
       data: {
         token: newToken,
         refreshToken: newRefreshToken,
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        isAdmin: user.isAdmin || false,
       },
     });
   } catch (error) {
-    console.error("刷新令牌错误:", error);
+    console.error("刷新令牌错误", { error: error.message, stack: error.stack });
+    logger.error("刷新令牌错误", { error });
     res.status(500).json({
       success: false,
       message: "刷新令牌失败",
-      error: error.message,
+      error: process.env.NODE_ENV === "production" ? "服务器错误" : error.message,
     });
   }
 };
@@ -319,6 +403,11 @@ export const deactivateAccount = async (req, res) => {
 
     // 确保用户只能注销自己的账户，或者管理员可以注销任何账户
     if (req.user.id.toString() !== userId && !req.user.isAdmin) {
+      logger.warn("用户尝试注销其他用户账户", {
+        userId: req.user.id,
+        targetUserId: userId,
+      });
+
       return res.status(403).json({
         success: false,
         message: "您没有权限执行此操作",
@@ -328,16 +417,48 @@ export const deactivateAccount = async (req, res) => {
     // 使用新的deleteUser方法来软删除用户
     const user = await userService.deleteUser(userId);
 
+    logger.info("用户账户已注销", { userId });
+
     res.status(200).json({
       success: true,
       message: "账户已成功注销",
     });
   } catch (error) {
-    console.error("注销账户错误:", error);
+    logger.error("注销账户错误", { error, userId: req.params.id });
     res.status(500).json({
       success: false,
       message: "注销账户失败",
-      error: error.message,
+      error: process.env.NODE_ENV === "production" ? "服务器错误" : error.message,
+    });
+  }
+};
+
+// 用户登出
+export const logout = (req, res) => {
+  try {
+    // 清除认证Cookie
+    clearAuthCookies(res);
+
+    // 如果用户已登录，记录登出信息
+    if (req.user) {
+      logger.info("用户登出", { userId: req.user.id });
+
+      // 增加用户的令牌版本，使所有现有令牌失效
+      userService
+        .incrementTokenVersion(req.user.id)
+        .catch((error) => logger.error("增加令牌版本失败", { error, userId: req.user.id }));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "登出成功",
+    });
+  } catch (error) {
+    logger.error("登出错误", { error, userId: req.user ? req.user.id : null });
+    res.status(500).json({
+      success: false,
+      message: "登出失败",
+      error: process.env.NODE_ENV === "production" ? "服务器错误" : error.message,
     });
   }
 };

@@ -2,6 +2,8 @@
 import express from "express";
 import cors from "cors";
 import session from "express-session";
+import cookieParser from "cookie-parser";
+import helmet from "helmet";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 import ocrRoutes from "./routes/ocrRoutes.js";
@@ -15,6 +17,12 @@ import swaggerSetup from "./swagger.js"; // 导入 Swagger 设置
 import config from "./utils/envConfig.js"; // 导入统一的环境变量配置
 import { mongoose, checkConnection, isConnected } from "./db/config.js"; // 导入mongoose实例和连接检查函数
 import { initializePassport } from "./middleware/passportConfig.js"; // 导入Passport配置
+import { getLogger } from "./utils/logger.js"; // 导入安全日志服务
+import { errorHandler, notFoundHandler } from "./middleware/errorMiddleware.js"; // 导入错误处理中间件
+import { csrfProtection, addCsrfToken } from "./middleware/csrfMiddleware.js"; // 导入CSRF保护中间件
+import { apiRateLimit } from "./middleware/rateLimitMiddleware.js"; // 导入速率限制中间件
+
+const logger = getLogger("server");
 
 // 获取当前文件的目录路径
 const __filename = fileURLToPath(import.meta.url);
@@ -35,8 +43,44 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = config.port;
 
-// 中间件
-app.use(cors());
+// 安全中间件
+// 使用Helmet设置安全HTTP头
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        connectSrc: ["'self'", "https://vision.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'self'"],
+      },
+    },
+    xssFilter: true,
+    noSniff: true,
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  })
+);
+
+// CORS配置
+app.use(
+  cors({
+    origin: config.corsOrigins || "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
+    credentials: true,
+    maxAge: 86400, // 24小时
+  })
+);
+
+// 解析Cookie
+app.use(cookieParser(config.cookieSecret || config.sessionSecret));
+
+// 解析请求体
 app.use(express.json({ limit: "50mb" })); // 增加限制以处理大型图像
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
@@ -47,7 +91,9 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production", // 只在生产环境中要求HTTPS
+      httpOnly: true,
+      sameSite: "lax", // 使用lax而不是strict，允许从外部链接导航时发送Cookie
       maxAge: 24 * 60 * 60 * 1000, // 24小时
     },
   })
@@ -57,6 +103,12 @@ app.use(
 const passport = initializePassport();
 app.use(passport.initialize());
 app.use(passport.session());
+
+// 添加CSRF令牌
+app.use(addCsrfToken);
+
+// 全局速率限制
+app.use(apiRateLimit);
 
 // API请求日志中间件
 app.use(logRequest);
@@ -68,11 +120,11 @@ if (config.swaggerEnabled) {
 }
 
 // 路由
-app.use("/api/ocr", ocrRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/admin", adminRoutes);
+app.use("/api/ocr", ocrRoutes); // 移除CSRF保护，因为OCR路由已在csrfMiddleware.js中豁免
+app.use("/api/users", userRoutes); // 用户路由中已添加CSRF保护
+app.use("/api/admin", csrfProtection, adminRoutes);
 app.use("/api/languages", languageRoutes);
-app.use("/api/ocr-records", ocrRecordRoutes); // 添加OCR记录路由
+app.use("/api/ocr-records", csrfProtection, ocrRecordRoutes); // 添加OCR记录路由
 
 // 健康检查API - 快速诊断系统状态
 app.get("/api/health", async (req, res) => {
@@ -122,46 +174,47 @@ app.get("/api/health", async (req, res) => {
   res.json(healthStatus);
 });
 
+// 404错误处理
+app.use(notFoundHandler);
+
 // 错误处理中间件
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    success: false,
-    message: "服务器内部错误",
-    error: err.message,
-  });
-});
+app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`服务器运行在 http://localhost:${PORT}`);
+  logger.info(`服务器运行在 http://localhost:${PORT}`);
 
   if (config.swaggerEnabled) {
-    console.log(`API 文档可在 http://localhost:${PORT}/api-docs 访问`);
-    console.log(`认证信息 - 用户名: ${config.swaggerUser}, 密码: ${config.swaggerPassword}`);
+    logger.info(`API 文档可在 http://localhost:${PORT}/api-docs 访问`);
+    logger.info(`API文档已配置认证`);
   }
 
   // 打印环境变量以进行调试
-  console.log(`当前环境: ${config.nodeEnv}`);
+  logger.info(`当前环境: ${config.nodeEnv}`);
 
   // 检查API密钥是否已配置
   if (!config.googleVisionApiKey) {
-    console.warn("警告: Google Vision API密钥未在环境变量中设置，服务器端OCR功能将不可用");
+    logger.warn("警告: Google Vision API密钥未在环境变量中设置，服务器端OCR功能将不可用");
   } else {
-    console.log("Google Vision API密钥已配置");
-    // 显示API密钥的前几个字符用于验证
-    const apiKey = config.googleVisionApiKey;
-    console.log(`API密钥前缀: ${apiKey.substring(0, 8)}...`);
+    logger.info("Google Vision API密钥已配置");
   }
 
   // 显示JWT配置状态
   if (config.isConfigValid()) {
-    console.log("JWT配置已正确加载");
+    logger.info("JWT配置已正确加载");
   } else {
-    console.error("警告: JWT配置未正确加载，用户认证功能可能不可用");
+    logger.error("警告: JWT配置未正确加载，用户认证功能可能不可用");
   }
 
   // 显示数据库状态
-  console.log("数据库模式: MongoDB");
+  logger.info("数据库模式: MongoDB");
+
+  // 显示安全配置状态
+  logger.info("安全配置已加载:");
+  logger.info("- Helmet安全头已配置");
+  logger.info("- CSRF保护已启用");
+  logger.info("- 速率限制已启用");
+  logger.info("- HttpOnly Cookie已配置");
+  logger.info("- 安全日志已启用");
 });
 
 export default app;

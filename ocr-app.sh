@@ -32,6 +32,16 @@ PID_FILE="$LOG_DIR/app.pid"
 WATCHDOG_PID_FILE="$LOG_DIR/watchdog.pid"
 NGINX_CONF="$APP_DIR/nginx/nginx.conf"
 
+# 创建日志目录
+mkdir -p "$LOG_DIR"
+
+# 安全配置
+SECURITY_LOG="$LOG_DIR/security.log"
+UPLOADS_DIR="$APP_DIR/uploads"
+TEMP_DIR="$APP_DIR/temp"
+PYCACHE_DIRS="$APP_DIR/python-service/__pycache__ $APP_DIR/python-service/*/__pycache__"
+CLEANUP_DAYS=7  # 清理超过7天的文件
+
 # MongoDB配置
 MONGODB_DIR="$APP_DIR/database/mongodb"
 MONGODB_DATA="$MONGODB_DIR/data"
@@ -47,10 +57,28 @@ PYTHON_LOG="$LOG_DIR/python-service.log"
 PYTHON_PID_FILE="$LOG_DIR/python-service.pid"
 PYTHON_PORT=5000
 
+# 环境变量配置文件
+ENV_FILE="$APP_DIR/backend/.env.local"
+if [ "$NODE_ENV" = "production" ]; then
+  ENV_FILE="$APP_DIR/backend/.env.production"
+elif [ "$NODE_ENV" = "test" ]; then
+  ENV_FILE="$APP_DIR/backend/.env.test"
+fi
+
+# 如果环境变量文件存在，加载它
+if [ -f "$ENV_FILE" ]; then
+  echo -e "${BLUE}加载环境变量文件: $ENV_FILE${NC}"
+  set -a
+  source "$ENV_FILE"
+  set +a
+else
+  echo -e "${YELLOW}警告: 环境变量文件不存在: $ENV_FILE${NC}"
+fi
+
 # 功能函数：显示帮助信息
 show_help() {
   echo -e "${GREEN}OCR Vue应用管理脚本${NC}"
-  echo -e "用法: $0 {start|stop|restart|status|monitor|cleanup|schedule-cleanup}"
+  echo -e "用法: $0 {start|stop|restart|status|monitor|cleanup|schedule-cleanup|security-check}"
   echo -e "  start            - 启动所有服务"
   echo -e "  stop             - 安全停止所有服务"
   echo -e "  restart          - 重启所有服务"
@@ -58,6 +86,175 @@ show_help() {
   echo -e "  monitor          - 启动持续监控(作为守护进程运行)"
   echo -e "  cleanup          - 立即执行清理任务(清理uploads和__pycache__)"
   echo -e "  schedule-cleanup - 设置定时清理任务(每天凌晨3点执行)"
+  echo -e "  security-check   - 执行安全检查"
+}
+
+# 功能函数：执行安全检查
+security_check() {
+  echo -e "${BLUE}执行安全检查...${NC}" | tee -a "$SECURITY_LOG"
+  echo -e "[$(date '+%Y-%m-%d %H:%M:%S')] 开始安全检查" >> "$SECURITY_LOG"
+
+  # 检查文件权限
+  echo -e "${BLUE}检查文件权限...${NC}" | tee -a "$SECURITY_LOG"
+
+  # 检查上传目录权限
+  if [ -d "$UPLOADS_DIR" ]; then
+    # 使用兼容macOS和Linux的方式检查权限
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      # macOS
+      UPLOADS_PERMS=$(stat -f "%Lp" "$UPLOADS_DIR")
+    else
+      # Linux
+      UPLOADS_PERMS=$(stat -c "%a" "$UPLOADS_DIR")
+    fi
+
+    if [ "$UPLOADS_PERMS" != "755" ] && [ "$UPLOADS_PERMS" != "750" ]; then
+      echo -e "${YELLOW}警告: 上传目录权限不安全: $UPLOADS_PERMS，建议设置为755${NC}" | tee -a "$SECURITY_LOG"
+      echo -e "${BLUE}正在修复上传目录权限...${NC}" | tee -a "$SECURITY_LOG"
+      chmod 755 "$UPLOADS_DIR"
+    else
+      echo -e "${GREEN}✓ 上传目录权限正确${NC}" | tee -a "$SECURITY_LOG"
+    fi
+  else
+    echo -e "${YELLOW}上传目录不存在，将创建...${NC}" | tee -a "$SECURITY_LOG"
+    mkdir -p "$UPLOADS_DIR"
+    chmod 755 "$UPLOADS_DIR"
+  fi
+
+  # 检查日志目录权限
+  if [ -d "$LOG_DIR" ]; then
+    # 使用兼容macOS和Linux的方式检查权限
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      # macOS
+      LOG_PERMS=$(stat -f "%Lp" "$LOG_DIR")
+    else
+      # Linux
+      LOG_PERMS=$(stat -c "%a" "$LOG_DIR")
+    fi
+
+    if [ "$LOG_PERMS" != "755" ] && [ "$LOG_PERMS" != "750" ]; then
+      echo -e "${YELLOW}警告: 日志目录权限不安全: $LOG_PERMS，建议设置为755${NC}" | tee -a "$SECURITY_LOG"
+      echo -e "${BLUE}正在修复日志目录权限...${NC}" | tee -a "$SECURITY_LOG"
+      chmod 755 "$LOG_DIR"
+    else
+      echo -e "${GREEN}✓ 日志目录权限正确${NC}" | tee -a "$SECURITY_LOG"
+    fi
+  fi
+
+  # 检查环境变量文件权限
+  if [ -f "$ENV_FILE" ]; then
+    # 使用兼容macOS和Linux的方式检查权限
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      # macOS
+      ENV_PERMS=$(stat -f "%Lp" "$ENV_FILE")
+    else
+      # Linux
+      ENV_PERMS=$(stat -c "%a" "$ENV_FILE")
+    fi
+
+    if [ "$ENV_PERMS" != "600" ] && [ "$ENV_PERMS" != "640" ]; then
+      echo -e "${YELLOW}警告: 环境变量文件权限不安全: $ENV_PERMS，建议设置为600${NC}" | tee -a "$SECURITY_LOG"
+      echo -e "${BLUE}正在修复环境变量文件权限...${NC}" | tee -a "$SECURITY_LOG"
+      chmod 600 "$ENV_FILE"
+    else
+      echo -e "${GREEN}✓ 环境变量文件权限正确${NC}" | tee -a "$SECURITY_LOG"
+    fi
+  fi
+
+  # 检查SSL证书权限
+  SSL_DIR="$APP_DIR/ssl"
+  if [ -d "$SSL_DIR" ]; then
+    # 使用兼容macOS和Linux的方式检查权限
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      # macOS
+      SSL_PERMS=$(stat -f "%Lp" "$SSL_DIR")
+    else
+      # Linux
+      SSL_PERMS=$(stat -c "%a" "$SSL_DIR")
+    fi
+
+    if [ "$SSL_PERMS" != "700" ] && [ "$SSL_PERMS" != "750" ]; then
+      echo -e "${YELLOW}警告: SSL目录权限不安全: $SSL_PERMS，建议设置为700${NC}" | tee -a "$SECURITY_LOG"
+      echo -e "${BLUE}正在修复SSL目录权限...${NC}" | tee -a "$SECURITY_LOG"
+      chmod 700 "$SSL_DIR"
+    else
+      echo -e "${GREEN}✓ SSL目录权限正确${NC}" | tee -a "$SECURITY_LOG"
+    fi
+
+    # 检查SSL证书文件
+    for cert_file in "$SSL_DIR"/*.pem; do
+      if [ -f "$cert_file" ]; then
+        # 使用兼容macOS和Linux的方式检查权限
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          # macOS
+          CERT_PERMS=$(stat -f "%Lp" "$cert_file")
+        else
+          # Linux
+          CERT_PERMS=$(stat -c "%a" "$cert_file")
+        fi
+
+        if [ "$CERT_PERMS" != "600" ] && [ "$CERT_PERMS" != "640" ]; then
+          echo -e "${YELLOW}警告: SSL证书文件权限不安全: $cert_file ($CERT_PERMS)，建议设置为600${NC}" | tee -a "$SECURITY_LOG"
+          echo -e "${BLUE}正在修复SSL证书文件权限...${NC}" | tee -a "$SECURITY_LOG"
+          chmod 600 "$cert_file"
+        else
+          echo -e "${GREEN}✓ SSL证书文件权限正确: $cert_file${NC}" | tee -a "$SECURITY_LOG"
+        fi
+      fi
+    done
+  fi
+
+  # 检查临时文件
+  echo -e "${BLUE}检查临时文件...${NC}" | tee -a "$SECURITY_LOG"
+
+  # 检查上传目录中的临时文件
+  if [ -d "$UPLOADS_DIR" ]; then
+    OLD_FILES=$(find "$UPLOADS_DIR" -type f -mtime +$CLEANUP_DAYS 2>/dev/null)
+    if [ ! -z "$OLD_FILES" ]; then
+      echo -e "${YELLOW}发现过期的上传文件，将清理...${NC}" | tee -a "$SECURITY_LOG"
+      find "$UPLOADS_DIR" -type f -mtime +$CLEANUP_DAYS -delete 2>/dev/null
+      echo -e "${GREEN}✓ 已清理过期上传文件${NC}" | tee -a "$SECURITY_LOG"
+    else
+      echo -e "${GREEN}✓ 未发现过期上传文件${NC}" | tee -a "$SECURITY_LOG"
+    fi
+  fi
+
+  # 检查Python缓存文件
+  echo -e "${BLUE}检查Python缓存文件...${NC}" | tee -a "$SECURITY_LOG"
+  for pycache_dir in $PYCACHE_DIRS; do
+    if [ -d "$pycache_dir" ]; then
+      echo -e "${YELLOW}发现Python缓存目录: $pycache_dir，将清理...${NC}" | tee -a "$SECURITY_LOG"
+      rm -rf "$pycache_dir" 2>/dev/null
+      echo -e "${GREEN}✓ 已清理Python缓存目录: $pycache_dir${NC}" | tee -a "$SECURITY_LOG"
+    fi
+  done
+
+  # 检查环境变量配置
+  echo -e "${BLUE}检查环境变量配置...${NC}" | tee -a "$SECURITY_LOG"
+
+  # 检查JWT密钥是否设置
+  if [ -z "$JWT_SECRET" ] || [ "$JWT_SECRET" = "please_change_this_to_a_secure_random_string" ]; then
+    echo -e "${RED}警告: JWT_SECRET未设置或使用默认值，这是不安全的${NC}" | tee -a "$SECURITY_LOG"
+  else
+    echo -e "${GREEN}✓ JWT_SECRET已正确设置${NC}" | tee -a "$SECURITY_LOG"
+  fi
+
+  # 检查会话密钥是否设置
+  if [ -z "$SESSION_SECRET" ] || [ "$SESSION_SECRET" = "ocr-app-session-secret" ]; then
+    echo -e "${RED}警告: SESSION_SECRET未设置或使用默认值，这是不安全的${NC}" | tee -a "$SECURITY_LOG"
+  else
+    echo -e "${GREEN}✓ SESSION_SECRET已正确设置${NC}" | tee -a "$SECURITY_LOG"
+  fi
+
+  # 检查CSRF密钥是否设置
+  if [ -z "$CSRF_SECRET" ]; then
+    echo -e "${YELLOW}警告: CSRF_SECRET未设置，将使用JWT_SECRET${NC}" | tee -a "$SECURITY_LOG"
+  else
+    echo -e "${GREEN}✓ CSRF_SECRET已正确设置${NC}" | tee -a "$SECURITY_LOG"
+  fi
+
+  echo -e "${GREEN}安全检查完成${NC}" | tee -a "$SECURITY_LOG"
+  echo -e "[$(date '+%Y-%m-%d %H:%M:%S')] 安全检查完成" >> "$SECURITY_LOG"
 }
 
 # 功能函数：检查端口是否被占用
@@ -1178,13 +1375,18 @@ schedule_cleanup() {
 # 主逻辑：解析命令行参数
 case "$1" in
   start)
+    # 启动前先执行安全检查
+    security_check
     start_services
     ;;
   stop)
     stop_services
     ;;
   restart)
-    restart_services
+    stop_services
+    # 重启前先执行安全检查
+    security_check
+    start_services
     ;;
   status)
     check_status
@@ -1197,6 +1399,9 @@ case "$1" in
     ;;
   schedule-cleanup)
     schedule_cleanup
+    ;;
+  security-check)
+    security_check
     ;;
   *)
     show_help

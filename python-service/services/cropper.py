@@ -220,7 +220,7 @@ class ImageCropper:
                 'crop_id': crop_id,
                 'annotated_image_url': f'/results/crop_{crop_id}/{os.path.basename(output_annotated)}',
                 'cropped_images': cropped_images,
-                'zip_url': f'/results/{zip_filename}',
+                'zip_url': f'/api/python/results/{zip_filename}',
                 'ocr_crops_dir': ocr_crops_dir
             }
         

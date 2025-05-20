@@ -68,12 +68,16 @@ export const useOcrStore = defineStore('ocr', () => {
 
   // --- 状态 (State) ---
 
+  // 导入API密钥服务
+  const getApiKey = () => localStorage.getItem('apiKey') || ''
+  const saveApiKey = (key) => localStorage.setItem('apiKey', key)
+  const clearApiKey = () => localStorage.removeItem('apiKey')
+  const checkApiKey = () => !!localStorage.getItem('apiKey')
+
   // API 相关
-  const apiKey = ref(localStorage.getItem('googleVisionApiKey') || '')
+  const apiKey = ref(getApiKey() || '')
   // 添加使用服务器端API密钥的状态
   const useServerApiKey = ref(true) // 始终使用服务器API
-  // 如果设置为使用服务器端API密钥，则不显示API设置
-  // const showApiSettings = ref(false) // 不再需要显示API设置
   // 添加服务器API可用状态
   const serverApiAvailable = ref(false)
 
@@ -144,7 +148,7 @@ export const useOcrStore = defineStore('ocr', () => {
   // --- 计算属性 (Getters / Computed) ---
   const hasApiKey = computed(() => {
     // 修改逻辑：如果服务器API可用或者存在本地API密钥，都返回true
-    return serverApiAvailable.value || (apiKey.value && apiKey.value.trim().length > 0)
+    return serverApiAvailable.value || checkApiKey()
   })
   const canStartOcr = computed(
     () =>
@@ -557,31 +561,18 @@ export const useOcrStore = defineStore('ocr', () => {
       const languageHints = selectedLanguages.value.length > 0 ? selectedLanguages.value : []
       console.log('语言提示:', languageHints)
 
+      // 导入安全API服务
+      const { processWithServerApi, processWithClientApi } = await import(
+        '@/services/secureApiService'
+      )
+
       // 修改OCR处理逻辑
       let result
       if (useServerApiKey.value && serverApiAvailable.value) {
         console.log('尝试使用服务器端OCR处理...')
         try {
-          // 使用服务器端处理（应用服务器的API密钥）
-          const formData = new FormData()
-          formData.append('file', currentFiles.value[0])
-          formData.append('recognitionDirection', direction)
-          formData.append('recognitionMode', mode)
-
-          // 添加用户ID，用于记录统计
-          if (userId) {
-            formData.append('userId', userId)
-          }
-
-          if (languageHints.length > 0) {
-            languageHints.forEach((lang) => {
-              formData.append('languageHints', lang)
-            })
-          }
-
-          console.log('调用processSimple方法...')
-          // 直接使用processSimple方法处理
-          const simpleResult = await processSimple(
+          // 使用安全的服务器端处理
+          const simpleResult = await processWithServerApi(
             currentFiles.value[0],
             languageHints,
             direction,
@@ -591,43 +582,37 @@ export const useOcrStore = defineStore('ocr', () => {
           console.log('服务器处理结果:', simpleResult)
 
           // 检查服务器返回的结果结构
-          if (!simpleResult || !simpleResult.success || !simpleResult.data) {
-            throw new Error('服务器返回的OCR结果结构无效')
-          }
-
-          // 从正确的结构中提取数据
-          const resultData = simpleResult.data
-          if (!resultData.originalFullText) {
+          if (!simpleResult || !simpleResult.originalFullText) {
             throw new Error('服务器返回的OCR结果中没有文本内容')
           }
 
           // 构建兼容的结果对象
           result = {
-            fullTextAnnotation: resultData.fullTextAnnotation || {
-              text: resultData.originalFullText,
+            fullTextAnnotation: simpleResult.fullTextAnnotation || {
+              text: simpleResult.originalFullText,
             },
-            textAnnotations: resultData.textAnnotations || [
+            textAnnotations: simpleResult.textAnnotations || [
               {
-                description: resultData.originalFullText,
-                locale: resultData.detectedLanguageCode,
+                description: simpleResult.originalFullText,
+                locale: simpleResult.detectedLanguageCode,
               },
             ],
-            symbolsData: resultData.symbolsData || [],
+            symbolsData: simpleResult.symbolsData || [],
           }
         } catch (serverError) {
           console.error('服务器OCR处理失败:', serverError)
           // 如果有本地API密钥，则尝试使用本地API密钥处理
-          if (apiKey.value) {
+          if (checkApiKey()) {
             console.log('尝试退回到本地API密钥...')
-            result = await performOcrRequest(base64Image, apiKey.value, languageHints)
+            result = await processWithClientApi(base64Image, languageHints, direction)
           } else {
             throw new Error(`服务器OCR处理失败: ${serverError.message}`)
           }
         }
-      } else if (apiKey.value) {
+      } else if (checkApiKey()) {
         // 使用用户提供的Google Vision API (客户端处理)
         console.log('使用客户端Google Vision API处理...')
-        result = await performOcrRequest(base64Image, apiKey.value, languageHints)
+        result = await processWithClientApi(base64Image, languageHints, direction)
       } else {
         throw new Error('未找到有效的API密钥，请设置API密钥或启用服务器端API密钥选项')
       }
@@ -1183,78 +1168,6 @@ export const useOcrStore = defineStore('ocr', () => {
       return false
     } finally {
       console.log('API状态检查完成，当前状态:', serverApiAvailable.value ? '可用' : '不可用')
-    }
-  }
-
-  // 执行OCR请求的函数
-  async function performOcrRequest(base64Image, apiKey, languageHints = []) {
-    console.log('执行OCR请求...')
-    try {
-      // 构建请求体
-      const requestBody = {
-        requests: [
-          {
-            image: {
-              content: base64Image,
-            },
-            features: [
-              {
-                // 使用DOCUMENT_TEXT_DETECTION提供更多结构化信息
-                // 但在某些情况下识别准确率可能略低
-                type: 'DOCUMENT_TEXT_DETECTION',
-              },
-            ],
-          },
-        ],
-      }
-
-      // 添加语言提示
-      if (languageHints.length > 0) {
-        requestBody.requests[0].imageContext = {
-          languageHints: languageHints,
-        }
-      }
-
-      console.log('发送请求到Google Vision API...')
-
-      // 发送请求到Google Vision API
-      const response = await fetch(
-        `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-        },
-      )
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Google Vision API请求失败:', response.status, errorText)
-        throw new Error(`API请求失败: ${response.status} ${errorText}`)
-      }
-
-      const data = await response.json()
-
-      // 检查API响应中是否包含错误
-      if (data.error) {
-        console.error('Google Vision API返回错误:', data.error)
-        throw new Error(`API错误: ${data.error.message || JSON.stringify(data.error)}`)
-      }
-
-      // 检查返回的结果是否包含所需的数据
-      if (!data.responses || data.responses.length === 0) {
-        console.error('Google Vision API返回空结果')
-        throw new Error('API返回空结果')
-      }
-
-      const result = data.responses[0]
-      console.log('OCR请求成功完成')
-      return result
-    } catch (error) {
-      console.error('执行OCR请求时出错:', error)
-      throw error
     }
   }
 

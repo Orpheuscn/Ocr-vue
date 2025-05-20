@@ -342,8 +342,68 @@ def uploaded_file(filename):
     UPLOAD_FOLDER = current_app.config['UPLOAD_FOLDER']
     return send_from_directory(UPLOAD_FOLDER, filename)
 
+@upload_bp.route('/uploads/by-id/<image_id>')
+def uploaded_file_by_id(image_id):
+    """通过图片ID提供上传的文件，避免文件名编码问题"""
+    UPLOAD_FOLDER = current_app.config['UPLOAD_FOLDER']
+    import os
+
+    info(f"通过ID请求图片: {image_id}, 上传文件夹: {UPLOAD_FOLDER}")
+
+    # 确保目录存在
+    if not os.path.exists(UPLOAD_FOLDER):
+        error(f"上传文件夹不存在: {UPLOAD_FOLDER}")
+        return jsonify({'success': False, 'error': f'上传文件夹不存在'}), 500
+
+    # 列出目录内容
+    try:
+        files = os.listdir(UPLOAD_FOLDER)
+        info(f"上传文件夹中的文件数量: {len(files)}")
+    except Exception as e:
+        error(f"列出上传文件夹内容时出错: {str(e)}")
+        return jsonify({'success': False, 'error': f'列出上传文件夹内容时出错: {str(e)}'}), 500
+
+    # 查找以image_id开头的文件
+    matching_files = []
+    for filename in files:
+        if filename.startswith(f"{image_id}_"):
+            matching_files.append(filename)
+
+    if matching_files:
+        selected_file = matching_files[0]
+        info(f"找到匹配的文件: {selected_file}")
+        return send_from_directory(UPLOAD_FOLDER, selected_file)
+    else:
+        error(f"找不到ID为{image_id}的图片")
+        return jsonify({'success': False, 'error': f'找不到ID为{image_id}的图片'}), 404
+
 @upload_bp.route('/results/<path:filename>')
 def result_file(filename):
     """提供结果文件"""
     RESULTS_FOLDER = current_app.config['RESULTS_FOLDER']
-    return send_from_directory(RESULTS_FOLDER, filename)
+
+    # 记录请求信息
+    info(f"请求结果文件: {filename}, 结果文件夹: {RESULTS_FOLDER}")
+
+    # 检查文件是否存在
+    file_path = os.path.join(RESULTS_FOLDER, filename)
+    if not os.path.exists(file_path):
+        error(f"结果文件不存在: {file_path}")
+        return jsonify({'success': False, 'error': f'结果文件不存在: {filename}'}), 404
+
+    # 根据文件扩展名设置正确的MIME类型
+    mimetype = None
+    if filename.endswith('.zip'):
+        mimetype = 'application/zip'
+    elif filename.endswith('.jpg') or filename.endswith('.jpeg'):
+        mimetype = 'image/jpeg'
+    elif filename.endswith('.png'):
+        mimetype = 'image/png'
+    elif filename.endswith('.json'):
+        mimetype = 'application/json'
+
+    # 记录MIME类型信息
+    info(f"提供结果文件: {filename}, MIME类型: {mimetype}")
+
+    # 使用明确的MIME类型
+    return send_from_directory(RESULTS_FOLDER, filename, mimetype=mimetype)
