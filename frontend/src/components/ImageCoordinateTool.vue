@@ -1350,10 +1350,21 @@ const submitCrop = () => {
         if (data.annotated_image_url) {
           // 直接构建完整的URL路径
           let annotatedUrl = `/api/python${data.annotated_image_url}`
-          console.log('构建标注图像URL:', annotatedUrl)
+          console.log('标注图像URL详情:', {
+            backendPath: data.annotated_image_url,
+            constructedPath: annotatedUrl,
+            expectedFormat: '/api/python/results/image_id_annotated.jpg',
+          })
           annotatedImageUrl.value = annotatedUrl
+
+          // 预加载图像以检查是否可以访问
+          const img = new Image()
+          img.onload = () => console.log('标注图像加载成功:', annotatedUrl)
+          img.onerror = (e) => console.error('标注图像加载失败:', annotatedUrl, e)
+          img.src = annotatedUrl
         } else {
           annotatedImageUrl.value = ''
+          console.warn('后端未返回标注图像URL')
         }
 
         // 如果有ZIP文件URL，确保路径正确

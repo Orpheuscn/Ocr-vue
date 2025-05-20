@@ -53,9 +53,13 @@ def create_app(config: Optional[dict] = None) -> Flask:
     limiter.init_app(app)
 
     # 加载默认配置
+    base_dir = os.path.dirname(os.path.dirname(__file__))
     app.config.update({
-        'UPLOAD_FOLDER': os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads'),
-        'RESULTS_FOLDER': os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads', 'results'),
+        'UPLOAD_FOLDER': os.path.join(base_dir, 'uploads'),
+        'RESULTS_FOLDER': os.path.join(base_dir, 'results'),
+        'CROPS_FOLDER': os.path.join(base_dir, 'crops'),
+        'DOWNLOADS_FOLDER': os.path.join(base_dir, 'downloads'),
+        'TEMP_FOLDER': os.path.join(base_dir, 'temp'),
         'MAX_CONTENT_LENGTH': 25 * 1024 * 1024,  # 25MB
         'DEBUG': os.environ.get('FLASK_DEBUG', 'False').lower() == 'true',
         'TESTING': False,
@@ -67,6 +71,9 @@ def create_app(config: Optional[dict] = None) -> Flask:
     app.config.update({
         'UPLOAD_FOLDER': os.environ.get('UPLOAD_FOLDER', app.config['UPLOAD_FOLDER']),
         'RESULTS_FOLDER': os.environ.get('RESULTS_FOLDER', app.config['RESULTS_FOLDER']),
+        'CROPS_FOLDER': os.environ.get('CROPS_FOLDER', app.config['CROPS_FOLDER']),
+        'DOWNLOADS_FOLDER': os.environ.get('DOWNLOADS_FOLDER', app.config['DOWNLOADS_FOLDER']),
+        'TEMP_FOLDER': os.environ.get('TEMP_FOLDER', app.config['TEMP_FOLDER']),
         'MAX_CONTENT_LENGTH': int(os.environ.get('MAX_CONTENT_LENGTH', app.config['MAX_CONTENT_LENGTH'])),
     })
 
@@ -74,9 +81,12 @@ def create_app(config: Optional[dict] = None) -> Flask:
     if config:
         app.config.update(config)
 
-    # 确保上传目录存在
+    # 确保所有目录存在
     Path(app.config['UPLOAD_FOLDER']).mkdir(parents=True, exist_ok=True)
     Path(app.config['RESULTS_FOLDER']).mkdir(parents=True, exist_ok=True)
+    Path(app.config['CROPS_FOLDER']).mkdir(parents=True, exist_ok=True)
+    Path(app.config['DOWNLOADS_FOLDER']).mkdir(parents=True, exist_ok=True)
+    Path(app.config['TEMP_FOLDER']).mkdir(parents=True, exist_ok=True)
 
     # 注册蓝图 - 不使用前缀
     app.register_blueprint(ocr_bp)

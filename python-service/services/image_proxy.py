@@ -20,21 +20,29 @@ from utils.log_client import info, error, warn
 class ImageProxy:
     """图片代理服务类，处理图片请求和转换"""
 
-    def __init__(self, upload_folder: str, results_folder: str):
+    def __init__(self, upload_folder: str, results_folder: str, crops_folder: str = None,
+                downloads_folder: str = None, temp_folder: str = None):
         """
         初始化图片代理服务
 
         Args:
             upload_folder: 上传文件夹路径
             results_folder: 结果文件夹路径
+            crops_folder: 裁剪文件夹路径
+            downloads_folder: 下载文件夹路径
+            temp_folder: 临时文件夹路径
         """
         self.upload_folder = upload_folder
         self.results_folder = results_folder
-        info(f"初始化图片代理服务，上传文件夹: {upload_folder}, 结果文件夹: {results_folder}")
+        self.crops_folder = crops_folder
+        self.downloads_folder = downloads_folder
+        self.temp_folder = temp_folder
+        info(f"初始化图片代理服务，上传文件夹: {upload_folder}, 结果文件夹: {results_folder}, "
+             f"裁剪文件夹: {crops_folder}, 下载文件夹: {downloads_folder}, 临时文件夹: {temp_folder}")
 
     def get_image_by_id(self, image_id: str) -> Tuple[Optional[str], Optional[str]]:
         """
-        通过图片ID查找图片
+        通过图片ID查找图片，会在多个文件夹中查找
 
         Args:
             image_id: 图片ID
@@ -44,27 +52,63 @@ class ImageProxy:
         """
         info(f"通过ID查找图片: {image_id}")
 
-        # 确保上传文件夹存在
-        if not os.path.exists(self.upload_folder):
-            error(f"上传文件夹不存在: {self.upload_folder}")
-            return None, None
+        # 定义要搜索的文件夹列表
+        folders_to_search = [self.upload_folder, self.results_folder]
 
-        # 查找以image_id开头的文件
-        pattern = os.path.join(self.upload_folder, f"{image_id}_*")
-        matching_files = glob.glob(pattern)
+        # 添加其他可能的文件夹
+        if self.crops_folder:
+            folders_to_search.append(self.crops_folder)
+        if self.downloads_folder:
+            folders_to_search.append(self.downloads_folder)
+        if self.temp_folder:
+            folders_to_search.append(self.temp_folder)
 
-        if not matching_files:
-            warn(f"找不到ID为{image_id}的图片")
-            return None, None
+        # 记录搜索的文件夹
+        info(f"将在以下文件夹中搜索图片: {folders_to_search}")
 
-        # 使用第一个匹配的文件
-        filepath = matching_files[0]
-        info(f"找到匹配的图片: {filepath}")
+        # 在每个文件夹中查找
+        for folder in folders_to_search:
+            if not os.path.exists(folder):
+                warn(f"文件夹不存在，跳过: {folder}")
+                continue
 
-        # 确定MIME类型
-        mime_type = self._get_mime_type(filepath)
+            # 查找以image_id开头的文件
+            pattern = os.path.join(folder, f"{image_id}_*")
+            matching_files = glob.glob(pattern)
 
-        return filepath, mime_type
+            # 也查找精确匹配的文件（例如标注图像可能直接使用image_id作为名称）
+            exact_pattern = os.path.join(folder, f"{image_id}.*")
+            exact_matches = glob.glob(exact_pattern)
+            matching_files.extend(exact_matches)
+
+            # 查找子文件夹中的文件
+            subdir_pattern = os.path.join(folder, "*", f"{image_id}*")
+            subdir_matches = glob.glob(subdir_pattern)
+            matching_files.extend(subdir_matches)
+
+            if matching_files:
+                # 使用第一个匹配的文件
+                filepath = matching_files[0]
+                info(f"在文件夹 {folder} 中找到匹配的图片: {filepath}")
+
+                # 确定MIME类型
+                mime_type = self._get_mime_type(filepath)
+                return filepath, mime_type
+
+        # 如果所有文件夹都没找到，尝试查找特定的结果文件
+        # 例如标注图像可能命名为 image_id_annotated.jpg
+        annotated_pattern = os.path.join(self.results_folder, f"{image_id}_annotated.*")
+        annotated_matches = glob.glob(annotated_pattern)
+
+        if annotated_matches:
+            filepath = annotated_matches[0]
+            info(f"找到标注图像: {filepath}")
+            mime_type = self._get_mime_type(filepath)
+            return filepath, mime_type
+
+        # 如果还是没找到，记录警告
+        warn(f"在所有文件夹中都找不到ID为{image_id}的图片")
+        return None, None
 
     def get_image_response(self, image_id: str, width: Optional[int] = None,
                           height: Optional[int] = None,
@@ -186,9 +230,12 @@ def get_image_proxy() -> ImageProxy:
     global _image_proxy_instance
 
     if _image_proxy_instance is None:
-        # 从应用配置中获取上传文件夹和结果文件夹
+        # 从应用配置中获取所有文件夹路径
         upload_folder = current_app.config['UPLOAD_FOLDER']
         results_folder = current_app.config['RESULTS_FOLDER']
+        crops_folder = current_app.config.get('CROPS_FOLDER')
+        downloads_folder = current_app.config.get('DOWNLOADS_FOLDER')
+        temp_folder = current_app.config.get('TEMP_FOLDER')
 
         # 确保路径是绝对路径
         import os
@@ -198,7 +245,20 @@ def get_image_proxy() -> ImageProxy:
             upload_folder = os.path.join(base_dir, upload_folder)
             results_folder = os.path.join(base_dir, results_folder)
 
+            if crops_folder:
+                crops_folder = os.path.join(base_dir, crops_folder)
+            if downloads_folder:
+                downloads_folder = os.path.join(base_dir, downloads_folder)
+            if temp_folder:
+                temp_folder = os.path.join(base_dir, temp_folder)
+
         # 创建图片代理实例
-        _image_proxy_instance = ImageProxy(upload_folder, results_folder)
+        _image_proxy_instance = ImageProxy(
+            upload_folder,
+            results_folder,
+            crops_folder,
+            downloads_folder,
+            temp_folder
+        )
 
     return _image_proxy_instance
