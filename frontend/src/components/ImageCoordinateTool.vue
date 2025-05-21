@@ -411,10 +411,10 @@
           <p class="text-lg">{{ resultMessage }}</p>
 
           <!-- 带标注的图像 -->
-          <div v-if="detectImageUrl || annotatedImageUrl" class="mt-4">
+          <div v-if="annotatedImageUrl || detectImageUrl" class="mt-4">
             <h3 class="text-lg font-semibold mb-2">带标注的图像:</h3>
             <img
-              :src="detectImageUrl || annotatedImageUrl"
+              :src="annotatedImageUrl || detectImageUrl"
               class="w-full h-auto rounded-lg border border-base-300"
               style="max-height: 400px; object-fit: contain"
             />
@@ -1365,24 +1365,9 @@ const submitCrop = () => {
         // 设置结果对话框数据
         resultMessage.value = data.message || '切割成功！'
 
-        // 优先使用detect图像URL，如果没有则使用annotated图像URL
-        if (data.detect_image_url) {
+        // 优先使用annotated图像URL，如果没有则使用detect图像URL
+        if (data.annotated_image_url) {
           // 直接构建完整的URL路径
-          let detectUrl = `/api/python${data.detect_image_url}`
-          console.log('检测图像URL详情:', {
-            backendPath: data.detect_image_url,
-            constructedPath: detectUrl,
-            expectedFormat: '/api/python/temp/image_id_detect.jpg',
-          })
-          detectImageUrl.value = detectUrl
-
-          // 预加载图像以检查是否可以访问
-          const img = new Image()
-          img.onload = () => console.log('检测图像加载成功:', detectUrl)
-          img.onerror = (e) => console.error('检测图像加载失败:', detectUrl, e)
-          img.src = detectUrl
-        } else if (data.annotated_image_url) {
-          // 如果没有detect图像，则使用annotated图像
           let annotatedUrl = `/api/python${data.annotated_image_url}`
           console.log('标注图像URL详情:', {
             backendPath: data.annotated_image_url,
@@ -1396,9 +1381,24 @@ const submitCrop = () => {
           img.onload = () => console.log('标注图像加载成功:', annotatedUrl)
           img.onerror = (e) => console.error('标注图像加载失败:', annotatedUrl, e)
           img.src = annotatedUrl
+        } else if (data.detect_image_url) {
+          // 如果没有annotated图像，则使用detect图像
+          let detectUrl = `/api/python${data.detect_image_url}`
+          console.log('检测图像URL详情:', {
+            backendPath: data.detect_image_url,
+            constructedPath: detectUrl,
+            expectedFormat: '/api/python/temp/image_id_detect.jpg',
+          })
+          detectImageUrl.value = detectUrl
+
+          // 预加载图像以检查是否可以访问
+          const img = new Image()
+          img.onload = () => console.log('检测图像加载成功:', detectUrl)
+          img.onerror = (e) => console.error('检测图像加载失败:', detectUrl, e)
+          img.src = detectUrl
         } else {
-          detectImageUrl.value = ''
           annotatedImageUrl.value = ''
+          detectImageUrl.value = ''
           console.warn('后端未返回图像URL')
         }
 
