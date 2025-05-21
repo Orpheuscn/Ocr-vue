@@ -874,43 +874,26 @@ start_python_service() {
   # 确保upload目录存在
   mkdir -p "$PYTHON_SERVICE_DIR/uploads/results"
 
-  echo -e "${BLUE}激活虚拟环境并启动Python服务...${NC}"
+  echo -e "${BLUE}检查start.sh脚本...${NC}"
 
-  # 检查start.sh脚本是否存在并有执行权限
-  if [ -f "./start.sh" ]; then
-    if [ ! -x "./start.sh" ]; then
-      echo -e "${YELLOW}为start.sh添加执行权限...${NC}"
-      chmod +x ./start.sh
-    fi
-
-    # 使用start.sh脚本启动服务
-    echo -e "${BLUE}使用start.sh脚本启动Python服务...${NC}"
-    # 将所有输出重定向到日志文件，包括依赖安装信息
-    ./start.sh > "$PYTHON_LOG" 2>&1 &
-    echo $! > "$PYTHON_PID_FILE"
-  else
-    # 如果start.sh不存在，使用传统方式启动
-    echo -e "${YELLOW}未找到start.sh脚本，使用传统方式启动...${NC}"
-    # 启动Python服务并记录日志
-    (
-      source "$PYTHON_VENV/bin/activate"
-      # 设置环境变量
-      export FLASK_APP=main.py
-      export FLASK_HOST=0.0.0.0
-      export FLASK_PORT=5000
-      export FLASK_DEBUG=false
-      export LOG_API_ENDPOINT=http://localhost:3000/api/logs/collect
-
-      # 安装依赖（输出到日志文件）
-      echo "===== 依赖安装开始: $(date) =====" >> "$PYTHON_LOG"
-      pip install -r requirements.txt >> "$PYTHON_LOG" 2>&1
-      echo "===== 依赖安装完成: $(date) =====" >> "$PYTHON_LOG"
-
-      # 启动服务
-      python main.py > "$PYTHON_LOG" 2>&1 &
-      echo $! > "$PYTHON_PID_FILE"
-    )
+  # 检查start.sh脚本是否存在
+  if [ ! -f "./start.sh" ]; then
+    echo -e "${RED}错误: start.sh脚本不存在，无法启动Python服务${NC}"
+    echo -e "${YELLOW}请确保start.sh脚本位于: $PYTHON_SERVICE_DIR/start.sh${NC}"
+    return 1
   fi
+
+  # 检查start.sh脚本是否有执行权限
+  if [ ! -x "./start.sh" ]; then
+    echo -e "${YELLOW}为start.sh添加执行权限...${NC}"
+    chmod +x ./start.sh
+  fi
+
+  # 使用start.sh脚本启动服务
+  echo -e "${BLUE}使用start.sh脚本启动Python服务...${NC}"
+  # 将所有输出重定向到日志文件，包括依赖安装信息
+  ./start.sh > "$PYTHON_LOG" 2>&1 &
+  echo $! > "$PYTHON_PID_FILE"
 
   # 检查进程是否启动
   if [ ! -f "$PYTHON_PID_FILE" ]; then

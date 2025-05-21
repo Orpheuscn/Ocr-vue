@@ -49,9 +49,23 @@ TEMP_FOLDER = os.path.join(BASE_DIR, 'temp')
 def ensure_dirs() -> None:
     """确保所需目录存在"""
     Path(TEMP_FOLDER).mkdir(parents=True, exist_ok=True)
-    Path(RESULTS_FOLDER).mkdir(parents=True, exist_ok=True)
+    # 不再创建results文件夹，使用temp文件夹代替
+    # Path(RESULTS_FOLDER).mkdir(parents=True, exist_ok=True)
     Path(CROPS_FOLDER).mkdir(parents=True, exist_ok=True)
     Path(DOWNLOADS_FOLDER).mkdir(parents=True, exist_ok=True)
+
+    # 如果results文件夹存在，尝试删除它
+    results_path = Path(RESULTS_FOLDER)
+    if results_path.exists():
+        try:
+            # 如果是空目录，直接删除
+            if results_path.is_dir() and not any(results_path.iterdir()):
+                results_path.rmdir()
+                info(f"已删除空的results目录: {results_path}")
+            else:
+                info(f"results目录存在且不为空，无法自动删除: {results_path}")
+        except Exception as e:
+            logger.warning(f"尝试删除results目录时出错: {e}")
 
 
 class OCRService:

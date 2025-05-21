@@ -60,13 +60,39 @@ def preload_model():
     info(f"使用设备: {_global_device}")
 
     try:
-        # 下载预训练模型
-        model_path = hf_hub_download(
-            repo_id="juliozhao/DocLayout-YOLO-DocStructBench",
-            filename="doclayout_yolo_docstructbench_imgsz1024.pt"
-        )
-        logger.info(f"模型已下载到: {model_path}")
-        info(f"模型已下载到: {model_path}")
+        # 设置本地缓存目录
+        cache_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models')
+        os.makedirs(cache_dir, exist_ok=True)
+        logger.info(f"使用本地缓存目录: {cache_dir}")
+        info(f"使用本地缓存目录: {cache_dir}")
+        
+        # 检查本地缓存中是否已有模型文件
+        local_model_path = os.path.join(cache_dir, "doclayout_yolo_docstructbench_imgsz1024.pt")
+        if os.path.exists(local_model_path) and os.path.getsize(local_model_path) > 0:
+            logger.info(f"使用本地缓存的模型文件: {local_model_path}")
+            info(f"使用本地缓存的模型文件: {local_model_path}")
+            model_path = local_model_path
+        else:
+            # 下载预训练模型到指定缓存目录
+            logger.info("本地缓存中没有找到模型文件，正在从Hugging Face下载...")
+            info("本地缓存中没有找到模型文件，正在从Hugging Face下载...")
+            model_path = hf_hub_download(
+                repo_id="juliozhao/DocLayout-YOLO-DocStructBench",
+                filename="doclayout_yolo_docstructbench_imgsz1024.pt",
+                cache_dir=cache_dir,
+                local_files_only=False,
+                force_download=False
+            )
+            logger.info(f"模型已下载到: {model_path}")
+            info(f"模型已下载到: {model_path}")
+            
+            # 复制到我们自己的缓存目录以便下次使用
+            if model_path != local_model_path and not os.path.exists(local_model_path):
+                import shutil
+                shutil.copy2(model_path, local_model_path)
+                logger.info(f"已将模型复制到本地缓存: {local_model_path}")
+                info(f"已将模型复制到本地缓存: {local_model_path}")
+                model_path = local_model_path
 
         # 加载模型
         _global_model = YOLOv10(model_path)

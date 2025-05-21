@@ -22,38 +22,42 @@ DEFAULT_LOG_API_ENDPOINT = "http://localhost:3000/api/logs/collect"
 
 class LogClient:
     """日志客户端类，用于发送日志到中央日志收集服务"""
-    
+
     def __init__(self, api_endpoint: Optional[str] = None):
         """
         初始化日志客户端
-        
+
         Args:
             api_endpoint: 日志收集API端点，如果为None则使用环境变量或默认值
         """
         self.api_endpoint = api_endpoint or os.environ.get('LOG_API_ENDPOINT', DEFAULT_LOG_API_ENDPOINT)
         self.hostname = socket.gethostname()
-        
+
         # 配置Python日志系统
         self.logger = logging.getLogger('python-service')
-        
+
         # 添加自定义处理器
         handler = LogApiHandler(self)
         self.logger.addHandler(handler)
-    
-    def send_log(self, level: str, message: str, metadata: Optional[Dict[str, Any]] = None, 
+
+    def send_log(self, level: str, message: str, metadata: Optional[Dict[str, Any]] = None,
                 **kwargs) -> bool:
         """
         发送日志到日志收集API
-        
+
         Args:
             level: 日志级别 (info, warn, error, debug)
             message: 日志消息
             metadata: 额外的元数据
             **kwargs: 其他字段
-            
+
         Returns:
             是否发送成功
         """
+        # 如果API端点为空，则不发送日志
+        if not self.api_endpoint:
+            return True
+
         try:
             log_data = {
                 'service': 'python',
@@ -63,12 +67,12 @@ class LogClient:
                 'timestamp': datetime.now().isoformat(),
                 'hostname': self.hostname
             }
-            
+
             # 添加其他可选字段
             for key, value in kwargs.items():
                 if value is not None:
                     log_data[key] = value
-            
+
             # 发送到API
             response = requests.post(self.api_endpoint, json=log_data, timeout=5)
             return response.status_code == 201
@@ -82,24 +86,28 @@ class LogClient:
 
 class LogApiHandler(logging.Handler):
     """自定义日志处理器，将日志发送到API"""
-    
+
     def __init__(self, log_client: LogClient):
         """
         初始化处理器
-        
+
         Args:
             log_client: 日志客户端实例
         """
         super().__init__()
         self.log_client = log_client
-    
+
     def emit(self, record: logging.LogRecord) -> None:
         """
         发送日志记录
-        
+
         Args:
             record: 日志记录
         """
+        # 如果API端点为空，则不发送日志
+        if not self.log_client.api_endpoint:
+            return
+
         try:
             level = record.levelname.lower()
             message = self.format(record)
@@ -110,7 +118,7 @@ class LogApiHandler(logging.Handler):
                 'module': record.module,
                 'pathname': record.pathname
             }
-            
+
             # 如果有异常信息，添加到元数据
             if record.exc_info:
                 metadata['exception'] = {
@@ -118,7 +126,7 @@ class LogApiHandler(logging.Handler):
                     'message': str(record.exc_info[1]),
                     'traceback': traceback.format_exception(*record.exc_info)
                 }
-            
+
             self.log_client.send_log(level, message, metadata)
         except Exception as e:
             # 避免无限递归

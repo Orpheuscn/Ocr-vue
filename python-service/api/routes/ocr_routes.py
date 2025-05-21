@@ -24,7 +24,7 @@ ocr_bp = Blueprint('ocr', __name__)
 def process_ocr():
     """
     处理OCR请求
-    
+
     请求体:
     {
         "image_id": "图片ID",
@@ -40,7 +40,7 @@ def process_ocr():
             ...
         ]
     }
-    
+
     返回:
     {
         "success": true/false,
@@ -56,50 +56,50 @@ def process_ocr():
     try:
         # 获取请求数据
         data = request.json
-        
+
         if not data:
             error("OCR处理请求缺少数据")
             return jsonify({
                 'success': False,
                 'error': '请求缺少数据'
             }), 400
-            
+
         # 提取参数
         image_id = data.get('image_id')
         rectangles = data.get('rectangles', [])
-        
+
         if not image_id:
             error("OCR处理请求缺少image_id")
             return jsonify({
                 'success': False,
                 'error': '缺少image_id参数'
             }), 400
-            
+
         if not rectangles:
             error(f"OCR处理请求缺少矩形信息，image_id: {image_id}")
             return jsonify({
                 'success': False,
                 'error': '缺少矩形信息'
             }), 400
-            
+
         # 记录请求信息
-        info(f"收到OCR处理请求，image_id: {image_id}, 矩形数量: {len(rectangles)}", 
+        info(f"收到OCR处理请求，image_id: {image_id}, 矩形数量: {len(rectangles)}",
              metadata={'rectangles_count': len(rectangles)},
              userId=request.headers.get('X-User-ID'),
              requestPath=request.path,
              ip=request.remote_addr)
-            
+
         # 处理OCR请求
         result = process_ocr_request(image_id, rectangles)
-        
+
         # 记录处理结果
         if result['success']:
             info(f"OCR处理成功，image_id: {image_id}, 结果数量: {len(result.get('results', []))}")
         else:
             error(f"OCR处理失败，image_id: {image_id}, 错误: {result.get('error')}")
-            
+
         return jsonify(result)
-        
+
     except Exception as e:
         error(f"OCR处理请求异常: {str(e)}")
         return jsonify({
@@ -112,7 +112,7 @@ def process_ocr():
 def ocr_status():
     """
     获取OCR服务状态
-    
+
     返回:
     {
         "status": "running",
@@ -122,10 +122,10 @@ def ocr_status():
     """
     try:
         import pytesseract
-        
+
         # 获取Tesseract版本
         tesseract_version = pytesseract.get_tesseract_version()
-        
+
         return jsonify({
             'status': 'running',
             'version': '1.0.0',
@@ -143,12 +143,12 @@ def ocr_status():
 def health_check():
     """
     健康检查端点
-    
+
     返回:
     {
-        "status": "ok"
+        "status": "healthy"
     }
     """
     return jsonify({
-        'status': 'ok'
+        'status': 'healthy'
     })

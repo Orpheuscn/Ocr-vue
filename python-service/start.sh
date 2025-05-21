@@ -115,7 +115,7 @@ export FLASK_APP=${FLASK_APP:-main.py}
 export FLASK_HOST=${FLASK_HOST:-0.0.0.0}
 export FLASK_PORT=${FLASK_PORT:-5000}
 export FLASK_DEBUG=${FLASK_DEBUG:-false}
-export LOG_API_ENDPOINT=${LOG_API_ENDPOINT:-http://localhost:3000/api/logs/collect}
+export LOG_API_ENDPOINT=${LOG_API_ENDPOINT:-""}
 export ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080,https://localhost:8443}
 export WORKERS=${WORKERS:-4}
 

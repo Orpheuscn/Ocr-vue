@@ -83,10 +83,24 @@ def create_app(config: Optional[dict] = None) -> Flask:
 
     # 确保所有目录存在
     Path(app.config['UPLOAD_FOLDER']).mkdir(parents=True, exist_ok=True)
-    Path(app.config['RESULTS_FOLDER']).mkdir(parents=True, exist_ok=True)
+    # 不再创建results文件夹，使用temp文件夹代替
+    # Path(app.config['RESULTS_FOLDER']).mkdir(parents=True, exist_ok=True)
     Path(app.config['CROPS_FOLDER']).mkdir(parents=True, exist_ok=True)
     Path(app.config['DOWNLOADS_FOLDER']).mkdir(parents=True, exist_ok=True)
     Path(app.config['TEMP_FOLDER']).mkdir(parents=True, exist_ok=True)
+
+    # 如果results文件夹存在，尝试删除它
+    results_path = Path(app.config['RESULTS_FOLDER'])
+    if results_path.exists():
+        try:
+            # 如果是空目录，直接删除
+            if results_path.is_dir() and not any(results_path.iterdir()):
+                results_path.rmdir()
+                info(f"已删除空的results目录: {results_path}")
+            else:
+                info(f"results目录存在且不为空，无法自动删除: {results_path}")
+        except Exception as e:
+            error(f"尝试删除results目录时出错: {e}")
 
     # 注册蓝图 - 不使用前缀
     app.register_blueprint(ocr_bp)
@@ -154,14 +168,7 @@ def create_app(config: Optional[dict] = None) -> Flask:
             'status': 'running'
         })
 
-    # 旧的健康检查端点（保留向后兼容性）
-    @app.route('/health')
-    def health_check_legacy():
-        """旧的健康检查端点（保留向后兼容性）"""
-        return jsonify({
-            'status': 'healthy',
-            'timestamp': time.time()
-        })
+    # 旧的健康检查端点已删除，避免路由冲突
 
     # 配置日志轮转
     log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')

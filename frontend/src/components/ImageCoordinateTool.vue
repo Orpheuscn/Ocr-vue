@@ -402,10 +402,10 @@
           <p class="text-lg">{{ resultMessage }}</p>
 
           <!-- 带标注的图像 -->
-          <div v-if="annotatedImageUrl" class="mt-4">
+          <div v-if="detectImageUrl || annotatedImageUrl" class="mt-4">
             <h3 class="text-lg font-semibold mb-2">带标注的图像:</h3>
             <img
-              :src="annotatedImageUrl"
+              :src="detectImageUrl || annotatedImageUrl"
               class="w-full h-auto rounded-lg border border-base-300"
               style="max-height: 400px; object-fit: contain"
             />
@@ -482,6 +482,7 @@ const colorPool = [0, 25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 3
 const showResultDialog = ref(false)
 const resultMessage = ref('')
 const annotatedImageUrl = ref('')
+const detectImageUrl = ref('')
 const zipUrl = ref('')
 
 // 完全重写主题切换功能
@@ -1346,14 +1347,29 @@ const submitCrop = () => {
         // 设置结果对话框数据
         resultMessage.value = data.message || '切割成功！'
 
-        // 如果有标注图像URL，确保路径正确
-        if (data.annotated_image_url) {
+        // 优先使用detect图像URL，如果没有则使用annotated图像URL
+        if (data.detect_image_url) {
           // 直接构建完整的URL路径
+          let detectUrl = `/api/python${data.detect_image_url}`
+          console.log('检测图像URL详情:', {
+            backendPath: data.detect_image_url,
+            constructedPath: detectUrl,
+            expectedFormat: '/api/python/temp/image_id_detect.jpg',
+          })
+          detectImageUrl.value = detectUrl
+
+          // 预加载图像以检查是否可以访问
+          const img = new Image()
+          img.onload = () => console.log('检测图像加载成功:', detectUrl)
+          img.onerror = (e) => console.error('检测图像加载失败:', detectUrl, e)
+          img.src = detectUrl
+        } else if (data.annotated_image_url) {
+          // 如果没有detect图像，则使用annotated图像
           let annotatedUrl = `/api/python${data.annotated_image_url}`
           console.log('标注图像URL详情:', {
             backendPath: data.annotated_image_url,
             constructedPath: annotatedUrl,
-            expectedFormat: '/api/python/results/image_id_annotated.jpg',
+            expectedFormat: '/api/python/temp/image_id_annotated.jpg',
           })
           annotatedImageUrl.value = annotatedUrl
 
@@ -1363,8 +1379,9 @@ const submitCrop = () => {
           img.onerror = (e) => console.error('标注图像加载失败:', annotatedUrl, e)
           img.src = annotatedUrl
         } else {
+          detectImageUrl.value = ''
           annotatedImageUrl.value = ''
-          console.warn('后端未返回标注图像URL')
+          console.warn('后端未返回图像URL')
         }
 
         // 如果有ZIP文件URL，确保路径正确
@@ -1377,7 +1394,7 @@ const submitCrop = () => {
           console.log('ZIP文件URL信息:', {
             backendPath: data.zip_url,
             constructedPath: zipUrlPath,
-            expectedFormat: '/api/python/results/filename.zip',
+            expectedFormat: '/api/python/downloads/filename.zip',
           })
 
           zipUrl.value = zipUrlPath

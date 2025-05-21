@@ -49,10 +49,24 @@ class ImageCropper:
 
         # 确保目录存在
         os.makedirs(self.upload_folder, exist_ok=True)
-        os.makedirs(self.results_folder, exist_ok=True)
+        # 不再创建results文件夹，使用temp文件夹代替
+        # os.makedirs(self.results_folder, exist_ok=True)
         os.makedirs(self.crops_folder, exist_ok=True)
         os.makedirs(self.downloads_folder, exist_ok=True)
         os.makedirs(self.temp_folder, exist_ok=True)
+
+        # 如果results文件夹存在，尝试删除它
+        results_path = Path(self.results_folder)
+        if results_path.exists():
+            try:
+                # 如果是空目录，直接删除
+                if results_path.is_dir() and not any(results_path.iterdir()):
+                    results_path.rmdir()
+                    info(f"已删除空的results目录: {results_path}")
+                else:
+                    info(f"results目录存在且不为空，无法自动删除: {results_path}")
+            except Exception as e:
+                warn(f"尝试删除results目录时出错: {e}")
 
         # 获取文件哈希管理器
         self.file_hash_manager = get_file_hash_manager()
@@ -261,18 +275,18 @@ class ImageCropper:
                 existing_annotated_file = self.file_hash_manager.get_file_by_hash(annotated_hash)
                 info(f"发现重复的标注图片，使用已存在的文件: {existing_annotated_file}")
 
-                # 无论现有文件在哪里，都确保在results文件夹中有一份
-                output_annotated = os.path.join(self.results_folder, f"{image_id}_annotated.jpg")
+                # 无论现有文件在哪里，都确保在temp文件夹中有一份
+                output_annotated = os.path.join(self.temp_folder, f"{image_id}_annotated.jpg")
 
-                # 如果results文件夹中已经有这个文件，直接使用
+                # 如果temp文件夹中已经有这个文件，直接使用
                 if os.path.exists(output_annotated):
-                    info(f"标注图片已存在于results文件夹: {output_annotated}")
+                    info(f"标注图片已存在于temp文件夹: {output_annotated}")
                 else:
-                    # 否则，复制到results文件夹
-                    info(f"复制标注图片到results文件夹: {output_annotated}")
+                    # 否则，复制到temp文件夹
+                    info(f"复制标注图片到temp文件夹: {output_annotated}")
 
-                    # 确保results文件夹存在
-                    os.makedirs(self.results_folder, exist_ok=True)
+                    # 确保temp文件夹存在
+                    os.makedirs(self.temp_folder, exist_ok=True)
 
                     # 复制文件
                     shutil.copy2(existing_annotated_file, output_annotated)
@@ -280,12 +294,12 @@ class ImageCropper:
                     # 添加到哈希数据库
                     self.file_hash_manager.add_file(output_annotated, "annotated")
             else:
-                # 如果是新文件，直接保存到results文件夹
-                output_annotated = os.path.join(self.results_folder, f"{image_id}_annotated.jpg")
-                info(f"保存新的标注图片到results文件夹: {output_annotated}")
+                # 如果是新文件，直接保存到temp文件夹
+                output_annotated = os.path.join(self.temp_folder, f"{image_id}_annotated.jpg")
+                info(f"保存新的标注图片到temp文件夹: {output_annotated}")
 
-                # 确保results文件夹存在
-                os.makedirs(self.results_folder, exist_ok=True)
+                # 确保temp文件夹存在
+                os.makedirs(self.temp_folder, exist_ok=True)
 
                 # 复制文件
                 shutil.copy2(temp_annotated, output_annotated)
@@ -297,20 +311,51 @@ class ImageCropper:
             temp_zip_filename = f"temp_crop_{crop_id}.zip"
             temp_zip_filepath = os.path.join(self.temp_folder, temp_zip_filename)
 
-            # 收集所有裁剪图片的路径
-            crop_files = []
-            for crop_image in cropped_images:
-                crop_files.append(crop_image['path'])
+            # 查找detect后缀的图片
+            detect_filename = f"{image_id}_detect.jpg"
+            detect_filepath = os.path.join(self.temp_folder, detect_filename)
 
-            # 添加标注图片
-            crop_files.append(output_annotated)
+            # 创建JSON文件，包含所有矩形信息
+            json_filename = f"{image_id}_rectangles.json"
+            json_filepath = os.path.join(self.temp_folder, json_filename)
+
+            # 将矩形信息写入JSON文件
+            with open(json_filepath, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'image_id': image_id,
+                    'crop_id': crop_id,
+                    'rectangles': rectangles
+                }, f, ensure_ascii=False, indent=2)
 
             # 创建ZIP文件
             with zipfile.ZipFile(temp_zip_filepath, 'w') as zipf:
-                for file_path in crop_files:
-                    # 使用相对路径作为ZIP中的路径
-                    arcname = os.path.basename(file_path)
-                    zipf.write(file_path, arcname)
+                # 按照class属性分类组织裁剪图片
+                class_groups = {}
+
+                # 将裁剪图片按class分组
+                for crop_image in cropped_images:
+                    class_name = crop_image.get('class', 'unknown')
+                    if class_name not in class_groups:
+                        class_groups[class_name] = []
+                    class_groups[class_name].append(crop_image['path'])
+
+                # 添加分类后的裁剪图片
+                for class_name, paths in class_groups.items():
+                    # 为每个类别创建一个目录
+                    for file_path in paths:
+                        # 使用类别名称作为子目录
+                        arcname = os.path.join(class_name, os.path.basename(file_path))
+                        zipf.write(file_path, arcname)
+
+                # 添加标注图片到根目录
+                zipf.write(output_annotated, os.path.basename(output_annotated))
+
+                # 添加detect图片（如果存在）到根目录
+                if os.path.exists(detect_filepath):
+                    zipf.write(detect_filepath, os.path.basename(detect_filepath))
+
+                # 添加JSON文件到根目录
+                zipf.write(json_filepath, os.path.basename(json_filepath))
 
             # 检查是否已存在相同内容的ZIP文件
             exists, zip_hash = self.file_hash_manager.check_file_exists(temp_zip_filepath)
@@ -350,11 +395,22 @@ class ImageCropper:
             # 前端会在这些路径前添加 /api/python 前缀
             annotated_filename = os.path.basename(output_annotated)
             # 注意：前端会自动添加 /api/python 前缀，所以这里不需要添加
-            annotated_url = f'/results/{annotated_filename}'
+            annotated_url = f'/temp/{annotated_filename}'
             zip_url = f'/downloads/{zip_filename}'
+
+            # 查找detect后缀的图片
+            detect_filename = f"{image_id}_detect.jpg"
+            detect_filepath = os.path.join(self.temp_folder, detect_filename)
+            detect_url = None
+
+            if os.path.exists(detect_filepath):
+                detect_url = f'/temp/{detect_filename}'
+                info(f"检测到detect图像: {detect_filepath}")
 
             # 添加调试日志
             info(f"标注图像URL: {annotated_url}")
+            if detect_url:
+                info(f"检测图像URL: {detect_url}")
             info(f"ZIP文件URL: {zip_url}")
 
             # 构建OCR服务可以访问的路径
@@ -365,6 +421,7 @@ class ImageCropper:
                 'message': f'成功切割 {elements_count} 个元素',
                 'crop_id': crop_id,
                 'annotated_image_url': annotated_url,
+                'detect_image_url': detect_url,  # 添加detect图像URL
                 'cropped_images': cropped_images,
                 'zip_url': zip_url,
                 'ocr_crops_dir': ocr_crops_path

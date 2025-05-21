@@ -111,52 +111,15 @@ def upload_file():
     # 生成唯一文件名防止覆盖
     file_id = str(uuid.uuid4())
 
-    # 先保存到临时文件夹
+    # 直接保存到上传文件夹
     try:
-        temp_filename = f"temp_{file_id}_{file.filename}"
-        temp_filepath = os.path.join(TEMP_FOLDER, temp_filename)
-        file.save(temp_filepath)
-
-        # 获取文件哈希管理器
-        file_hash_manager = get_file_hash_manager()
-
-        # 检查是否已存在相同内容的文件
-        exists, file_hash = file_hash_manager.check_file_exists(temp_filepath)
-    except Exception as e:
-        error(f"保存临时文件或检查文件哈希时出错: {e}")
-        # 如果出错，使用传统方式处理
         filename = f"{file_id}_{file.filename}"
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
-        exists = False
-        file_hash = None
-
-    if exists:
-        # 如果存在相同内容的文件，获取已存在的文件路径
-        existing_file = file_hash_manager.get_file_by_hash(file_hash)
-        info(f"发现重复文件，使用已存在的文件: {existing_file}")
-
-        # 删除临时文件
-        os.remove(temp_filepath)
-
-        # 从现有文件路径中提取image_id
-        existing_filename = os.path.basename(existing_file)
-        if '_' in existing_filename:
-            file_id = existing_filename.split('_')[0]
-            info(f"使用已存在文件的ID: {file_id}")
-
-        # 使用已存在的文件路径
-        filepath = existing_file
-    else:
-        # 如果是新文件，移动到上传文件夹并添加到哈希数据库
-        filename = f"{file_id}_{file.filename}"
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-
-        # 移动文件
-        shutil.move(temp_filepath, filepath)
-
-        # 添加到哈希数据库
-        file_hash_manager.add_file(filepath, "original")
+        info(f"文件已保存到: {filepath}")
+    except Exception as e:
+        error(f"保存文件时出错: {e}")
+        return jsonify({'success': False, 'error': f'保存文件时出错: {e}'}), 500
 
     # 设置预测参数
     imgsz = int(request.form.get('imgsz', 1024))
@@ -176,53 +139,18 @@ def upload_file():
         height = result['height']
         detected_objects = result['detected_objects']
 
-        # 保存检测结果图像到临时文件
+        # 直接保存检测结果图像到结果文件夹
         try:
             annotated_frame = result['annotated_frame']
-            temp_detect_filename = f"temp_{file_id}_detect.jpg"
-            temp_detect_filepath = os.path.join(TEMP_FOLDER, temp_detect_filename)
-            annotated_frame.save(temp_detect_filepath)
-
-            # 获取文件哈希管理器
-            file_hash_manager = get_file_hash_manager()
-
-            # 检查是否已存在相同内容的检测图片
-            exists, detect_hash = file_hash_manager.check_file_exists(temp_detect_filepath)
+            detect_filename = f"{file_id}_detect.jpg"
+            detect_filepath = os.path.join(TEMP_FOLDER, detect_filename)
+            annotated_frame.save(detect_filepath)
+            info(f"检测结果图像已保存到: {detect_filepath}")
         except Exception as e:
-            error(f"保存检测结果图像或检查哈希时出错: {e}")
-            # 如果出错，使用传统方式处理
-            detect_filename = f"{file_id}_detect.jpg"
-            detect_filepath = os.path.join(RESULTS_FOLDER, detect_filename)
-            try:
-                annotated_frame.save(detect_filepath)
-            except Exception as e2:
-                error(f"保存检测结果图像到结果文件夹时出错: {e2}")
-            exists = False
-            detect_hash = None
+            error(f"保存检测结果图像时出错: {e}")
+            return jsonify({'success': False, 'error': f'保存检测结果图像时出错: {e}'}), 500
 
-        if exists:
-            # 如果存在相同内容的检测图片，使用已存在的文件
-            existing_detect_file = file_hash_manager.get_file_by_hash(detect_hash)
-            info(f"发现重复的检测图片，使用已存在的文件: {existing_detect_file}")
-
-            # 删除临时文件
-            os.remove(temp_detect_filepath)
-
-            # 使用已存在的文件路径
-            detect_filepath = existing_detect_file
-            detect_filename = os.path.basename(detect_filepath)
-        else:
-            # 如果是新文件，移动到结果文件夹并添加到哈希数据库
-            detect_filename = f"{file_id}_detect.jpg"
-            detect_filepath = os.path.join(RESULTS_FOLDER, detect_filename)
-
-            # 移动文件
-            shutil.move(temp_detect_filepath, detect_filepath)
-
-            # 添加到哈希数据库
-            file_hash_manager.add_file(detect_filepath, "detect")
-
-        # 保存JSON结果到临时文件
+        # 直接保存JSON结果到结果文件夹
         json_data = {
             "image_id": file_id,
             "image_filename": file.filename,
@@ -233,48 +161,16 @@ def upload_file():
         }
 
         try:
-            temp_json_filename = f"temp_{file_id}_result.json"
-            temp_json_filepath = os.path.join(TEMP_FOLDER, temp_json_filename)
+            json_filename = f"{file_id}_result.json"
+            json_filepath = os.path.join(TEMP_FOLDER, json_filename)
 
-            with open(temp_json_filepath, 'w', encoding='utf-8') as f:
+            with open(json_filepath, 'w', encoding='utf-8') as f:
                 json.dump(json_data, f, ensure_ascii=False, indent=2)
 
-            # 检查是否已存在相同内容的JSON文件
-            exists, json_hash = file_hash_manager.check_file_exists(temp_json_filepath)
+            info(f"JSON结果已保存到: {json_filepath}")
         except Exception as e:
-            error(f"保存JSON结果或检查哈希时出错: {e}")
-            # 如果出错，使用传统方式处理
-            json_filename = f"{file_id}_result.json"
-            json_filepath = os.path.join(RESULTS_FOLDER, json_filename)
-            try:
-                with open(json_filepath, 'w', encoding='utf-8') as f:
-                    json.dump(json_data, f, ensure_ascii=False, indent=2)
-            except Exception as e2:
-                error(f"保存JSON结果到结果文件夹时出错: {e2}")
-            exists = False
-            json_hash = None
-
-        if exists:
-            # 如果存在相同内容的JSON文件，使用已存在的文件
-            existing_json_file = file_hash_manager.get_file_by_hash(json_hash)
-            info(f"发现重复的JSON文件，使用已存在的文件: {existing_json_file}")
-
-            # 删除临时文件
-            os.remove(temp_json_filepath)
-
-            # 使用已存在的文件路径
-            json_filepath = existing_json_file
-            json_filename = os.path.basename(json_filepath)
-        else:
-            # 如果是新文件，移动到结果文件夹并添加到哈希数据库
-            json_filename = f"{file_id}_result.json"
-            json_filepath = os.path.join(RESULTS_FOLDER, json_filename)
-
-            # 移动文件
-            shutil.move(temp_json_filepath, json_filepath)
-
-            # 添加到哈希数据库
-            file_hash_manager.add_file(json_filepath, "json")
+            error(f"保存JSON结果时出错: {e}")
+            return jsonify({'success': False, 'error': f'保存JSON结果时出错: {e}'}), 500
 
         # 转换为前端需要的矩形格式
         frontend_rectangles = []
@@ -303,7 +199,7 @@ def upload_file():
             'message': '检测成功',
             'image_id': file_id,
             'filename': file.filename,
-            'detect_image_url': f'/results/{detect_filename}',
+            'detect_image_url': f'/temp/{detect_filename}',
             'original_image_url': f'/uploads/{filename}',
             'width': width,
             'height': height,
@@ -506,19 +402,19 @@ def uploaded_file_by_id(image_id):
         error(f"找不到ID为{image_id}的图片")
         return jsonify({'success': False, 'error': f'找不到ID为{image_id}的图片'}), 404
 
-@upload_bp.route('/results/<path:filename>')
-def result_file(filename):
-    """提供结果文件"""
-    RESULTS_FOLDER = current_app.config['RESULTS_FOLDER']
+@upload_bp.route('/temp/<path:filename>')
+def temp_file(filename):
+    """提供临时文件"""
+    TEMP_FOLDER = current_app.config['TEMP_FOLDER']
 
     # 记录请求信息
-    info(f"请求结果文件: {filename}, 结果文件夹: {RESULTS_FOLDER}")
+    info(f"请求临时文件: {filename}, 临时文件夹: {TEMP_FOLDER}")
 
     # 检查文件是否存在
-    file_path = os.path.join(RESULTS_FOLDER, filename)
+    file_path = os.path.join(TEMP_FOLDER, filename)
     if not os.path.exists(file_path):
-        error(f"结果文件不存在: {file_path}")
-        return jsonify({'success': False, 'error': f'结果文件不存在: {filename}'}), 404
+        error(f"临时文件不存在: {file_path}")
+        return jsonify({'success': False, 'error': f'临时文件不存在: {filename}'}), 404
 
     # 根据文件扩展名设置正确的MIME类型
     mimetype = None
@@ -532,10 +428,16 @@ def result_file(filename):
         mimetype = 'application/json'
 
     # 记录MIME类型信息
-    info(f"提供结果文件: {filename}, MIME类型: {mimetype}")
+    info(f"提供临时文件: {filename}, MIME类型: {mimetype}")
 
     # 使用明确的MIME类型
-    return send_from_directory(RESULTS_FOLDER, filename, mimetype=mimetype)
+    return send_from_directory(TEMP_FOLDER, filename, mimetype=mimetype)
+
+@upload_bp.route('/results/<path:filename>')
+def result_file(filename):
+    """提供结果文件 (重定向到临时文件)"""
+    # 重定向到临时文件路由
+    return temp_file(filename)
 
 @upload_bp.route('/crops/<path:filename>')
 def crop_file(filename):

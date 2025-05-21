@@ -79,3 +79,6 @@ python-service/crops/
 python-service/data/
 python-service/downloads/
 python-service/logs/
+
+# windsurf rules
+.windsurfrules
