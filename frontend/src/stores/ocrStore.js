@@ -68,16 +68,9 @@ export const useOcrStore = defineStore('ocr', () => {
 
   // --- 状态 (State) ---
 
-  // 导入API密钥服务
-  const getApiKey = () => localStorage.getItem('apiKey') || ''
-  const saveApiKey = (key) => localStorage.setItem('apiKey', key)
-  const clearApiKey = () => localStorage.removeItem('apiKey')
-  const checkApiKey = () => !!localStorage.getItem('apiKey')
-
   // API 相关
-  const apiKey = ref(getApiKey() || '')
-  // 添加使用服务器端API密钥的状态
-  const useServerApiKey = ref(true) // 始终使用服务器API
+  // 使用服务器端API密钥的状态
+  const useServerApiKey = ref(true)
   // 添加服务器API可用状态
   const serverApiAvailable = ref(false)
 
@@ -147,8 +140,8 @@ export const useOcrStore = defineStore('ocr', () => {
 
   // --- 计算属性 (Getters / Computed) ---
   const hasApiKey = computed(() => {
-    // 修改逻辑：如果服务器API可用或者存在本地API密钥，都返回true
-    return serverApiAvailable.value || checkApiKey()
+    // 只检查服务器API是否可用
+    return serverApiAvailable.value
   })
   const canStartOcr = computed(
     () =>
@@ -566,10 +559,10 @@ export const useOcrStore = defineStore('ocr', () => {
         '@/services/secureApiService'
       )
 
-      // 修改OCR处理逻辑
+      // 使用服务器API处理OCR
       let result
-      if (useServerApiKey.value && serverApiAvailable.value) {
-        console.log('尝试使用服务器端OCR处理...')
+      if (serverApiAvailable.value) {
+        console.log('使用服务器端OCR处理...')
         try {
           // 使用安全的服务器端处理
           const simpleResult = await processWithServerApi(
@@ -601,20 +594,10 @@ export const useOcrStore = defineStore('ocr', () => {
           }
         } catch (serverError) {
           console.error('服务器OCR处理失败:', serverError)
-          // 如果有本地API密钥，则尝试使用本地API密钥处理
-          if (checkApiKey()) {
-            console.log('尝试退回到本地API密钥...')
-            result = await processWithClientApi(base64Image, languageHints, direction)
-          } else {
-            throw new Error(`服务器OCR处理失败: ${serverError.message}`)
-          }
+          throw new Error(`服务器OCR处理失败: ${serverError.message}`)
         }
-      } else if (checkApiKey()) {
-        // 使用用户提供的Google Vision API (客户端处理)
-        console.log('使用客户端Google Vision API处理...')
-        result = await processWithClientApi(base64Image, languageHints, direction)
       } else {
-        throw new Error('未找到有效的API密钥，请设置API密钥或启用服务器端API密钥选项')
+        throw new Error('服务器API不可用，请稍后再试')
       }
 
       console.log('OCR处理完成，存储结果...')
@@ -1145,11 +1128,8 @@ export const useOcrStore = defineStore('ocr', () => {
 
       console.log('服务器API状态更新为:', serverApiAvailable.value ? '可用' : '不可用')
 
-      // 如果服务器API不可用，并且存在本地API密钥，则自动切换到本地模式
-      if (!serverApiAvailable.value && apiKey.value) {
-        console.log('服务器API不可用，但存在本地API密钥，切换到本地模式')
-        useServerApiKey.value = false
-      }
+      // 记录服务器API状态
+      console.log('服务器API状态:', serverApiAvailable.value ? '可用' : '不可用')
 
       return serverApiAvailable.value
     } catch (error) {
@@ -1157,13 +1137,7 @@ export const useOcrStore = defineStore('ocr', () => {
       // 设置为不可用
       serverApiAvailable.value = false
 
-      // 如果存在本地API密钥，自动切换到本地模式
-      if (apiKey.value) {
-        console.log('API状态检查失败，但存在本地API密钥，切换到本地模式')
-        useServerApiKey.value = false
-      } else {
-        console.log('API状态检查失败，没有本地API密钥，应用功能可能受限')
-      }
+      console.log('API状态检查失败，应用功能可能受限')
 
       return false
     } finally {
@@ -1188,7 +1162,7 @@ export const useOcrStore = defineStore('ocr', () => {
   // --- 返回 Store 的 state, getters, actions ---
   return {
     // State
-    apiKey,
+
     currentFiles,
     filePreviewUrl,
     isPdfFile,
@@ -1216,12 +1190,10 @@ export const useOcrStore = defineStore('ocr', () => {
     recognitionMode,
     tableSettings,
     currentTableComponent,
-    useServerApiKey,
     serverApiAvailable,
     processedPreviewUrl,
     maskedImageUrl,
     // Getters
-    hasApiKey,
     canStartOcr,
     textStats,
     hasOcrResult,

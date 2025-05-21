@@ -98,28 +98,37 @@
                   <div ref="coordinatesDisplay" class="coordinates-display"></div>
                 </div>
                 <div v-if="!hasImage" class="text-center">
-                  <div class="text-5xl text-base-content/30 mb-4">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-24 w-24 mx-auto"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="1"
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
+                  <!-- 显示加载状态或上传提示 -->
+                  <div v-if="isLoading" class="flex flex-col items-center justify-center">
+                    <span class="loading loading-bars loading-xl text-accent mb-4"></span>
+                    <p class="text-base-content/60 italic">
+                      {{ statusText }}
+                    </p>
                   </div>
-                  <p class="text-base-content/60 italic mb-2">
-                    {{ statusText }}
-                  </p>
-                  <p class="text-base-content/60 text-sm">
-                    点击此区域选择图片，或拖放图片到此处，也可以直接粘贴图片
-                  </p>
+                  <div v-else>
+                    <div class="text-5xl text-base-content/30 mb-4">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-24 w-24 mx-auto"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="1"
+                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </div>
+                    <p class="text-base-content/60 italic mb-2">
+                      {{ statusText }}
+                    </p>
+                    <p class="text-base-content/60 text-sm">
+                      点击此区域选择图片，或拖放图片到此处，也可以直接粘贴图片
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -453,6 +462,7 @@ const crosshairV = ref(null)
 const coordinatesDisplay = ref(null)
 const originalCoordinates = ref(null)
 const hasImage = ref(false)
+const isLoading = ref(false) // 是否正在加载图片
 const statusText = ref('请上传或拖入图片，也可以直接粘贴')
 const isDarkTheme = ref(false)
 const originalImageWidth = ref(0)
@@ -762,6 +772,7 @@ const handleImageUpload = (e) => {
   // 显示加载提示
   statusText.value = '正在上传并分析图片，请稍候...'
   hasImage.value = false
+  isLoading.value = true // 设置加载状态为true
   if (fabricCanvas.value.wrapperEl) {
     fabricCanvas.value.wrapperEl.style.display = 'none'
   }
@@ -799,6 +810,7 @@ const handleImageUpload = (e) => {
 
           // 更新UI状态
           hasImage.value = true
+          isLoading.value = false // 重置加载状态
           if (canvasContainer.value) {
             canvasContainer.value.classList.add('border-accent')
             canvasContainer.value.classList.remove('border-dashed')
@@ -837,12 +849,14 @@ const handleImageUpload = (e) => {
       } else {
         statusText.value = `错误: ${data.error || '上传失败'}`
         hasImage.value = false
+        isLoading.value = false // 重置加载状态
       }
     })
     .catch((error) => {
       console.error('上传错误:', error)
       statusText.value = `错误: ${error.message}`
       hasImage.value = false
+      isLoading.value = false // 重置加载状态
     })
 }
 
@@ -855,6 +869,7 @@ const processImageFile = (file) => {
   // 显示加载提示
   statusText.value = '正在上传并分析图片，请稍候...'
   hasImage.value = false
+  isLoading.value = true // 设置加载状态为true
   if (fabricCanvas.value.wrapperEl) {
     fabricCanvas.value.wrapperEl.style.display = 'none'
   }
@@ -892,6 +907,7 @@ const processImageFile = (file) => {
 
           // 更新UI状态
           hasImage.value = true
+          isLoading.value = false // 重置加载状态
           if (canvasContainer.value) {
             canvasContainer.value.classList.add('border-accent')
             canvasContainer.value.classList.remove('border-dashed')
@@ -930,12 +946,14 @@ const processImageFile = (file) => {
       } else {
         statusText.value = `错误: ${data.error || '上传失败'}`
         hasImage.value = false
+        isLoading.value = false // 重置加载状态
       }
     })
     .catch((error) => {
       console.error('上传错误:', error)
       statusText.value = `错误: ${error.message}`
       hasImage.value = false
+      isLoading.value = false // 重置加载状态
     })
 }
 

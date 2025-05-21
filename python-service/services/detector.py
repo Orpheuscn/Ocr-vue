@@ -107,12 +107,10 @@ def preload_model():
         error(f"预加载DocLayout-YOLO模型时出错: {e}")
         raise
 
-# 在模块导入时预加载模型
-try:
-    preload_model()
-except Exception as e:
-    logger.error(f"模块导入时预加载模型失败: {e}")
-    error(f"模块导入时预加载模型失败: {e}")
+# 不再在模块导入时预加载模型
+# 模型将在第一次实际需要时加载
+logger.info("模型将在第一次使用时加载")
+info("模型将在第一次使用时加载")
 
 class DocumentDetector:
     """文档区域检测器类"""

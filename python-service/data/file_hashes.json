@@ -1631,6 +1631,44 @@
         "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/downloads/crop_d082da56-73b5-4739-8e42-9a19679bbef6_59cdda94-1ffb-4297-83e9-4899dfd6c18b.zip"
       ],
       "created_at": 1747786291.7507434
+    },
+    "1f66a2920bd340d086a252940ac2f4ce": {
+      "category": "crop",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/figure/2dcc1993-d3a4-44aa-9fc6-7d235120f301_figure_0.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/2dcc1993-d3a4-44aa-9fc6-7d235120f301/0.jpg"
+      ],
+      "created_at": 1747806681.068563
+    },
+    "acae44a49cfcb005d0363c0ab7a0ae96": {
+      "category": "crop",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/unknown/2dcc1993-d3a4-44aa-9fc6-7d235120f301_unknown_rect_1.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/2dcc1993-d3a4-44aa-9fc6-7d235120f301/rect_1.jpg"
+      ],
+      "created_at": 1747806681.086591
+    },
+    "05579b848336c4116dc6265f8279e1f6": {
+      "category": "crop",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/unknown/2dcc1993-d3a4-44aa-9fc6-7d235120f301_unknown_rect_2.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/2dcc1993-d3a4-44aa-9fc6-7d235120f301/rect_2.jpg"
+      ],
+      "created_at": 1747806681.102235
+    },
+    "acd00366e5f6737824115f99d8cc8a1d": {
+      "category": "annotated",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/temp/2dcc1993-d3a4-44aa-9fc6-7d235120f301_annotated.jpg"
+      ],
+      "created_at": 1747806681.132969
+    },
+    "f54ea62cd3ca3e7511dfe4c77539eeee": {
+      "category": "zip",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/downloads/crop_2dcc1993-d3a4-44aa-9fc6-7d235120f301_af47731b-1d8b-40f8-a934-da1df2c36188.zip"
+      ],
+      "created_at": 1747806681.149586
     }
   }
 }

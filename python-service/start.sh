@@ -41,52 +41,9 @@ echo -e "${BLUE}激活虚拟环境...${NC}"
 source venv/bin/activate
 
 # 创建日志目录
-DEPS_LOG="$LOG_DIR/python_dependencies.log"
-
-# 安装依赖（输出到日志文件）
-echo -e "${BLUE}检查依赖中，详细信息记录到 $DEPS_LOG ...${NC}"
-echo "===== 依赖安装开始: $(date) =====" > $DEPS_LOG
-
-# 先安装最小依赖集
-if [ -f "requirements-minimal.txt" ]; then
-    echo "安装最小依赖集..." >> $DEPS_LOG
-    pip install -r requirements-minimal.txt >> $DEPS_LOG 2>&1
-fi
-
-# 尝试安装完整依赖，但忽略错误
-echo "尝试安装完整依赖..." >> $DEPS_LOG
-pip install -r requirements.txt >> $DEPS_LOG 2>&1 || echo "部分依赖安装失败，但这不会影响核心功能" >> $DEPS_LOG
-
-# 确保gunicorn已安装
-if ! command -v gunicorn &> /dev/null; then
-    echo "安装gunicorn..." >> $DEPS_LOG
-    pip install gunicorn >> $DEPS_LOG 2>&1
-fi
-
-echo "===== 依赖安装完成: $(date) =====" >> $DEPS_LOG
-echo -e "${GREEN}依赖安装完成，详细日志请查看: $DEPS_LOG${NC}"
-
-# 执行安全检查
-echo -e "${BLUE}执行安全检查...${NC}"
-echo "===== 安全检查开始: $(date) =====" > $SECURITY_LOG
-
-# 检查Python缓存目录并清理
-echo -e "${BLUE}检查Python缓存目录...${NC}"
-find . -type d -name "__pycache__" -exec rm -rf {} +  2>/dev/null || true
-echo "已清理Python缓存目录" >> $SECURITY_LOG
-
-# 检查上传目录中的临时文件
-echo -e "${BLUE}检查上传目录中的临时文件...${NC}"
-find $UPLOADS_DIR -type f -mtime +7 -delete 2>/dev/null || true
-echo "已清理过期的上传文件" >> $SECURITY_LOG
-
-# 检查临时目录中的文件
-echo -e "${BLUE}检查临时目录中的文件...${NC}"
-find $TEMP_DIR -type f -mtime +1 -delete 2>/dev/null || true
-echo "已清理临时目录中的文件" >> $SECURITY_LOG
-
-echo "===== 安全检查完成: $(date) =====" >> $SECURITY_LOG
-echo -e "${GREEN}安全检查完成${NC}"
+echo -e "${GREEN}正在启动服务器...${NC}"
+# 跳过文件清理步骤
+echo -e "${GREEN}跳过文件清理步骤${NC}"
 
 # 加载环境变量文件（如果存在）
 ENV_FILE=".env"
