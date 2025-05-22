@@ -11,8 +11,9 @@
                 ? 'btn-accent'
                 : 'btn-outline',
             ]"
-            :disabled="isProcessing"
+            :disabled="isProcessing || (hasOcrResult && (selectedMode !== 'text' || selectedDirection !== 'horizontal'))"
             @click="selectHorizontal"
+            :title="hasOcrResult && (selectedMode !== 'text' || selectedDirection !== 'horizontal') ? uiTexts.modeLockedHint : ''"
           >
             {{ uiTexts.horizontal }}
           </button>
@@ -23,15 +24,20 @@
                 ? 'btn-accent'
                 : 'btn-outline',
             ]"
-            :disabled="isProcessing"
+            :disabled="isProcessing || (hasOcrResult && (selectedMode !== 'text' || selectedDirection !== 'vertical'))"
             @click="selectVertical"
+            :title="hasOcrResult && (selectedMode !== 'text' || selectedDirection !== 'vertical') ? uiTexts.modeLockedHint : ''"
           >
             {{ uiTexts.vertical }}
           </button>
           <button
-            :class="['btn btn-sm', selectedMode === 'table' ? 'btn-accent' : 'btn-outline']"
-            :disabled="isProcessing"
+            :class="[
+              'btn btn-sm', 
+              selectedMode === 'table' ? 'btn-accent' : 'btn-outline',
+            ]"
+            :disabled="isProcessing || (hasOcrResult && selectedMode !== 'table')"
             @click="selectTable"
+            :title="hasOcrResult && selectedMode !== 'table' ? uiTexts.modeLockedHint : ''"
           >
             {{ uiTexts.table }}
           </button>
@@ -130,6 +136,7 @@ const props = defineProps({
   isProcessing: { type: Boolean, default: false },
   initialDirection: { type: String, default: 'horizontal' }, // From store
   initialMode: { type: String, default: 'text' }, // Added for table mode
+  hasOcrResult: { type: Boolean, default: false }, // 是否已有OCR结果
 })
 
 const emit = defineEmits(['start-ocr'])
@@ -149,6 +156,7 @@ const uiTexts = computed(() => ({
   processing: i18n.t('processing'),
   startOcr: i18n.t('startOcr'),
   autoDetectLanguage: i18n.t('autoDetectLanguage'),
+  modeLockedHint: i18n.t('modeLockedHint') || '识别模式已锁定，请重新上传图片后再切换',
 }))
 
 const selectedDirection = ref(props.initialDirection)
@@ -335,18 +343,30 @@ watch(
 )
 
 const selectHorizontal = () => {
+  // 如果已经有OCR结果且当前不是文本模式，则不允许切换
+  if (props.hasOcrResult && selectedMode.value !== 'text') {
+    return
+  }
   selectedDirection.value = 'horizontal'
   selectedMode.value = 'text'
   store.setRecognitionMode('text')
 }
 
 const selectVertical = () => {
+  // 如果已经有OCR结果且当前不是文本模式，则不允许切换
+  if (props.hasOcrResult && selectedMode.value !== 'text') {
+    return
+  }
   selectedDirection.value = 'vertical'
   selectedMode.value = 'text'
   store.setRecognitionMode('text')
 }
 
 const selectTable = () => {
+  // 如果已经有OCR结果且当前不是表格模式，则不允许切换
+  if (props.hasOcrResult && selectedMode.value !== 'table') {
+    return
+  }
   selectedMode.value = 'table'
   store.setRecognitionMode('table')
 }
