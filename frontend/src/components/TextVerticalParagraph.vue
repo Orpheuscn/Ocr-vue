@@ -7,6 +7,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useOcrStore } from '@/stores/ocrStore';
+import { isNoSpaceLanguage } from '@/services/languageService';
 
 const store = useOcrStore();
 
@@ -62,10 +63,10 @@ const verticalParagraphText = computed(() => {
               const cleanedText = (symbolData.text || '').replace(/[\r\n]/g, '');
               
               // 使用与 TextHorizontalParagraph 相同的逻辑处理 CJK 标点符号
-              const noSpaceLanguages = ['zh', 'ja', 'ko', 'th', 'lo', 'my']; // 不使用空格的语言
+              // 使用 languageService 中的函数判断是否为不使用空格的语言
               let processedText = '';
               
-              if (noSpaceLanguages.includes(store.detectedLanguageCode)) {
+              if (isNoSpaceLanguage(store.detectedLanguageCode)) {
                 // 替换西方标点为 CJK 标点
                 if (cleanedText === ',') {
                   processedText = '，'; // 替换逗号

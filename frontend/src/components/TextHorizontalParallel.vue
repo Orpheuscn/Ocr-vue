@@ -8,6 +8,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useOcrStore } from '@/stores/ocrStore'
+import { isNoSpaceLanguage } from '@/services/languageService'
 
 defineProps({
   isRtl: { type: Boolean, default: false },
@@ -19,8 +20,8 @@ const store = useOcrStore()
 function replaceCJKPunctuationInRawText(text) {
   if (!text || !store.detectedLanguageCode) return text
 
-  const noSpaceLanguages = ['zh', 'ja', 'ko', 'th', 'lo', 'my']
-  if (!noSpaceLanguages.includes(store.detectedLanguageCode)) return text
+  // 使用 languageService 中的函数判断是否为不使用空格的语言
+  if (!isNoSpaceLanguage(store.detectedLanguageCode)) return text
 
   // 使用正则表达式一次性替换所有标点符号
   return text
@@ -75,12 +76,12 @@ function generateFilteredText() {
   }
 
   let text = ''
-  const noSpaceLanguages = ['zh', 'ja', 'ko', 'th', 'lo', 'my'] // 不使用空格的语言
+  // 使用 languageService 中的函数判断是否为不使用空格的语言
 
   symbolsToProcess.forEach((symbol) => {
     if (symbol.isFiltered) {
       // 使用与 TextHorizontalParagraph 相同的逻辑直接处理 CJK 标点符号
-      if (noSpaceLanguages.includes(store.detectedLanguageCode)) {
+      if (isNoSpaceLanguage(store.detectedLanguageCode)) {
         // 替换西方标点为 CJK 标点
         if (symbol.text === ',') {
           text += '，' // 替换逗号

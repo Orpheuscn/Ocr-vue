@@ -4,8 +4,9 @@
   </div>
 </template>
 <script setup>
-import { computed } from 'vue';
-import { useOcrStore } from '@/stores/ocrStore';
+import { computed } from 'vue'
+import { useOcrStore } from '@/stores/ocrStore'
+import { isNoSpaceLanguage } from '@/services/languageService';
 // 导入RTL支持，但要注意垂直排版通常不与RTL混用
 // 如需之后扩展，可以增加垂直RTL的特殊处理逻辑
 const store = useOcrStore();
@@ -35,11 +36,11 @@ const verticalParallelText = computed(() => {
   
   // 创建一个新数组，不修改原始数据
   const processedSymbols = symbolsToProcess.map(symbol => {
-    const noSpaceLanguages = ['zh', 'ja', 'ko', 'th', 'lo', 'my']; // 不使用空格的语言
+    // 使用 languageService 中的函数判断是否为不使用空格的语言
     let processedText = '';
     
     // 使用与 TextHorizontalParagraph 相同的逻辑处理 CJK 标点符号
-    if (noSpaceLanguages.includes(store.detectedLanguageCode)) {
+    if (isNoSpaceLanguage(store.detectedLanguageCode)) {
       // 替换西方标点为 CJK 标点
       if (symbol.text === ',') {
         processedText = '，'; // 替换逗号

@@ -57,6 +57,91 @@ export async function getLanguageName(code, preferredLang = 'zh') {
   }
 }
 
+// ----- 语言特性检测相关函数 -----
+
+/**
+ * 语言类型常量定义
+ */
+const LANGUAGE_TYPES = {
+  // CJK语言（中文、日文、韩文）
+  CJK: ['zh', 'ja', 'ko'],
+  // 东南亚语言（泰文、老挝文、缅甸文）
+  SOUTHEAST_ASIAN: ['th', 'lo', 'my'],
+  // 所有不使用空格的语言
+  get NO_SPACE() {
+    return [...this.CJK, ...this.SOUTHEAST_ASIAN]
+  }
+}
+
+/**
+ * 检测语言类型
+ * @param {string} code 语言代码
+ * @param {string} type 语言类型，可选值：'cjk', 'southeast_asian', 'no_space'
+ * @returns {boolean} 是否属于指定类型
+ */
+export function checkLanguageType(code, type = 'cjk') {
+  if (!code) return false
+  
+  // 处理可能的子标记，如 'zh-CN'
+  const baseCode = code.split('-')[0].toLowerCase()
+  
+  // 根据类型返回对应的检测结果
+  switch (type.toLowerCase()) {
+    case 'cjk':
+      return LANGUAGE_TYPES.CJK.includes(baseCode)
+    case 'southeast_asian':
+      return LANGUAGE_TYPES.SOUTHEAST_ASIAN.includes(baseCode)
+    case 'no_space':
+      return LANGUAGE_TYPES.NO_SPACE.includes(baseCode)
+    default:
+      return false
+  }
+}
+
+/**
+ * 判断语言是否为CJK语言（中文、日文、韩文）
+ * @param {string} code 语言代码
+ * @returns {boolean} 是否为CJK语言
+ */
+export function isCJKLanguage(code) {
+  return checkLanguageType(code, 'cjk')
+}
+
+/**
+ * 判断语言是否为不使用空格的语言（CJK等）
+ * @param {string} code 语言代码
+ * @returns {boolean} 是否为不使用空格的语言
+ */
+export function isNoSpaceLanguage(code) {
+  return checkLanguageType(code, 'no_space')
+}
+
+/**
+ * 获取指定类型的语言列表
+ * @param {string} type 语言类型，可选值：'cjk', 'southeast_asian', 'no_space'
+ * @returns {string[]} 语言代码列表
+ */
+export function getLanguagesByType(type = 'no_space') {
+  switch (type.toLowerCase()) {
+    case 'cjk':
+      return [...LANGUAGE_TYPES.CJK]
+    case 'southeast_asian':
+      return [...LANGUAGE_TYPES.SOUTHEAST_ASIAN]
+    case 'no_space':
+      return [...LANGUAGE_TYPES.NO_SPACE]
+    default:
+      return []
+  }
+}
+
+/**
+ * 获取不使用空格的语言列表
+ * @returns {string[]} 不使用空格的语言代码列表
+ */
+export function getNoSpaceLanguages() {
+  return getLanguagesByType('no_space')
+}
+
 /**
  * 判断语言代码是否为RTL语言（从右到左书写）
  * 同步版本 - 用于初始化或简单逻辑（不发API请求，直接判断）

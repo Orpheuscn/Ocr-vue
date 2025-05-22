@@ -7,6 +7,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useOcrStore } from '@/stores/ocrStore'
+import { isNoSpaceLanguage } from '@/services/languageService'
 
 defineProps({
   isRtl: {
@@ -24,8 +25,8 @@ const paragraphText = computed(() => {
   }
 
   const paragraphsOutput = []
-  const noSpaceLanguages = ['zh', 'ja', 'ko', 'th', 'lo', 'my'] // Languages that don't typically use spaces
-  const isCJKLanguage = noSpaceLanguages.includes(store.detectedLanguageCode)
+  // 使用 languageService 中的函数判断是否为不使用空格的语言
+  const isCJKLanguage = isNoSpaceLanguage(store.detectedLanguageCode)
 
   store.fullTextAnnotation.pages.forEach((page) => {
     page.blocks?.forEach((block) => {
