@@ -52,15 +52,26 @@ export const setRefreshTokenCookie = (res, token) => {
  * @param {Object} res - Express响应对象
  */
 export const clearAuthCookies = (res) => {
-  // 清除访问令牌Cookie
+  // 清除访问令牌Cookie，确保包含所有必要的选项
   res.clearCookie(COOKIE_CONFIG.accessToken.name, {
     path: COOKIE_CONFIG.accessToken.options.path,
+    domain: COOKIE_CONFIG.accessToken.options.domain,
+    httpOnly: COOKIE_CONFIG.accessToken.options.httpOnly,
+    secure: COOKIE_CONFIG.accessToken.options.secure,
+    sameSite: COOKIE_CONFIG.accessToken.options.sameSite
   });
 
-  // 清除刷新令牌Cookie
+  // 清除刷新令牌Cookie，确保包含所有必要的选项
   res.clearCookie(COOKIE_CONFIG.refreshToken.name, {
     path: COOKIE_CONFIG.refreshToken.options.path,
+    domain: COOKIE_CONFIG.refreshToken.options.domain,
+    httpOnly: COOKIE_CONFIG.refreshToken.options.httpOnly,
+    secure: COOKIE_CONFIG.refreshToken.options.secure,
+    sameSite: COOKIE_CONFIG.refreshToken.options.sameSite
   });
+  
+  // 记录Cookie清除操作
+  console.log('认证Cookie已清除');
 };
 
 /**

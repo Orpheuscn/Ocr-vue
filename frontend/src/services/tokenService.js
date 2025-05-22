@@ -66,6 +66,24 @@ export const saveTokens = (token, refreshToken, rememberMe = false) => {
 const tryRestoreSession = () => {
   console.log('尝试恢复会话...')
 
+  // 检查用户是否已登出
+  const userLoggedOut =
+    localStorage.getItem('user_logged_out') === 'true' ||
+    sessionStorage.getItem('user_logged_out') === 'true'
+
+  console.log('会话恢复检查:', {
+    userLoggedOut,
+    hasToken: !!memoryStorage.token,
+    hasRefreshToken: !!memoryStorage.refreshToken,
+    isRefreshing: memoryStorage.refreshing,
+  })
+
+  // 如果用户已登出，不尝试恢复会话
+  if (userLoggedOut) {
+    console.log('用户已登出，不尝试恢复会话')
+    return
+  }
+
   // 如果已经在刷新，不重复操作
   if (memoryStorage.refreshing) {
     console.log('已经在刷新令牌，跳过')
@@ -94,6 +112,15 @@ const tryRestoreSession = () => {
     .then((data) => {
       console.log('刷新令牌响应数据:', data)
       if (data.success && data.data) {
+        // 再次检查用户是否在此期间登出
+        const userLoggedOutNow =
+          localStorage.getItem('user_logged_out') === 'true' ||
+          sessionStorage.getItem('user_logged_out') === 'true'
+        if (userLoggedOutNow) {
+          console.log('用户在令牌刷新过程中登出，不保存新令牌')
+          return false
+        }
+
         const { token, refreshToken, id, email, username, isAdmin, ...rest } = data.data
 
         // 保存新令牌
@@ -127,6 +154,17 @@ const tryRestoreSession = () => {
  */
 export const getToken = () => {
   try {
+    // 检查用户是否已登出
+    const userLoggedOut =
+      localStorage.getItem('user_logged_out') === 'true' ||
+      sessionStorage.getItem('user_logged_out') === 'true'
+
+    // 如果用户已登出，直接返回null
+    if (userLoggedOut) {
+      console.log('用户已登出，不返回令牌')
+      return null
+    }
+
     // 如果令牌不存在，尝试从会话恢复（页面刷新后）
     if (!memoryStorage.token && !memoryStorage.refreshing) {
       // 尝试恢复会话
@@ -146,6 +184,17 @@ export const getToken = () => {
  */
 export const getRefreshToken = () => {
   try {
+    // 检查用户是否已登出
+    const userLoggedOut =
+      localStorage.getItem('user_logged_out') === 'true' ||
+      sessionStorage.getItem('user_logged_out') === 'true'
+
+    // 如果用户已登出，直接返回null
+    if (userLoggedOut) {
+      console.log('用户已登出，不返回刷新令牌')
+      return null
+    }
+
     // 从内存中获取刷新令牌
     // 注意：在实际应用中，刷新令牌应该存储在HttpOnly Cookie中
     // 前端不应该直接访问刷新令牌，而是通过后端API进行刷新
@@ -204,6 +253,8 @@ export const getUserInfo = () => {
  */
 export const clearAuth = () => {
   try {
+    console.log('开始清除所有认证信息')
+
     // 清除内存存储
     memoryStorage.token = null
     memoryStorage.refreshToken = null
@@ -213,6 +264,7 @@ export const clearAuth = () => {
     // 清除sessionStorage中的用户信息
     sessionStorage.removeItem(USER_INFO_KEY)
     sessionStorage.removeItem(TOKEN_REFRESH_STATUS_KEY)
+    sessionStorage.removeItem('token_refreshing')
 
     // 清除localStorage中的用户信息
     localStorage.removeItem(USER_INFO_KEY)
@@ -220,14 +272,35 @@ export const clearAuth = () => {
     // 保留"记住我"设置
 
     // 发送注销请求到后端（确保清除HttpOnly Cookie）
+    console.log('发送注销请求到后端，清除HttpOnly Cookie')
     fetch('/api/users/logout', {
       method: 'POST',
       credentials: 'include',
-    }).catch((error) => {
-      logSecureError('发送注销请求时出错', error)
+      cache: 'no-cache', // 禁用缓存
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+      },
     })
+      .then((response) => {
+        console.log('注销请求响应状态:', response.status, response.statusText)
+        if (!response.ok) {
+          throw new Error('注销请求失败: ' + response.status)
+        }
+        console.log('注销请求成功，HttpOnly Cookie已清除')
+        return response.json()
+      })
+      .then((data) => {
+        console.log('注销响应数据:', data)
+      })
+      .catch((error) => {
+        console.error('发送注销请求时出错:', error)
+        logSecureError('发送注销请求时出错', error)
+      })
   } catch (error) {
     // 使用安全的错误日志
+    console.error('清除认证信息时出错:', error)
     logSecureError('清除认证信息时出错', error)
   }
 }
@@ -296,3 +369,9 @@ export const isTokenExpired = (token) => {
     return true
   }
 }
+
+/**
+ * clearAllStorages是clearAuth的别名
+ * 为了兼容性而添加
+ */
+export const clearAllStorages = clearAuth

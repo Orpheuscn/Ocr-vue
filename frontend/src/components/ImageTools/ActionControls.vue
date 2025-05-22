@@ -61,9 +61,6 @@
             @click.stop="toggleDropdown"
           >
             {{ selectedLanguagesDisplay }}
-            <span class="ml-auto text-xs opacity-70">{{
-              selectedLanguages.length ? `(${selectedLanguages.length})` : ''
-            }}</span>
           </button>
           <div
             v-if="showDropdown"
@@ -310,20 +307,17 @@ const selectedLanguagesDisplay = computed(() => {
     return uiTexts.value.autoDetectLanguage
   }
 
-  // 获取最新的语言列表以确保展示正确的语言名称
-  const currentLangList = getAllLanguages()
+  // 使用已加载的语言列表
+  const currentLangList = availableLanguages.value
 
-  // 显示前2个语言名称，后面用+N表示
+  // 显示所有选中的语言名称，不再使用+N格式
   const selectedNames = selectedLanguages.value.map((code) => {
     const lang = currentLangList.find((l) => l.code === code)
     return lang ? lang.name : code
   })
 
-  if (selectedNames.length <= 2) {
-    return selectedNames.join(', ')
-  }
-
-  return `${selectedNames[0]}, ${selectedNames[1]} +${selectedNames.length - 2}`
+  // 直接返回所有选中的语言名称，用逗号分隔
+  return selectedNames.join(', ')
 })
 
 // Update local state if prop changes (e.g., on reset)
