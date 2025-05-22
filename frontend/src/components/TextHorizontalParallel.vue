@@ -8,7 +8,8 @@
 <script setup>
 import { computed } from 'vue'
 import { useOcrStore } from '@/stores/ocrStore'
-import { isNoSpaceLanguage } from '@/services/languageService'
+import { replaceCJKPunctuation, processSymbolText, shouldSkipSymbol } from '@/utils/textProcessors'
+import { isCJKLanguage } from '@/services/languageService'
 
 defineProps({
   isRtl: { type: Boolean, default: false },
@@ -16,26 +17,11 @@ defineProps({
 
 const store = useOcrStore()
 
-// 添加一个专属的标点替换函数，用于处理原始文本中的标点符号
-function replaceCJKPunctuationInRawText(text) {
-  if (!text || !store.detectedLanguageCode) return text
-
-  // 使用 languageService 中的函数判断是否为不使用空格的语言
-  if (!isNoSpaceLanguage(store.detectedLanguageCode)) return text
-
-  // 使用正则表达式一次性替换所有标点符号
-  return text
-    .replace(/,/g, '，') // 替换逗号
-    .replace(/-/g, '——') // 替换连字符为破折号
-    .replace(/;/g, '；') // 替换分号
-    .replace(/!/g, '！') // 替换感叹号
-    .replace(/\?/g, '？') // 替换问号
-    .replace(/:/g, '：') // 替换冒号
-}
+// 使用工具函数处理文本
 
 // 直接使用OCR返回的原始完整文本
 const fullText = computed(() => {
-  // 从store中获取原始文本
+  // 从库中获取原始文本
   const rawText = store.fullTextAnnotation?.text || ''
 
   // 如果存在文本并且过滤器设置为默认值，应用标点替换后返回完整文本
@@ -43,7 +29,7 @@ const fullText = computed(() => {
 
   if (rawText && isDefaultFilter) {
     // 在返回原始文本前应用标点替换
-    return replaceCJKPunctuationInRawText(rawText)
+    return replaceCJKPunctuation(rawText, store.detectedLanguageCode)
   }
 
   // 否则使用过滤后的文本
@@ -80,32 +66,17 @@ function generateFilteredText() {
 
   symbolsToProcess.forEach((symbol) => {
     if (symbol.isFiltered) {
-      // 使用与 TextHorizontalParagraph 相同的逻辑直接处理 CJK 标点符号
-      if (isNoSpaceLanguage(store.detectedLanguageCode)) {
-        // 替换西方标点为 CJK 标点
-        if (symbol.text === ',') {
-          text += '，' // 替换逗号
-        } else if (symbol.text === '-') {
-          text += '——' // 替换连字符为破折号
-        } else if (symbol.text === ';') {
-          text += '；' // 替换分号
-        } else if (symbol.text === '!') {
-          text += '！' // 替换感叹号
-        } else if (symbol.text === '?') {
-          text += '？' // 替换问号
-        } else if (symbol.text === ':') {
-          text += '：' // 替换冒号
-        } else {
-          text += symbol.text
-        }
-      } else {
-        text += symbol.text
-      }
-
-      const breakType = symbol.detectedBreak
-      if (breakType === 'SPACE' || breakType === 'EOL_SURE_SPACE') {
+      // 使用文本处理工具函数处理符号
+      const { processedText, needSpace } = processSymbolText(symbol.text, store.detectedLanguageCode, symbol.detectedBreak?.type)
+      text += processedText
+      
+      // 如果需要添加空格
+      if (needSpace) {
         text += ' '
-      } else if (breakType === 'LINE_BREAK' || breakType === 'HYPHEN') {
+      }
+      
+      // 处理断行
+      if (symbol.detectedBreak && (symbol.detectedBreak.type === 'LINE_BREAK' || symbol.detectedBreak.type === 'HYPHEN')) {
         text += '\n'
       }
     }

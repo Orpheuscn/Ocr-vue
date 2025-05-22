@@ -7,7 +7,8 @@
 <script setup>
 import { computed } from 'vue'
 import { useOcrStore } from '@/stores/ocrStore'
-import { isNoSpaceLanguage } from '@/services/languageService'
+import { processSymbolText, formatParagraphText, shouldSkipSymbol } from '@/utils/textProcessors'
+import { isCJKLanguage } from '@/services/languageService'
 
 defineProps({
   isRtl: {
@@ -25,8 +26,8 @@ const paragraphText = computed(() => {
   }
 
   const paragraphsOutput = []
-  // 使用 languageService 中的函数判断是否为不使用空格的语言
-  const isCJKLanguage = isNoSpaceLanguage(store.detectedLanguageCode)
+  // 使用工具函数判断是否为 CJK 语言
+  const isCurrentLangCJK = isCJKLanguage(store.detectedLanguageCode)
 
   store.fullTextAnnotation.pages.forEach((page) => {
     page.blocks?.forEach((block) => {
@@ -79,42 +80,19 @@ const paragraphText = computed(() => {
               // Check if the symbol passed the filters
               const breakType = symbolData.detectedBreak
 
-              // 处理非CJK语言中的连字符 (HYPHEN或EOL_SURE_SPACE)
-              // 如果不是CJK语言，且当前符号是连字符，且有HYPHEN或EOL_SURE_SPACE断行，则跳过
-              if (
-                !isCJKLanguage &&
-                symbol.text === '-' &&
-                (breakType === 'HYPHEN' || breakType === 'EOL_SURE_SPACE')
-              ) {
+              // 使用工具函数判断是否应该跳过该符号
+              if (shouldSkipSymbol(symbol.text, store.detectedLanguageCode, breakType)) {
                 // 跳过连字符和空格的添加
                 paragraphHasFilteredContent = true // 仍然标记段落包含过滤内容
               } else {
-                // 正常处理符号文本
-                if (isCJKLanguage) {
-                  // Replace western punctuation with CJK equivalents
-                  if (symbol.text === ',') {
-                    currentParagraphText += '，' // Replace comma
-                  } else if (symbol.text === '-') {
-                    currentParagraphText += '——' // Replace hyphen with em dash
-                  } else if (symbol.text === ';') {
-                    currentParagraphText += '；' // Replace semicolon
-                  } else if (symbol.text === '!') {
-                    currentParagraphText += '！' // Replace exclamation mark
-                  } else if (symbol.text === '?') {
-                    currentParagraphText += '？' // Replace question mark
-                  } else if (symbol.text === ':') {
-                    currentParagraphText += '：' // Replace colon
-                  } else {
-                    currentParagraphText += symbol.text
-                  }
-                } else {
-                  currentParagraphText += symbol.text
-                }
-
+                // 使用工具函数处理符号文本
+                const { processedText, needSpace } = processSymbolText(symbol.text, store.detectedLanguageCode, breakType)
+                currentParagraphText += processedText
+                
                 paragraphHasFilteredContent = true
-
-                // 添加空格（如果需要且语言使用空格）
-                if ((breakType === 'SPACE' || breakType === 'EOL_SURE_SPACE') && !isCJKLanguage) {
+                
+                // 如果需要添加空格
+                if (needSpace) {
                   currentParagraphText += ' '
                 }
               }
@@ -144,8 +122,8 @@ const paragraphText = computed(() => {
   // Sort paragraphs by their vertical position (top to bottom)
   paragraphsOutput.sort((a, b) => a.y - b.y)
 
-  // Join paragraphs with double newlines
-  return paragraphsOutput.map((p) => p.text).join('\n\n')
+  // 使用工具函数格式化段落文本
+  return formatParagraphText(paragraphsOutput, store.detectedLanguageCode)
 })
 </script>
 
