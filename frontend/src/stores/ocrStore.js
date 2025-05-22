@@ -519,13 +519,20 @@ export const useOcrStore = defineStore('ocr', () => {
       let userId = null
       try {
         const userStr = localStorage.getItem('user')
+        console.log('localStorage中的user数据:', userStr)
         if (userStr) {
           const user = JSON.parse(userStr)
+          console.log('解析后的用户数据:', user)
           userId = user.id
           console.log('当前用户ID:', userId)
+          if (!userId) {
+            console.warn('用户数据中没有ID字段:', user)
+          }
+        } else {
+          console.warn('localStorage中没有user数据')
         }
       } catch (userError) {
-        console.warn('获取用户信息失败:', userError)
+        console.error('获取用户信息失败:', userError)
       }
 
       let base64Image = ''

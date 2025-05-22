@@ -186,17 +186,17 @@ import { computed, ref, watch, onMounted } from 'vue'
 import { useOcrStore } from '@/stores/ocrStore'
 import { useI18nStore } from '@/stores/i18nStore'
 import { shouldUseRtlDirection, getLanguageName } from '@/services/languageService'
-import { 
-  replaceCJKPunctuation, 
-  processSymbolText, 
-  formatParagraphText, 
-  shouldSkipSymbol, 
-  cleanLineBreaks, 
+import {
+  replaceCJKPunctuation,
+  processSymbolText,
+  formatParagraphText,
+  shouldSkipSymbol,
+  cleanLineBreaks,
   cleanTextSpaces,
   processHorizontalParallelText,
   processHorizontalParagraphText,
   processVerticalParallelText,
-  processVerticalParagraphText
+  processVerticalParagraphText,
 } from '@/utils/textProcessors'
 
 // Import the four specialized text components
@@ -419,9 +419,9 @@ const formatTextAsVerticalParallel = (symbols) => {
   if (!symbols || symbols.length === 0) {
     return ''
   }
-  
+
   // 使用工具函数处理垂直并行文本
-  return processVerticalParallelText(symbols, store.detectedLanguageCode, false);
+  return processVerticalParallelText(symbols, store.detectedLanguageCode, false)
 }
 
 // 垂直段落模式的格式化函数 - 使用工具函数
@@ -431,14 +431,22 @@ const formatTextAsVerticalParagraph = () => {
   }
 
   // 使用工具函数处理垂直段落文本
-  return processVerticalParagraphText(store.fullTextAnnotation, store.filteredSymbolsData, store.detectedLanguageCode);
+  return processVerticalParagraphText(
+    store.fullTextAnnotation,
+    store.filteredSymbolsData,
+    store.detectedLanguageCode,
+  )
 }
 
 // 水平段落模式的格式化函数 - 复制自TextHorizontalParagraph组件的逻辑
 // 水平段落模式的格式化函数 - 使用工具函数
 const formatTextAsHorizontalParagraph = () => {
   // 使用工具函数处理水平段落文本
-  return processHorizontalParagraphText(store.fullTextAnnotation, store.filteredSymbolsData, store.detectedLanguageCode)
+  return processHorizontalParagraphText(
+    store.fullTextAnnotation,
+    store.filteredSymbolsData,
+    store.detectedLanguageCode,
+  )
 }
 
 // 水平并行模式的格式化函数 - 使用工具函数
@@ -520,6 +528,9 @@ const copyText = async (type = '') => {
 
     // 显示成功提示
     store._showNotification(uiTexts.value.textCopied, 'success')
+
+    // 保存OCR结果到本地存储
+    saveOcrResult(textToCopy)
   } catch (e) {
     copyStatus.value = 'error'
     console.error('复制失败:', e)
@@ -531,6 +542,29 @@ const copyText = async (type = '') => {
     setTimeout(() => {
       copyStatus.value = 'idle'
     }, 3000)
+  }
+}
+
+// 保存OCR结果到本地存储
+const saveOcrResult = (text) => {
+  try {
+    // 动态导入保存结果服务
+    import('@/services/savedResultsService').then(({ saveResult }) => {
+      // 创建结果对象
+      const result = {
+        text,
+        language: store.detectedLanguageCode,
+        languageName: languageName.value,
+      }
+
+      // 保存结果
+      const success = saveResult(result)
+      if (success) {
+        console.log('OCR结果已保存')
+      }
+    })
+  } catch (error) {
+    console.error('保存OCR结果时出错:', error)
   }
 }
 

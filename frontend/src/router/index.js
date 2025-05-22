@@ -3,6 +3,7 @@ import { validateRouteAccess } from '@/services/routeSecurityService'
 import HomePage from '@/views/HomePage.vue'
 import LoginPage from '@/views/LoginPage.vue'
 import RegisterPage from '@/views/RegisterPage.vue'
+import SavedResultsPage from '@/views/SavedResultsPage.vue'
 import DocDetection from '@/components/doc-detection/DocDetection.vue'
 import ImageRecognitionTool from '@/components/recognition/ImageRecognitionTool.vue'
 
@@ -55,6 +56,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/saved-results',
+    name: 'SavedResults',
+    component: SavedResultsPage,
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/',
   },
@@ -84,7 +91,7 @@ const createSessionRestorePromise = () => {
         console.log('路由守卫: 会话恢复等待完成')
         isRestoringSession = false
         resolve()
-      }, 1000)
+      }, 2000)
     })
   }
   return sessionRestorePromise

@@ -2,6 +2,7 @@
 import express from "express";
 import * as ocrController from "../controllers/ocrController.js";
 import multer from "multer";
+import { authenticateJwt } from "../middleware/authMiddleware.js";
 
 // 配置multer用于文件上传处理
 const storage = multer.memoryStorage();
@@ -132,7 +133,8 @@ router.get("/apiStatus", (req, res) => {
  *       500:
  *         description: 服务器错误
  */
-router.post("/process", upload.single("file"), ocrController.processSimple);
+// 添加认证中间件，确保只有登录用户才能使用OCR功能并保存记录
+router.post("/process", authenticateJwt, upload.single("file"), ocrController.processSimple);
 
 /**
  * @swagger

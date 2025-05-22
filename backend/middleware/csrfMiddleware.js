@@ -104,7 +104,7 @@ export const csrfProtection = (req, res, next) => {
   }
 
   // 获取请求中的CSRF令牌
-  const token = req.headers["x-csrf-token"] || req.body._csrf;
+  const token = req.headers["x-csrf-token"] || (req.body ? req.body._csrf : undefined);
 
   // 如果没有令牌，拒绝请求
   if (!token) {

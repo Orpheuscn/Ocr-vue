@@ -28,6 +28,13 @@ export const validateRouteAccess = async (to, from) => {
   try {
     console.log('验证路由访问权限:', { to: to.fullPath, from: from.fullPath })
 
+    // 检查用户是否已登出
+    const userLoggedOut =
+      localStorage.getItem('user_logged_out') === 'true' ||
+      sessionStorage.getItem('user_logged_out') === 'true'
+
+    console.log('用户登出状态:', { userLoggedOut })
+
     // 检查路由是否需要认证
     const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
     const requiresAdmin = to.matched.some((record) => record.meta.requiresAdmin)
@@ -35,57 +42,79 @@ export const validateRouteAccess = async (to, from) => {
 
     console.log('路由要求:', { requiresAuth, requiresAdmin, guestOnly })
 
-    // 当前登录状态
-    let isLoggedIn = isAuthenticated()
-    let userIsAdmin = isAdmin()
+    // 如果用户已登出，强制认为未登录
+    let isLoggedIn = userLoggedOut ? false : isAuthenticated()
+    let userIsAdmin = userLoggedOut ? false : isAdmin()
 
-    console.log('当前登录状态:', { isLoggedIn, userIsAdmin })
+    console.log('当前登录状态:', { isLoggedIn, userIsAdmin, userLoggedOut })
 
     // 如果是首次导航到需要认证的页面，给予更多时间让会话恢复
-    if (from.name === undefined && requiresAuth && !isLoggedIn) {
+    if (from.name === undefined && requiresAuth && !isLoggedIn && !userLoggedOut) {
       console.log('首次导航到需要认证的页面，等待额外时间让会话恢复')
 
       // 等待一小段时间，让会话恢复有更多机会完成
       await new Promise((resolve) => setTimeout(resolve, 500))
 
-      // 重新检查登录状态
-      isLoggedIn = isAuthenticated()
-      userIsAdmin = isAdmin()
+      // 再次检查用户是否在此期间登出
+      const userLoggedOutNow =
+        localStorage.getItem('user_logged_out') === 'true' ||
+        sessionStorage.getItem('user_logged_out') === 'true'
 
-      console.log('等待后的登录状态:', { isLoggedIn, userIsAdmin })
+      // 只有在用户未登出的情况下才重新检查登录状态
+      if (!userLoggedOutNow) {
+        // 重新检查登录状态
+        isLoggedIn = isAuthenticated()
+        userIsAdmin = isAdmin()
+        console.log('等待后的登录状态:', { isLoggedIn, userIsAdmin })
+      } else {
+        console.log('用户在等待期间登出，不重新检查登录状态')
+        isLoggedIn = false
+        userIsAdmin = false
+      }
     }
 
     // 如果需要认证，验证令牌有效性
     if (requiresAuth && isLoggedIn) {
       try {
-        console.log('验证令牌有效性并刷新用户信息')
+        // 再次检查用户是否已登出
+        const userLoggedOutNow =
+          localStorage.getItem('user_logged_out') === 'true' ||
+          sessionStorage.getItem('user_logged_out') === 'true'
 
-        // 验证令牌有效性并刷新用户信息
-        const userInfo = await refreshUserInfo()
+        if (userLoggedOutNow) {
+          console.log('用户已登出，跳过令牌验证')
+          isLoggedIn = false
+          userIsAdmin = false
+        } else {
+          console.log('验证令牌有效性并刷新用户信息')
 
-        // 如果无法获取用户信息，令牌可能已失效
-        if (!userInfo) {
-          console.warn('无法获取用户信息，令牌可能已失效')
+          // 验证令牌有效性并刷新用户信息
+          const userInfo = await refreshUserInfo()
 
-          // 清除无效的认证信息
-          logout()
+          // 如果无法获取用户信息，令牌可能已失效
+          if (!userInfo) {
+            console.warn('无法获取用户信息，令牌可能已失效')
 
-          // 显示通知
-          if (ocrStore) {
-            ocrStore._showNotification(i18n.t('sessionExpired'), 'error')
+            // 清除无效的认证信息
+            logout()
+
+            // 显示通知
+            if (ocrStore) {
+              ocrStore._showNotification(i18n.t('sessionExpired'), 'error')
+            }
+
+            // 重定向到登录页面，并保存原始目标路由
+            return {
+              name: 'Login',
+              query: { redirect: to.fullPath },
+            }
           }
 
-          // 重定向到登录页面，并保存原始目标路由
-          return {
-            name: 'Login',
-            query: { redirect: to.fullPath },
-          }
+          console.log('用户信息刷新成功:', userInfo)
+
+          // 更新管理员状态
+          userIsAdmin = userInfo.isAdmin === true
         }
-
-        console.log('用户信息刷新成功:', userInfo)
-
-        // 更新管理员状态
-        userIsAdmin = userInfo.isAdmin === true
       } catch (error) {
         console.error('验证用户权限时出错:', error)
 

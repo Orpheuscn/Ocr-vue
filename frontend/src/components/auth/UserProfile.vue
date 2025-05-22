@@ -95,6 +95,10 @@
             </div>
 
             <div v-else>
+              <!-- 清除缓存按钮 -->
+              <div class="mb-6">
+                <ClearCacheButton />
+              </div>
               <!-- 用户信息展示 -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="flex items-center gap-4">
@@ -259,6 +263,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import ClearCacheButton from './ClearCacheButton.vue'
 import {
   getCurrentUser,
   logout,
@@ -268,6 +273,9 @@ import {
 } from '@/services/authService'
 
 export default {
+  components: {
+    ClearCacheButton
+  },
   setup() {
     const router = useRouter()
     const userData = ref({
