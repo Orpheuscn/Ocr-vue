@@ -3,7 +3,7 @@ import { validateRouteAccess } from '@/services/routeSecurityService'
 import HomePage from '@/views/HomePage.vue'
 import LoginPage from '@/views/LoginPage.vue'
 import RegisterPage from '@/views/RegisterPage.vue'
-import ImageCoordinateTool from '@/components/ImageCoordinateTool.vue'
+import DocDetection from '@/components/doc-detection/DocDetection.vue'
 import ImageRecognitionTool from '@/components/recognition/ImageRecognitionTool.vue'
 
 const routes = [
@@ -29,11 +29,11 @@ const routes = [
   },
   // 管理功能已移除，改为使用后端API进行管理
   // 管理相关功能应通过后端API实现，前端不再提供管理界面
-  // 图片坐标映射工具 - 直接使用组件
+  // 文档检测工具 - 直接使用组件
   {
     path: '/doc-detection',
     name: 'DocDetection',
-    component: ImageCoordinateTool,
+    component: DocDetection,
     meta: { requiresAuth: true },
   },
   // 图像识别工具
