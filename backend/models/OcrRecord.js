@@ -135,6 +135,7 @@ const ocrRecordSchema = new mongoose.Schema(
 );
 
 // 创建mongoose模型
-const OcrRecord = mongoose.model("OcrRecord", ocrRecordSchema);
+// 明确指定集合名称为'ocrrecords'，确保所有记录存储在同一个集合中
+const OcrRecord = mongoose.model("OcrRecord", ocrRecordSchema, "ocrrecords");
 
 export default OcrRecord;

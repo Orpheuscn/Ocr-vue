@@ -2,6 +2,7 @@
 import * as ocrService from "../services/ocrService.js";
 import { fileTypeFromBuffer } from "file-type";
 import * as ocrRecordService from "../services/ocrRecordService.js";
+import mongoose from "mongoose";
 
 // 简化版OCR处理 - 使用服务器端API密钥
 export const processSimple = async (req, res) => {
@@ -39,8 +40,19 @@ export const processSimple = async (req, res) => {
       languageHints = [],
       recognitionDirection = "horizontal",
       recognitionMode = "text",
-      userId,
     } = req.body;
+    
+    // 从认证中间件提供的req.user中获取用户ID
+    // 这样可以确保用户ID是经过认证的有效ID
+    const userId = req.user ? (req.user.id || req.user._id) : null;
+    
+    console.log('当前请求的用户认证信息:', {
+      hasUser: !!req.user,
+      userId: userId,
+      userObject: req.user ? JSON.stringify(req.user) : '无用户对象',
+      authHeader: req.headers.authorization ? '存在' : '不存在',
+      cookies: req.cookies ? Object.keys(req.cookies).join(', ') : '无cookies'
+    });
 
     // 检测文件类型
     const fileBuffer = req.file.buffer;
@@ -75,10 +87,13 @@ export const processSimple = async (req, res) => {
       // 如果提供了用户ID，则创建OCR记录
       if (userId) {
         try {
+          console.log(`尝试为用户 ${userId} 创建OCR记录，用户ID类型: ${typeof userId}`);
+          
           // 确保文件名使用正确的UTF-8编码
           const originalFilename = req.file.originalname || "未命名图片";
-
-          await ocrRecordService.createOcrRecord({
+          
+          // 准备记录数据并记录日志
+          const recordData = {
             userId,
             filename: originalFilename,
             fileType: "image",
@@ -88,12 +103,31 @@ export const processSimple = async (req, res) => {
             processingTime,
             textLength,
             status: "success",
-          });
-          console.log(`为用户 ${userId} 创建了OCR记录`);
+          };
+          
+          console.log('准备创建OCR记录，数据:', JSON.stringify(recordData));
+
+          // 创建OCR记录
+          const newRecord = await ocrRecordService.createOcrRecord(recordData);
+          
+          console.log(`成功为用户 ${userId} 创建了OCR记录，记录ID: ${newRecord ? newRecord._id : '未返回ID'}`);
         } catch (recordError) {
-          console.error("创建OCR记录失败:", recordError);
+          console.error("创建OCR记录失败:", {
+            error: recordError.message,
+            stack: recordError.stack,
+            userId,
+            filename: req.file.originalname,
+            recognitionMode,
+            language: result.detectedLanguageCode || "auto"
+          });
           // 不中断主流程，继续返回OCR结果
         }
+      } else {
+        console.warn("未能创建OCR记录: 用户ID不存在", {
+          hasUser: !!req.user,
+          reqUserId: req.user ? req.user.id : null,
+          authHeader: req.headers.authorization ? '存在' : '不存在'
+        });
       }
 
       // 构建响应数据
@@ -216,8 +250,9 @@ export const processFile = async (req, res) => {
 
     const processingTime = Date.now() - startTime;
 
-    // 如果提供了用户ID，则创建OCR记录
+    // 如果用户已经登录（有效的req.user），则创建OCR记录
     if (userId) {
+      console.log(`尝试为用户 ${userId} 创建OCR记录...`);
       try {
         const fileType = mimeType === "application/pdf" ? "pdf" : "image";
         const textLength = result.fullTextAnnotation?.text?.length || 0;
@@ -226,8 +261,13 @@ export const processFile = async (req, res) => {
         const originalFilename =
           req.file.originalname || `未命名${fileType === "pdf" ? "PDF" : "图片"}`;
 
-        await ocrRecordService.createOcrRecord({
-          userId,
+        console.log(`准备OCR记录数据: 用户ID=${userId}, 文件名=${originalFilename}, 文件类型=${fileType}, 页数=${filePageCount}`);
+
+        // 确保用户ID是字符串类型
+        const userIdStr = userId.toString();
+        
+        const recordData = {
+          userId: userIdStr,  // 使用字符串类型的用户ID
           filename: originalFilename,
           fileType,
           pageCount: filePageCount,
@@ -236,12 +276,38 @@ export const processFile = async (req, res) => {
           processingTime,
           textLength,
           status: "success",
-        });
-        console.log(`为用户 ${userId} 创建了OCR记录: ${fileType}, ${filePageCount}页`);
+          // 添加提取的文本内容，最多保存前1000个字符
+          extractedText: (result.fullTextAnnotation?.text || "").substring(0, 1000),
+          createdAt: new Date(),
+        };
+
+        console.log(`调用ocrRecordService.createOcrRecord创建OCR记录...`);
+        console.log(`完整的记录数据:`, JSON.stringify(recordData));
+        
+        try {
+          const newRecord = await ocrRecordService.createOcrRecord(recordData);
+          console.log(`OCR记录创建成功: ID=${newRecord._id || newRecord.id}, 用户ID=${userIdStr}, 文件类型=${fileType}, 页数=${filePageCount}`);
+        } catch (dbError) {
+          console.error(`数据库操作失败: ${dbError.message}`);
+          console.error(`数据库错误详情:`, dbError);
+          
+          // 尝试直接使用MongoDB原生操作插入记录
+          try {
+            const db = mongoose.connection.db;
+            const collection = db.collection('ocrrecords');
+            const insertResult = await collection.insertOne(recordData);
+            console.log(`使用原生操作插入成功: ${insertResult.insertedId}`);
+          } catch (nativeError) {
+            console.error(`原生操作也失败: ${nativeError.message}`);
+          }
+        }
       } catch (recordError) {
-        console.error("创建OCR记录失败:", recordError);
+        console.error(`创建OCR记录失败 (用户ID: ${userId}): 错误类型: ${recordError.name}, 错误消息: ${recordError.message}`);
+        console.error(`错误详情:`, recordError);
         // 不中断主流程，继续返回OCR结果
       }
+    } else {
+      console.log(`未提供用户ID（用户可能未登录），不创建OCR记录`);
     }
 
     res.json({

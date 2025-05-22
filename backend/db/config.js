@@ -97,19 +97,40 @@ const connectDB = async () => {
 
 // 提供一个函数来检查数据库连接状态
 const checkConnection = async () => {
-  if (!isConnected) {
-    return false;
-  }
-
   try {
     // 检查MongoDB连接状态
-    return mongoose.connection.readyState === 1; // 1 = connected
+    const connectionState = mongoose.connection.readyState;
+    
+    // 记录当前连接状态
+    console.log(`当前数据库连接状态: ${connectionState} (${getConnectionStateName(connectionState)})`);
+    
+    // 如果连接不正常，尝试重连
+    if (connectionState !== 1) { // 1 = connected
+      isConnected = false;
+      console.log('数据库连接不正常，尝试重新连接...');
+      await connectDB();
+      return true; // 如果重连成功，connectDB会设置isConnected为true
+    }
+    
+    isConnected = true;
+    return true;
   } catch (error) {
     console.error("数据库连接检查失败:", error.message);
     isConnected = false;
     return false;
   }
 };
+
+// 获取连接状态名称
+function getConnectionStateName(state) {
+  switch(state) {
+    case 0: return '已断开';
+    case 1: return '已连接';
+    case 2: return '正在连接';
+    case 3: return '正在断开连接';
+    default: return '未知状态';
+  }
+}
 
 export { mongoose, checkConnection, isConnected };
 export default connectDB;
