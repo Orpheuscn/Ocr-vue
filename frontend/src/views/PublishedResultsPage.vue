@@ -86,7 +86,11 @@
             <div class="card-body p-4">
               <!-- 语言标签和日期 -->
               <div class="flex justify-between items-center mb-2">
-                <div class="badge badge-accent">{{ result.languageName || '未知语言' }}</div>
+                <div class="flex gap-1">
+                  <div class="badge badge-accent">{{ result.languageName || '未知语言' }}</div>
+                  <!-- 显示"我的"标签，如果是当前用户发布的内容 -->
+                  <div v-if="isOwnResult(result)" class="badge badge-primary">我的</div>
+                </div>
                 <div class="text-xs opacity-70">{{ formatDate(result.timestamp) }}</div>
               </div>
 
@@ -132,7 +136,7 @@
       <div class="modal-box max-w-3xl">
         <div class="flex justify-between items-center mb-4">
           <h3 class="font-bold text-lg">OCR结果详情</h3>
-          <div class="flex gap-2">
+          <div class="flex gap-2 items-center">
             <button @click="copySelectedResult" class="btn btn-sm btn-outline gap-1">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -150,6 +154,28 @@
               </svg>
               复制
             </button>
+            <!-- 删除按钮，仅对自己发布的内容显示 -->
+            <button
+              v-if="isOwnResult(selectedResult)"
+              @click="confirmDelete"
+              class="btn btn-sm btn-error gap-1"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+              删除
+            </button>
             <div v-if="selectedResult?.id" class="text-xs opacity-70">
               ID: {{ selectedResult.id }}
             </div>
@@ -158,7 +184,15 @@
 
         <div v-if="selectedResult" class="mb-4">
           <div class="flex justify-between items-center mb-2 text-sm">
-            <div class="badge badge-accent">{{ selectedResult.languageName || '未知语言' }}</div>
+            <div class="flex gap-1 items-center">
+              <div class="badge badge-accent">{{ selectedResult.languageName || '未知语言' }}</div>
+              <!-- 显示"我的"标签，如果是当前用户发布的内容 -->
+              <div v-if="isOwnResult(selectedResult)" class="badge badge-primary">我的</div>
+              <!-- 显示发布者信息 -->
+              <div class="text-xs opacity-70 ml-2">
+                发布者: {{ selectedResult.username || '未知用户' }}
+              </div>
+            </div>
             <div class="opacity-70">{{ formatDate(selectedResult.timestamp, true) }}</div>
           </div>
 
@@ -178,29 +212,68 @@
       </div>
     </div>
 
+    <!-- 确认删除模态框 -->
+    <div class="modal" :class="{ 'modal-open': showDeleteConfirm }">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg">确认删除</h3>
+        <p class="py-4">您确定要删除这个已发布的OCR结果吗？此操作无法撤销。</p>
+        <div class="modal-action">
+          <button @click="deleteResult" class="btn btn-error" :disabled="isDeleting">
+            <span v-if="isDeleting">
+              <span class="loading loading-spinner loading-xs"></span>
+              删除中...
+            </span>
+            <span v-else>删除</span>
+          </button>
+          <button @click="showDeleteConfirm = false" class="btn">取消</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 页脚 -->
     <TheFooter />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import TheHeader from '@/components/common/TheHeader.vue'
 import TheFooter from '@/components/common/TheFooter.vue'
 import { useOcrStore } from '@/stores/ocrStore'
+import { isAuthenticated, getCurrentUser } from '@/services/authService'
+import { deleteResult as deleteResultService } from '@/services/savedResultsService'
 
 const store = useOcrStore()
 const publishedResults = ref([])
 const selectedResult = ref(null)
 const isLoading = ref(false)
+const isDeleting = ref(false)
 const searchQuery = ref('')
 const currentPage = ref(1)
 const totalPages = ref(1)
 const pageSize = 12 // 每页显示的结果数量
+const showDeleteConfirm = ref(false)
+const currentUser = ref(getCurrentUser())
 
 // 加载已发布的OCR结果
 onMounted(() => {
   loadPublishedResults()
+
+  // 添加事件监听器，当用户登录状态变化时更新currentUser
+  window.addEventListener('storage', handleStorageChange)
+})
+
+// 处理localStorage变化，更新currentUser
+const handleStorageChange = (event) => {
+  if (event.key === 'user_info' || event.key === 'user_logged_out') {
+    console.log('用户登录状态变化，更新currentUser')
+    currentUser.value = getCurrentUser()
+  }
+}
+
+// 组件卸载时清理事件监听器
+onUnmounted(() => {
+  window.removeEventListener('storage', handleStorageChange)
 })
 
 // 加载已发布的OCR结果
@@ -320,6 +393,52 @@ const getTextDirection = (language) => {
   // 阿拉伯语、希伯来语等从右到左的语言
   const rtlLanguages = ['ar', 'he', 'ur', 'fa']
   return rtlLanguages.includes(language) ? 'rtl' : 'ltr'
+}
+
+// 检查结果是否属于当前用户
+const isOwnResult = (result) => {
+  if (!result || !isAuthenticated() || !currentUser.value) return false
+
+  // 检查结果的userId是否与当前用户的id匹配
+  return (
+    result.userId === currentUser.value.id ||
+    (result.userId && result.userId._id === currentUser.value.id) ||
+    (result.userId && result.userId.id === currentUser.value.id)
+  )
+}
+
+// 确认删除
+const confirmDelete = () => {
+  if (!selectedResult.value) return
+  showDeleteConfirm.value = true
+}
+
+// 删除结果
+const deleteResult = async () => {
+  if (!selectedResult.value || !selectedResult.value.id) return
+
+  try {
+    isDeleting.value = true
+
+    console.log('删除已发布OCR结果，ID:', selectedResult.value.id)
+    const success = await deleteResultService(selectedResult.value.id)
+
+    if (success) {
+      store._showNotification('OCR结果已成功删除', 'success')
+      // 关闭模态框
+      showDeleteConfirm.value = false
+      selectedResult.value = null
+      // 重新加载结果列表
+      await loadPublishedResults(currentPage.value, searchQuery.value)
+    } else {
+      store._showNotification('删除失败，请重试', 'error')
+    }
+  } catch (error) {
+    console.error('删除OCR结果失败:', error)
+    store._showNotification('删除失败，请重试', 'error')
+  } finally {
+    isDeleting.value = false
+  }
 }
 </script>
 
