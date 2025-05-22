@@ -202,7 +202,7 @@
 import { computed, ref, watch, onMounted } from 'vue'
 import { useOcrStore } from '@/stores/ocrStore'
 import { useI18nStore } from '@/stores/i18nStore'
-import { isRtlLanguageSync, getLanguageName } from '@/services/languageService'
+import { shouldUseRtlDirection, getLanguageName } from '@/services/languageService'
 
 // Import the four specialized text components
 import TextHorizontalParallel from './TextHorizontalParallel.vue'
@@ -302,38 +302,9 @@ watch(
 
 // 判断是否为RTL文本
 const isRtlText = computed(() => {
-  // 首先检查识别的主要语言是否为RTL语言
-  const isRtlLanguageDetected = isRtlLanguageSync(store.detectedLanguageCode)
-
-  // 如果检测到的主要语言是RTL语言，再根据文本内容确认是否需要RTL方向
-  if (isRtlLanguageDetected) {
-    // 当文本很短或没有文本时，直接使用语言判断结果
-    if (!store.originalFullText || store.originalFullText.length < 10) {
-      return true
-    }
-
-    // 对于较长文本，分析文本内容确认是否真的需要RTL方向
-    return rtlDirectionNeeded(store.originalFullText)
-  }
-
-  return false
+  // 使用集中在 languageService.js 中的函数判断是否需要 RTL 方向
+  return shouldUseRtlDirection(store.detectedLanguageCode, store.originalFullText)
 })
-
-// 分析文本内容，判断是否需要RTL方向
-function rtlDirectionNeeded(text) {
-  if (!text) return false
-
-  // RTL字符范围（阿拉伯文、希伯来文等）的Unicode正则表达式
-  const rtlCharsRegex =
-    /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0590-\u05FF\uFB50-\uFDFF\uFE70-\uFEFF]/g
-
-  // 统计RTL字符数量
-  const rtlCharMatches = text.match(rtlCharsRegex)
-  const rtlCharCount = rtlCharMatches ? rtlCharMatches.length : 0
-
-  // 如果RTL字符占比超过30%，则认为需要RTL方向
-  return rtlCharCount > text.length * 0.3
-}
 
 // 设置文本方向
 const textDirection = computed(() => {
