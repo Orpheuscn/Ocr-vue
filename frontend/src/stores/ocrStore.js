@@ -568,8 +568,8 @@ export const useOcrStore = defineStore('ocr', () => {
       const languageHints = selectedLanguages.value.length > 0 ? selectedLanguages.value : []
       console.log('语言提示:', languageHints)
 
-      // 导入安全API服务
-      const { processWithServerApi } = await import('@/services/secureApiService')
+      // 导入OCR API服务
+      const { processWithServerApi } = await import('@/services/ocrApiService')
 
       // 使用服务器API处理OCR
       let result
