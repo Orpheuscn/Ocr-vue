@@ -12,6 +12,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import languageRoutes from "./routes/languageRoutes.js";
 import ocrRecordRoutes from "./routes/ocrRecordRoutes.js"; // 引入OCR记录路由
 import recognitionRoutes from "./routes/recognitionRoutes.js"; // 引入图像识别路由
+import savedOcrResultRoutes from "./routes/savedOcrResultRoutes.js"; // 引入保存的OCR结果路由
 import { logRequest, logResponse } from "./controllers/adminController.js";
 import connectDB from "./db/config.js"; // 导入数据库连接函数
 import swaggerSetup from "./swagger.js"; // 导入 Swagger 设置
@@ -120,6 +121,13 @@ if (config.swaggerEnabled) {
   swaggerSetup(app);
 }
 
+// CSRF令牌获取路由
+app.get("/api/csrf-token", (req, res) => {
+  // 这个路由不需要CSRF保护，因为它本身就是用来获取CSRF令牌的
+  // 令牌已经通过addCsrfToken中间件添加到响应头中
+  res.json({ success: true, message: "CSRF令牌已在响应头中" });
+});
+
 // 路由
 app.use("/api/ocr", ocrRoutes); // 移除CSRF保护，因为OCR路由已在csrfMiddleware.js中豁免
 app.use("/api/users", userRoutes); // 用户路由中已添加CSRF保护
@@ -127,6 +135,7 @@ app.use("/api/admin", csrfProtection, adminRoutes);
 app.use("/api/languages", languageRoutes);
 app.use("/api/ocr-records", csrfProtection, ocrRecordRoutes); // 添加OCR记录路由
 app.use("/api/node/recognition", recognitionRoutes); // 添加图像识别路由
+app.use("/api/saved-results", savedOcrResultRoutes); // 移除CSRF保护，解决保存问题
 
 // 健康检查API - 快速诊断系统状态
 app.get("/api/health", async (req, res) => {

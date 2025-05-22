@@ -530,7 +530,7 @@ const copyText = async (type = '') => {
     store._showNotification(uiTexts.value.textCopied, 'success')
 
     // 保存OCR结果到本地存储
-    saveOcrResult(textToCopy)
+    await saveOcrResult(textToCopy)
   } catch (e) {
     copyStatus.value = 'error'
     console.error('复制失败:', e)
@@ -546,23 +546,31 @@ const copyText = async (type = '') => {
 }
 
 // 保存OCR结果到本地存储
-const saveOcrResult = (text) => {
+const saveOcrResult = async (text) => {
   try {
-    // 动态导入保存结果服务
-    import('@/services/savedResultsService').then(({ saveResult }) => {
-      // 创建结果对象
-      const result = {
-        text,
-        language: store.detectedLanguageCode,
-        languageName: languageName.value,
-      }
+    // 动态导入保存结果服务和认证服务
+    const { saveResult } = await import('@/services/savedResultsService')
+    const { isAuthenticated } = await import('@/services/authService')
 
-      // 保存结果
-      const success = saveResult(result)
-      if (success) {
-        console.log('OCR结果已保存')
-      }
-    })
+    // 检查用户是否已登录
+    const userIsLoggedIn = isAuthenticated()
+    console.log('isAuthenticated:', userIsLoggedIn ? '令牌有效，返回true' : '令牌无效，返回false')
+
+    // 创建结果对象
+    const result = {
+      text,
+      language: store.detectedLanguageCode,
+      languageName: languageName.value,
+    }
+
+    // 保存结果
+    const success = await saveResult(result)
+    if (success) {
+      console.log('OCR结果已保存')
+    } else if (!userIsLoggedIn) {
+      // 如果用户未登录，显示提示信息
+      store._showNotification('请登录后才能保存OCR结果', 'warning')
+    }
   } catch (error) {
     console.error('保存OCR结果时出错:', error)
   }

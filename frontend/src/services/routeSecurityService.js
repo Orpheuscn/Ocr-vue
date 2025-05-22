@@ -181,16 +181,53 @@ export const validateRouteAccess = async (to, from) => {
 }
 
 /**
- * 生成CSRF令牌
+ * 获取CSRF令牌
  * @returns {string} - CSRF令牌
  */
-export const generateCsrfToken = () => {
-  // 生成随机令牌
-  const token =
-    Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+export const generateCsrfToken = async () => {
+  // 首先尝试从会话存储中获取令牌
+  let token = sessionStorage.getItem('csrfToken')
 
-  // 存储令牌（使用sessionStorage而不是localStorage）
-  sessionStorage.setItem('csrfToken', token)
+  // 如果没有令牌或令牌已过期，从服务器获取新令牌
+  if (!token) {
+    try {
+      // 发送请求获取新的CSRF令牌
+      const response = await fetch('/api/csrf-token', {
+        method: 'GET',
+        credentials: 'include', // 确保包含cookies
+      })
+
+      if (response.ok) {
+        // 从响应头中获取CSRF令牌
+        token = response.headers.get('X-CSRF-Token')
+
+        if (token) {
+          // 存储令牌
+          sessionStorage.setItem('csrfToken', token)
+          console.log('从服务器获取了新的CSRF令牌')
+        } else {
+          console.warn('服务器没有返回CSRF令牌')
+          // 生成一个临时令牌作为后备
+          token =
+            Math.random().toString(36).substring(2, 15) +
+            Math.random().toString(36).substring(2, 15)
+          sessionStorage.setItem('csrfToken', token)
+        }
+      } else {
+        console.warn('获取CSRF令牌失败，使用本地生成的令牌')
+        // 生成一个临时令牌作为后备
+        token =
+          Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+        sessionStorage.setItem('csrfToken', token)
+      }
+    } catch (error) {
+      console.error('获取CSRF令牌时出错:', error)
+      // 生成一个临时令牌作为后备
+      token =
+        Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+      sessionStorage.setItem('csrfToken', token)
+    }
+  }
 
   return token
 }
@@ -211,13 +248,13 @@ export const validateCsrfToken = (token) => {
  * @returns {Function} - 带有CSRF保护的函数
  */
 export const withCsrfProtection = (actionFn) => {
-  return (...args) => {
+  return async (...args) => {
     // 获取当前令牌
-    const token = sessionStorage.getItem('csrfToken')
+    let token = sessionStorage.getItem('csrfToken')
 
-    // 如果没有令牌，生成一个新的
+    // 如果没有令牌，从服务器获取一个新的
     if (!token) {
-      generateCsrfToken()
+      await generateCsrfToken()
     }
 
     // 执行原始函数，并传递所有参数

@@ -22,6 +22,8 @@ const CSRF_EXEMPT_PATHS = [
   "/api/ocr/process-simple",
   "/api/node/recognition/process", // 添加图像识别路径
   "/api/node/recognition/processBase64", // 添加Base64图像识别路径
+  "/api/saved-results", // 添加保存OCR结果路径
+  "/api/csrf-token", // CSRF令牌获取路径
 ];
 
 /**

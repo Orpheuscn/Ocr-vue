@@ -370,8 +370,4 @@ export const isTokenExpired = (token) => {
   }
 }
 
-/**
- * clearAllStorages是clearAuth的别名
- * 为了兼容性而添加
- */
-export const clearAllStorages = clearAuth
+// 移除clearAllStorages函数，不再需要
