@@ -71,45 +71,28 @@
           </button>
         </div>
 
-        <!-- 复制按钮和下拉菜单 -->
-        <div class="dropdown dropdown-end">
-          <div
-            tabindex="0"
-            role="button"
-            class="btn btn-xs btn-outline gap-1 m-1"
-            :class="{ 'btn-success': copyStatus === 'success' }"
+        <!-- 复制按钮 -->
+        <button
+          class="btn btn-xs btn-outline gap-1 m-1"
+          :class="{ 'btn-success': copyStatus === 'success' }"
+          @click="copyText('filtered')"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-3 w-3"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-3 w-3"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-              />
-            </svg>
-            {{ copyButtonText }}
-          </div>
-          <ul
-            tabindex="0"
-            class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52"
-          >
-            <li v-if="store.recognitionMode === 'table' && activeTextComponent === TextTable">
-              <a @click="copyText('markdown')">{{ uiTexts.copyMarkdownTable }}</a>
-            </li>
-            <li>
-              <a @click="copyText('original')">{{ uiTexts.copyOriginalText }}</a>
-            </li>
-            <li>
-              <a @click="copyText('filtered')">{{ uiTexts.copyFilteredText }}</a>
-            </li>
-          </ul>
-        </div>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+            />
+          </svg>
+          {{ uiTexts.copy }}
+        </button>
       </div>
 
       <div class="divider my-0 flex-shrink-0"></div>
@@ -493,19 +476,6 @@ const formatTextAsHorizontalParallel = () => {
 }
 
 // 使用工具函数处理文本
-
-// 重新定义copyButtonText计算属性使用uiTexts
-const copyButtonText = computed(() => {
-  if (copyStatus.value === 'success') {
-    return uiTexts.value.copied
-  }
-
-  if (store.recognitionMode === 'table') {
-    return uiTexts.value.copyMarkdownTable
-  }
-
-  return uiTexts.value.copy
-})
 
 // 复制文本方法，根据类型选择复制内容
 const copyText = async (type = '') => {

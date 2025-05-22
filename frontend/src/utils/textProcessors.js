@@ -145,19 +145,35 @@ export function cleanTextSpaces(text) {
 
 /**
  * 处理水平并行模式的文本
- * @param {Array} symbols 符号数组
+ * @param {Object} fullTextAnnotation OCR识别结果
+ * @param {Array} filteredSymbolsData 过滤后的符号数据
  * @param {string} languageCode 语言代码
- * @param {boolean} isFiltered 是否只处理过滤后的符号
  * @returns {string} 处理后的文本
  */
-export function processHorizontalParallelText(symbols, languageCode, isFiltered = true) {
-  if (!symbols || symbols.length === 0) return ''
-
+export function processHorizontalParallelText(fullTextAnnotation, filteredSymbolsData, languageCode) {
+  // 如果没有过滤符号数据，返回空字符串
+  if (!filteredSymbolsData || !Array.isArray(filteredSymbolsData) || filteredSymbolsData.length === 0) {
+    return ''
+  }
+  
+  // 检查是否有原始文本并且所有符号都被过滤
+  const hasOriginalText = fullTextAnnotation?.text && typeof fullTextAnnotation.text === 'string'
+  const allSymbolsFiltered = filteredSymbolsData.every(symbol => symbol.isFiltered)
+  
+  // 如果有原始文本并且所有符号都被过滤，直接使用原始文本
+  if (hasOriginalText && allSymbolsFiltered) {
+    // 只在 CJK 语言时进行标点替换
+    if (isCJKLanguage(languageCode)) {
+      return replaceCJKPunctuation(fullTextAnnotation.text, languageCode)
+    }
+    return fullTextAnnotation.text
+  }
+  
+  // 否则处理过滤后的符号
   let text = ''
-  symbols.forEach((symbol) => {
-    // 如果需要过滤且符号未被过滤，则跳过
-    if (isFiltered && !symbol.isFiltered) return
-
+  const filteredSymbols = filteredSymbolsData.filter(symbol => symbol.isFiltered)
+  
+  filteredSymbols.forEach((symbol) => {
     // 使用工具函数处理符号文本
     const { processedText, needSpace } = processSymbolText(symbol.text, languageCode, symbol.detectedBreak?.type)
     text += processedText
