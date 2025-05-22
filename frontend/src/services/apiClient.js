@@ -51,6 +51,18 @@ export async function processSimple(
     // 使用处理后的图片或原始文件
     const imageToProcess = processedImage || file
     console.log('API Client: 使用', processedImage ? '处理后的图片' : '原始图片', '进行OCR处理')
+    
+    // 检查是否为HEIC转换后的图片
+    const isConvertedHeic = file.name.toLowerCase().endsWith('.heic') || 
+                           file.name.toLowerCase().endsWith('.heif') || 
+                           file.type === 'image/heic' || 
+                           file.type === 'image/heif'
+    
+    console.log('API Client: 图片类型检查:', {
+      原始类型: file.type,
+      处理后类型: imageToProcess.type,
+      是否为HEIC转换后: isConvertedHeic
+    })
 
     const formData = new FormData()
     formData.append('file', imageToProcess)

@@ -244,7 +244,25 @@ export const useOcrStore = defineStore('ocr', () => {
         file.name.toLowerCase().endsWith('.heif')
       ) {
         loadingMessage.value = i18n.t('convertingHeic')
-        processedFile = await convertHeicToJpeg(file)
+        try {
+          processedFile = await convertHeicToJpeg(file)
+          console.log('HEIC转换成功:', processedFile.type, processedFile.size)
+          
+          // 确保转换后的文件类型正确
+          if (processedFile.type !== 'image/jpeg') {
+            console.warn('HEIC转换后的文件类型不是image/jpeg:', processedFile.type)
+            // 强制设置类型为image/jpeg
+            processedFile = new File([processedFile], processedFile.name, {
+              type: 'image/jpeg',
+              lastModified: processedFile.lastModified
+            })
+          }
+        } catch (heicError) {
+          console.error('HEIC转换失败，使用原始文件:', heicError)
+          _showNotification(`HEIC格式转换失败: ${heicError.message}`, 'warning')
+          // 使用原始文件继续
+          processedFile = file
+        }
       }
 
       // 保存处理后的文件
@@ -286,7 +304,19 @@ export const useOcrStore = defineStore('ocr', () => {
         if (filePreviewUrl.value && filePreviewUrl.value.startsWith('blob:')) {
           URL.revokeObjectURL(filePreviewUrl.value)
         }
-        filePreviewUrl.value = URL.createObjectURL(processedFile) // 使用 Blob URL 进行预览
+        
+        // 确保图片能够正确预览，特别是HEIC转换后的图片
+        try {
+          // 创建新的Blob URL用于预览
+          const blob = new Blob([await processedFile.arrayBuffer()], { type: 'image/jpeg' })
+          filePreviewUrl.value = URL.createObjectURL(blob)
+          console.log('成功创建图片预览URL:', processedFile.type)
+        } catch (previewError) {
+          console.error('创建图片预览URL失败:', previewError)
+          // 回退到原始方法
+          filePreviewUrl.value = URL.createObjectURL(processedFile)
+        }
+        
         // 尺寸将在 ImageCanvas 组件加载图片后通过事件设置
         // isDimensionsKnown 会在事件回调中设置为 true
       } else {
