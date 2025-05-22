@@ -95,7 +95,7 @@ import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18nStore } from '@/stores/i18nStore'
 
 // 导入组件
-import TheHeader from './components/TheHeader.vue'
+import TheHeader from './components/common/TheHeader.vue'
 import FileUpload from './components/FileUpload.vue'
 import ActionControls from './components/ActionControls.vue'
 import ImageCanvas from './components/ImageCanvas.vue'
@@ -103,11 +103,11 @@ import PdfControls from './components/PdfControls.vue'
 import TextOutputManager from './components/TextOutputManager.vue'
 import CoordinateView from './components/CoordinateView.vue'
 import FilterControls from './components/FilterControls.vue'
-import LoadingOverlay from './components/LoadingOverlay.vue'
-import NotificationBar from './components/NotificationBar.vue'
+import LoadingOverlay from './components/common/LoadingOverlay.vue'
+import NotificationBar from './components/common/NotificationBar.vue'
 import MaskingTool from './components/MaskingTool.vue'
-import TheFooter from './components/TheFooter.vue'
-import Tutorial from './components/Tutorial.vue'
+import TheFooter from './components/common/TheFooter.vue'
+import Tutorial from './components/common/Tutorial.vue'
 
 const store = useOcrStore()
 const i18n = useI18nStore()

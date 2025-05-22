@@ -104,7 +104,6 @@ export async function processSimple(
 /**
  * 处理文件上传和OCR识别
  * @param {File} file - 要处理的文件对象（图片或PDF）
- * @param {string} apiKey - Google Cloud Vision API密钥
  * @param {string[]} languageHints - 可选的语言提示数组
  * @param {string} recognitionDirection - 识别方向，'horizontal'或'vertical'
  * @param {string} recognitionMode - 识别模式，'text'或'table'
@@ -113,7 +112,6 @@ export async function processSimple(
  */
 export async function processFile(
   file,
-  apiKey,
   languageHints = [],
   recognitionDirection = 'horizontal',
   recognitionMode = 'text',
@@ -122,7 +120,6 @@ export async function processFile(
   try {
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('apiKey', apiKey)
 
     if (languageHints.length > 0) {
       languageHints.forEach((lang) => {
@@ -159,7 +156,6 @@ export async function processFile(
 /**
  * 处理Base64编码的图像
  * @param {string} imageData - Base64编码的图像数据
- * @param {string} apiKey - Google Cloud Vision API密钥
  * @param {string[]} languageHints - 可选的语言提示数组
  * @param {string} recognitionDirection - 识别方向，'horizontal'或'vertical'
  * @param {string} recognitionMode - 识别模式，'text'或'table'
@@ -167,7 +163,6 @@ export async function processFile(
  */
 export async function processBase64Image(
   imageData,
-  apiKey,
   languageHints = [],
   recognitionDirection = 'horizontal',
   recognitionMode = 'text',
@@ -180,7 +175,6 @@ export async function processBase64Image(
       },
       body: JSON.stringify({
         image: imageData,
-        apiKey,
         languageHints,
         recognitionDirection,
         recognitionMode,
@@ -203,7 +197,6 @@ export async function processBase64Image(
 /**
  * 处理PDF文件
  * @param {File} pdfFile - 要处理的PDF文件
- * @param {string} apiKey - Google Cloud Vision API密钥
  * @param {string[]} languageHints - 可选的语言提示数组
  * @param {number} pageNumber - 要处理的页码
  * @param {string} recognitionDirection - 识别方向，'horizontal'或'vertical'
@@ -212,7 +205,6 @@ export async function processBase64Image(
  */
 export async function processPdf(
   pdfFile,
-  apiKey,
   languageHints = [],
   pageNumber = 1,
   recognitionDirection = 'horizontal',
@@ -221,7 +213,6 @@ export async function processPdf(
   try {
     const formData = new FormData()
     formData.append('pdf', pdfFile)
-    formData.append('apiKey', apiKey)
 
     if (languageHints.length > 0) {
       languageHints.forEach((lang) => {

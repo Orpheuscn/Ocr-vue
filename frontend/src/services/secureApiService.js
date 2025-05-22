@@ -1,5 +1,4 @@
 // src/services/secureApiService.js
-import { getApiKey } from './apiKeyService'
 import { generateCsrfToken } from './routeSecurityService'
 import { useOcrStore } from '@/stores/ocrStore'
 
@@ -130,8 +129,8 @@ export const secureApiRequest = async (endpoint, options = {}) => {
 }
 
 /**
- * 使用服务器端API密钥进行OCR处理
- * @param {File} file - 要处理的文件
+ * 使用服务器端API进行OCR处理
+ * @param {File|Object} file - 要处理的文件或已处理的图像数据对象
  * @param {string[]} languageHints - 语言提示
  * @param {string} recognitionDirection - 识别方向
  * @param {string} recognitionMode - 识别模式
@@ -146,76 +145,88 @@ export const processWithServerApi = async (
   userId = null,
 ) => {
   try {
-    // 检查文件类型
-    const isPdf = file.type === 'application/pdf'
-    console.log('文件类型:', file.type, '是PDF:', isPdf)
-
-    // 如果是PDF文件，需要先在前端渲染为图像
-    if (isPdf) {
-      console.log('检测到PDF文件，尝试在前端渲染为图像...')
-
-      // 检查PDF.js库是否已加载
-      if (typeof window === 'undefined' || !window.pdfjsLib) {
-        console.error('PDF.js库未加载，无法处理PDF文件')
-        throw new Error('PDF.js库未加载，请确保在HTML中通过<script>标签引入了pdf.min.js')
-      }
-
-      try {
-        // 导入PDF适配器
-        const { renderPdfPage } = await import('@/utils/pdfAdapter')
-
-        // 读取文件数据
-        const arrayBuffer = await file.arrayBuffer()
-        const pdfData = new Uint8Array(arrayBuffer)
-
-        // 渲染第一页为图像
-        console.log('渲染PDF第1页...')
-        const renderResult = await renderPdfPage(pdfData, 1, 1.5)
-
-        if (!renderResult || !renderResult.dataUrl) {
-          throw new Error('PDF渲染失败')
+    // 检查是否是已处理的图像数据对象
+    let isProcessedImage = file && typeof file === 'object' && file.isProcessed === true;
+    // 检查是否是PDF文件
+    const isPdfFile = file.type === 'application/pdf';
+    
+    // 如果是已处理的图像数据，直接使用
+    if (isProcessedImage) {
+      console.log('使用已处理的图像数据...');
+      // 在后续代码中处理
+    } 
+    // 检查是否是PDF文件
+    else if (isPdfFile) {
+      console.log('检测到PDF文件，需要将其转换为图像...');
+      // 从ocrStore获取当前渲染的PDF页面图像
+      const { useOcrStore } = await import('@/stores/ocrStore');
+      const ocrStore = useOcrStore();
+      
+      // 检查是否有已渲染的PDF页面图像
+      if (!ocrStore.filePreviewUrl || !ocrStore.filePreviewUrl.startsWith('data:image/')) {
+        console.log('尝试渲染当前PDF页面...');
+        // 尝试渲染当前PDF页面
+        const renderResult = await ocrStore.renderCurrentPdfPageToPreview();
+        if (!renderResult || !ocrStore.filePreviewUrl) {
+          throw new Error('无法渲染PDF页面，请重新加载文件');
         }
-
-        console.log('PDF渲染成功，转换为Blob...')
-
-        // 将Data URL转换为Blob
-        const base64Data = renderResult.dataUrl.split(',')[1]
-        const byteCharacters = atob(base64Data)
-        const byteArrays = []
-
-        for (let i = 0; i < byteCharacters.length; i += 512) {
-          const slice = byteCharacters.slice(i, i + 512)
-          const byteNumbers = new Array(slice.length)
-
-          for (let j = 0; j < slice.length; j++) {
-            byteNumbers[j] = slice.charCodeAt(j)
-          }
-
-          byteArrays.push(new Uint8Array(byteNumbers))
-        }
-
-        // 创建Blob对象
-        const blob = new Blob(byteArrays, { type: 'image/png' })
-
-        // 创建新的File对象
-        const renderedImageFile = new File([blob], file.name.replace('.pdf', '.png'), {
-          type: 'image/png',
-          lastModified: new Date().getTime(),
-        })
-
-        console.log('PDF已转换为图像文件，大小:', renderedImageFile.size)
-
-        // 使用转换后的图像文件替换原始PDF文件
-        file = renderedImageFile
-      } catch (pdfError) {
-        console.error('PDF渲染失败:', pdfError)
-        throw new Error(`PDF处理失败: ${pdfError.message}`)
       }
+      
+      // 从filePreviewUrl中提取Base64图像数据
+      const base64Image = ocrStore.filePreviewUrl.split(',')[1];
+      if (!base64Image) {
+        throw new Error('无法获取PDF页面图像数据');
+      }
+      
+      console.log('成功获取PDF页面图像数据，准备发送给后端...');
+      
+      // 将PDF转换为已处理的图像数据对象
+      file = {
+        processedImage: base64Image,
+        isProcessed: true,
+        originalName: file.name.replace('.pdf', '.png'),
+        type: 'image/png'
+      };
+      
+      // 更新isProcessedImage标志
+      isProcessedImage = true;
     }
 
     // 创建FormData
     const formData = new FormData()
-    formData.append('file', file)
+    
+    // 处理不同类型的输入
+    if (isProcessedImage) {
+      // 如果是已处理的图像数据，创建Blob并添加到FormData
+      const byteCharacters = atob(file.processedImage);
+      const byteArrays = [];
+      
+      for (let i = 0; i < byteCharacters.length; i += 512) {
+        const slice = byteCharacters.slice(i, i + 512);
+        const byteNumbers = new Array(slice.length);
+        
+        for (let j = 0; j < slice.length; j++) {
+          byteNumbers[j] = slice.charCodeAt(j);
+        }
+        
+        byteArrays.push(new Uint8Array(byteNumbers));
+      }
+      
+      // 创建Blob对象
+      const blob = new Blob(byteArrays, { type: 'image/png' });
+      
+      // 创建新的File对象
+      const processedFile = new File([blob], file.originalName || 'processed-image.png', {
+        type: 'image/png', // 强制设置为image/png类型
+        lastModified: new Date().getTime(),
+      });
+      
+      // 添加到FormData
+      formData.append('file', processedFile);
+    } else {
+      // 如果是普通文件，直接添加
+      formData.append('file', file);
+    }
 
     // 添加语言提示
     if (languageHints.length > 0) {
@@ -288,83 +299,6 @@ export const processWithServerApi = async (
     }
 
     return result.data || result // 兼容不同的响应格式
-  } catch (error) {
-    throw handleApiError(error, 'OCR处理失败')
-  }
-}
-
-/**
- * 使用客户端API密钥进行OCR处理
- * @param {string} base64Image - Base64编码的图像
- * @param {string[]} languageHints - 语言提示
- * @param {string} recognitionDirection - 识别方向
- * @returns {Promise<Object>} - OCR结果
- */
-export const processWithClientApi = async (
-  base64Image,
-  languageHints = [],
-  recognitionDirection = 'horizontal',
-) => {
-  try {
-    // 获取API密钥
-    const apiKey = getApiKey()
-
-    if (!apiKey) {
-      throw new Error('未找到API密钥')
-    }
-
-    // 构建请求体
-    const requestBody = {
-      requests: [
-        {
-          image: {
-            content: base64Image,
-          },
-          features: [
-            {
-              type: 'DOCUMENT_TEXT_DETECTION',
-            },
-          ],
-        },
-      ],
-    }
-
-    // 添加语言提示
-    if (languageHints.length > 0) {
-      requestBody.requests[0].imageContext = {
-        languageHints,
-      }
-    }
-
-    // 发送请求到Google Vision API
-    const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    })
-
-    // 检查响应状态
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`API请求失败: ${response.status} ${errorText}`)
-    }
-
-    // 解析响应
-    const data = await response.json()
-
-    // 检查API响应中是否包含错误
-    if (data.error) {
-      throw new Error(`API错误: ${data.error.message || JSON.stringify(data.error)}`)
-    }
-
-    // 检查返回的结果是否包含所需的数据
-    if (!data.responses || data.responses.length === 0) {
-      throw new Error('API返回空结果')
-    }
-
-    return data.responses[0]
   } catch (error) {
     throw handleApiError(error, 'OCR处理失败')
   }

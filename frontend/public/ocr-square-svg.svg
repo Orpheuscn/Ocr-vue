@@ -1,7 +1,0 @@
-<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <!-- 背景为RGB(188, 105, 75)的圆角正方形 -->
-  <rect width="200" height="200" fill="rgb(31, 178, 166)" rx="40" ry="40"/>
-  
-  <!-- 白色文字内容 -->
-  <text x="100" y="120" font-family="Arial, sans-serif" font-size="44" font-weight="bold" text-anchor="middle" fill="white">🔍CR://</text>
-</svg>

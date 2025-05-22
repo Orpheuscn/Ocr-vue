@@ -4,6 +4,7 @@ import HomePage from '@/views/HomePage.vue'
 import LoginPage from '@/views/LoginPage.vue'
 import RegisterPage from '@/views/RegisterPage.vue'
 import ImageCoordinateTool from '@/components/ImageCoordinateTool.vue'
+import ImageRecognitionTool from '@/components/recognition/ImageRecognitionTool.vue'
 
 const routes = [
   {
@@ -33,6 +34,13 @@ const routes = [
     path: '/doc-detection',
     name: 'DocDetection',
     component: ImageCoordinateTool,
+    meta: { requiresAuth: true },
+  },
+  // 图像识别工具
+  {
+    path: '/image-recognition',
+    name: 'ImageRecognition',
+    component: ImageRecognitionTool,
     meta: { requiresAuth: true },
   },
   // 保留原来的/auth路径，重定向到登录
@@ -70,7 +78,7 @@ const createSessionRestorePromise = () => {
     isRestoringSession = true
     console.log('路由守卫: 创建会话恢复Promise')
 
-    sessionRestorePromise = new Promise(resolve => {
+    sessionRestorePromise = new Promise((resolve) => {
       // 等待一段时间，让会话恢复完成
       setTimeout(() => {
         console.log('路由守卫: 会话恢复等待完成')

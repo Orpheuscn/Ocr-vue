@@ -48,7 +48,7 @@
 
 <script setup>
 import { useRouter, useRoute } from 'vue-router'
-import ThemeToggle from '@/components/ThemeToggle.vue'
+import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import LoginForm from '@/components/auth/LoginForm.vue'
 
 const router = useRouter()

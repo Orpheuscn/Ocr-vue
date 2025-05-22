@@ -11,6 +11,7 @@ import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import languageRoutes from "./routes/languageRoutes.js";
 import ocrRecordRoutes from "./routes/ocrRecordRoutes.js"; // 引入OCR记录路由
+import recognitionRoutes from "./routes/recognitionRoutes.js"; // 引入图像识别路由
 import { logRequest, logResponse } from "./controllers/adminController.js";
 import connectDB from "./db/config.js"; // 导入数据库连接函数
 import swaggerSetup from "./swagger.js"; // 导入 Swagger 设置
@@ -125,6 +126,7 @@ app.use("/api/users", userRoutes); // 用户路由中已添加CSRF保护
 app.use("/api/admin", csrfProtection, adminRoutes);
 app.use("/api/languages", languageRoutes);
 app.use("/api/ocr-records", csrfProtection, ocrRecordRoutes); // 添加OCR记录路由
+app.use("/api/node/recognition", recognitionRoutes); // 添加图像识别路由
 
 // 健康检查API - 快速诊断系统状态
 app.get("/api/health", async (req, res) => {

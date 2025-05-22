@@ -14,6 +14,7 @@ import { isHeic, heicTo } from 'heic-to'
 
 export const useOcrStore = defineStore('ocr', () => {
   // --- 私有辅助函数 ---
+  // 仅在需要处理遮挡区域或其他前端处理时使用
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -69,9 +70,7 @@ export const useOcrStore = defineStore('ocr', () => {
   // --- 状态 (State) ---
 
   // API 相关
-  // 使用服务器端API密钥的状态
-  const useServerApiKey = ref(true)
-  // 添加服务器API可用状态
+  // 服务器API可用状态
   const serverApiAvailable = ref(false)
 
   // 获取i18n实例
@@ -139,14 +138,11 @@ export const useOcrStore = defineStore('ocr', () => {
   const maskedAreas = ref([])
 
   // --- 计算属性 (Getters / Computed) ---
-  const hasApiKey = computed(() => {
-    // 只检查服务器API是否可用
-    return serverApiAvailable.value
-  })
+  // 直接使用serverApiAvailable状态，不再需要hasApiKey计算属性
   const canStartOcr = computed(
     () =>
       currentFiles.value.length > 0 &&
-      hasApiKey.value &&
+      serverApiAvailable.value &&
       !isLoading.value &&
       isDimensionsKnown.value, // 只有尺寸已知才能开始
   )
@@ -166,6 +162,11 @@ export const useOcrStore = defineStore('ocr', () => {
   const _showNotification = (msg, type = 'info') => {
     notification.value = { message: msg, type: type, visible: true, key: Date.now() }
     // 自动隐藏交给 NotificationBar 组件处理
+  }
+
+  // 隐藏通知 (供NotificationBar组件调用)
+  const _hideNotification = () => {
+    notification.value = { ...notification.value, visible: false }
   }
 
   // 重置 OCR 相关数据
@@ -443,7 +444,6 @@ export const useOcrStore = defineStore('ocr', () => {
     console.log('===== OCR过程开始 =====')
     console.log('参数:', params)
     console.log('canStartOcr状态:', canStartOcr.value)
-    console.log('hasApiKey状态:', hasApiKey.value)
     console.log('serverApiAvailable状态:', serverApiAvailable.value)
     console.log('isDimensionsKnown状态:', isDimensionsKnown.value)
 
@@ -466,9 +466,9 @@ export const useOcrStore = defineStore('ocr', () => {
     // 检查前置条件
     if (!canStartOcr.value) {
       console.log('无法开始OCR，原因:')
-      if (!hasApiKey.value) {
-        console.log('- 没有API密钥')
-        _showNotification(i18n.t('pleaseSetApiKey'), 'error')
+      if (!serverApiAvailable.value) {
+        console.log('- 服务器API不可用')
+        _showNotification(i18n.t('serverApiNotAvailable'), 'error')
       } else if (!isDimensionsKnown.value) {
         console.log('- 图像尺寸未加载')
         _showNotification(i18n.t('imageSizeNotLoaded'), 'info')
@@ -502,39 +502,49 @@ export const useOcrStore = defineStore('ocr', () => {
       const processDimensions = imageDimensions.value // 使用已知的尺寸
       console.log('处理图像尺寸:', processDimensions)
 
-      if (isPdfFile.value) {
-        console.log('处理PDF文件...')
-        // 对于 PDF，使用当前渲染页面的 Data URL
-        if (!filePreviewUrl.value.startsWith('data:image/png;base64,')) {
-          throw new Error('PDF 页面预览数据无效，请重新加载文件')
-        }
-        base64Image = filePreviewUrl.value.split(',')[1]
-      } else {
-        console.log('处理图像文件...')
-
-        // 优先使用已处理的图片（有遮挡区域的图片）
-        if (processedPreviewUrl.value && processedPreviewUrl.value.startsWith('data:image/')) {
-          console.log('使用已处理的图片进行OCR识别（带遮挡区域）...')
-          base64Image = processedPreviewUrl.value.split(',')[1]
-          console.log(
-            '成功获取处理后的图片数据，大小约:',
-            Math.round(base64Image.length / 1024),
-            'KB',
-          )
+      // 不再需要提前转换为Base64，直接使用文件对象
+      // 只有在需要处理遮挡区域时才转换为Base64
+      let useOriginalFile = true;
+      
+      // 检查是否有遮挡区域需要处理
+      if (maskedAreas.value.length > 0) {
+        console.log('检测到遮挡区域，需要在前端处理图像...')
+        useOriginalFile = false;
+        
+        if (isPdfFile.value) {
+          console.log('处理PDF文件...')
+          // 对于 PDF，使用当前渲染页面的 Data URL
+          if (!filePreviewUrl.value.startsWith('data:image/png;base64,')) {
+            throw new Error('PDF 页面预览数据无效，请重新加载文件')
+          }
+          base64Image = filePreviewUrl.value.split(',')[1]
         } else {
-          // 如果没有处理后的图片，则使用原始文件
-          console.log('未找到处理后的图片，使用原始图片...')
-          try {
-            base64Image = await fileToBase64(currentFiles.value[0])
-            console.log('成功从原始文件提取图片数据')
-          } catch (e) {
-            console.error('从原始文件提取Base64失败，尝试使用预览URL:', e)
-            // 如果无法转换，尝试使用预览URL
-            if (filePreviewUrl.value.startsWith('data:image/')) {
-              base64Image = filePreviewUrl.value.split(',')[1]
-              console.log('成功从预览URL提取图片数据')
-            } else {
-              throw new Error(`无法转换图像为Base64: ${e.message}`)
+          console.log('处理图像文件...')
+
+          // 优先使用已处理的图片（有遮挡区域的图片）
+          if (processedPreviewUrl.value && processedPreviewUrl.value.startsWith('data:image/')) {
+            console.log('使用已处理的图片进行OCR识别（带遮挡区域）...')
+            base64Image = processedPreviewUrl.value.split(',')[1]
+            console.log(
+              '成功获取处理后的图片数据，大小约:',
+              Math.round(base64Image.length / 1024),
+              'KB',
+            )
+          } else {
+            // 如果没有处理后的图片，则使用原始文件
+            console.log('未找到处理后的图片，使用原始图片...')
+            try {
+              base64Image = await fileToBase64(currentFiles.value[0])
+              console.log('成功从原始文件提取图片数据')
+            } catch (e) {
+              console.error('从原始文件提取Base64失败，尝试使用预览URL:', e)
+              // 如果无法转换，尝试使用预览URL
+              if (filePreviewUrl.value.startsWith('data:image/')) {
+                base64Image = filePreviewUrl.value.split(',')[1]
+                console.log('成功从预览URL提取图片数据')
+              } else {
+                throw new Error(`无法转换图像为Base64: ${e.message}`)
+              }
             }
           }
         }
@@ -542,12 +552,16 @@ export const useOcrStore = defineStore('ocr', () => {
 
       // 应用遮挡区域 (如果有)
       // 由于现在我们优先使用处理后的图片，因此只有在使用原图时才需要应用遮挡区域
-      if (maskedAreas.value.length > 0 && !processedPreviewUrl.value) {
+      if (maskedAreas.value.length > 0 && !processedPreviewUrl.value && !useOriginalFile) {
         console.log(`应用${maskedAreas.value.length}个遮挡区域...`)
         loadingMessage.value = i18n.tf('processingMasks', { count: maskedAreas.value.length })
         base64Image = await applyMasksToImage(base64Image, processDimensions)
+        
+        // 创建处理后的图片URL
+        processedPreviewUrl.value = `data:image/png;base64,${base64Image}`
       } else if (maskedAreas.value.length > 0 && processedPreviewUrl.value) {
         console.log('图片已包含遮挡区域，无需再次应用')
+        useOriginalFile = false;
       }
 
       // 准备API请求参数
@@ -555,9 +569,7 @@ export const useOcrStore = defineStore('ocr', () => {
       console.log('语言提示:', languageHints)
 
       // 导入安全API服务
-      const { processWithServerApi, processWithClientApi } = await import(
-        '@/services/secureApiService'
-      )
+      const { processWithServerApi } = await import('@/services/secureApiService')
 
       // 使用服务器API处理OCR
       let result
@@ -565,8 +577,16 @@ export const useOcrStore = defineStore('ocr', () => {
         console.log('使用服务器端OCR处理...')
         try {
           // 使用安全的服务器端处理
+          // 如果有遮挡区域处理，使用处理后的图像数据
+          const fileToProcess = useOriginalFile ? currentFiles.value[0] : {
+            processedImage: base64Image,
+            isProcessed: true,
+            originalName: currentFiles.value[0].name,
+            type: currentFiles.value[0].type
+          };
+          
           const simpleResult = await processWithServerApi(
-            currentFiles.value[0],
+            fileToProcess,
             languageHints,
             direction,
             mode,
@@ -627,15 +647,6 @@ export const useOcrStore = defineStore('ocr', () => {
         textAnns[0]?.locale
       detectedLanguageCode.value = langCode || 'und'
 
-      // 异步获取语言名称
-      getLanguageName(langCode)
-        .then((name) => {
-          detectedLanguageName.value = name
-        })
-        .catch(() => {
-          detectedLanguageName.value = langCode || '未确定'
-        })
-
       console.log(`检测到语言: ${detectedLanguageCode.value}`)
 
       // 设置过滤器范围
@@ -643,12 +654,6 @@ export const useOcrStore = defineStore('ocr', () => {
 
       // 应用过滤器（使用重置后的最大范围）
       applyFilters(filterSettings.value)
-
-      // 使用检测到的语言信息构建提示
-      let langHint = ''
-      if (detectedLanguageCode.value !== 'und') {
-        langHint = ` (${detectedLanguageName.value})`
-      }
 
       // 设置初始文本方向
       initialTextDirection.value = direction
@@ -663,8 +668,28 @@ export const useOcrStore = defineStore('ocr', () => {
         console.log('表格模式：表格设置已初始化')
       }
 
-      // 显示成功通知
-      _showNotification(i18n.tf('recognitionComplete', { lang: langHint }), 'success')
+      // 异步获取语言名称，然后显示通知
+      try {
+        // 先获取语言名称，再显示通知
+        const name = await getLanguageName(langCode)
+        detectedLanguageName.value = name
+
+        // 使用检测到的语言信息构建提示
+        let langHint = ''
+        if (detectedLanguageCode.value !== 'und') {
+          langHint = ` (${detectedLanguageName.value})`
+        }
+
+        // 显示成功通知
+        _showNotification(i18n.tf('recognitionComplete', { lang: langHint }), 'success')
+      } catch (error) {
+        console.error('获取语言名称错误:', error)
+        detectedLanguageName.value = langCode || '未确定'
+
+        // 即使获取语言名称失败，也显示成功通知
+        _showNotification(i18n.tf('recognitionComplete', { lang: '' }), 'success')
+      }
+
       console.log('OCR过程完成，文本长度:', originalFullText.value?.length || 0)
     } catch (error) {
       console.error('OCR处理错误:', error)
@@ -1079,44 +1104,18 @@ export const useOcrStore = defineStore('ocr', () => {
   async function initApiStatus() {
     console.log('开始检查服务器API状态...')
     try {
+      // 使用apiClient中的checkApiStatus函数
+      const { checkApiStatus } = await import('@/services/apiClient')
+      
       // 增加超时处理
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('检查API状态超时')), 5000) // 减少超时时间提高响应速度
       })
 
-      // 尝试获取当前域名作为API基础URL
-      let baseUrl = ''
-      try {
-        baseUrl = window.location.origin
-      } catch {
-        console.log('无法获取当前域名，使用默认地址')
-        baseUrl = 'http://localhost:3000'
-      }
-
-      const apiUrl = `${baseUrl}/api/ocr/apiStatus`
-      console.log('检查API状态URL:', apiUrl)
-
-      // 使用fetch直接发起请求以排除可能的导入问题
-      const fetchPromise = fetch(apiUrl)
-        .then((response) => {
-          console.log('API状态响应码:', response.status)
-          if (!response.ok) {
-            throw new Error(`API状态请求失败: ${response.status}`)
-          }
-          return response.json()
-        })
-        .then((data) => {
-          console.log('API状态响应数据:', data)
-          if (data && data.success) {
-            return data.data
-          } else {
-            throw new Error('API状态返回无效数据')
-          }
-        })
-
       // 并行执行请求和超时
       try {
-        const apiStatus = await Promise.race([fetchPromise, timeoutPromise])
+        const apiStatusPromise = checkApiStatus()
+        const apiStatus = await Promise.race([apiStatusPromise, timeoutPromise])
         console.log('API状态检查结果:', apiStatus)
 
         // 更新状态
@@ -1206,6 +1205,7 @@ export const useOcrStore = defineStore('ocr', () => {
     applyFilters,
     setTextDisplayMode,
     _showNotification,
+    _hideNotification,
     updateSelectedLanguages,
     initSelectedLanguages,
     applyMasksToImage,

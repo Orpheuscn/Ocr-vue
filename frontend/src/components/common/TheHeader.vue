@@ -7,8 +7,11 @@
       <!-- 主导航链接 -->
       <div class="hidden sm:flex mr-4">
         <router-link :to="{ name: 'Home' }" class="btn btn-ghost btn-sm mr-2">主页</router-link>
-        <router-link :to="{ name: 'DocDetection' }" class="btn btn-ghost btn-sm"
+        <router-link :to="{ name: 'DocDetection' }" class="btn btn-ghost btn-sm mr-2"
           >文档解析</router-link
+        >
+        <router-link :to="{ name: 'ImageRecognition' }" class="btn btn-ghost btn-sm"
+          >图像识别</router-link
         >
       </div>
 
@@ -35,7 +38,8 @@
           class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
         >
           <li><router-link :to="{ name: 'Home' }">主页</router-link></li>
-          <li><router-link :to="{ name: 'DocDetection' }">图像坐标工具</router-link></li>
+          <li><router-link :to="{ name: 'DocDetection' }">文档解析</router-link></li>
+          <li><router-link :to="{ name: 'ImageRecognition' }">图像识别</router-link></li>
         </ul>
       </div>
 
@@ -54,9 +58,7 @@
             class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
           >
             <li><router-link :to="{ name: 'Profile' }">个人资料</router-link></li>
-            <li v-if="isUserAdmin">
-              <router-link :to="{ name: 'Admin' }">管理仪表板</router-link>
-            </li>
+            <!-- 管理功能已移除，改为使用后端API进行管理 -->
           </ul>
         </div>
         <div v-else>

@@ -20,6 +20,8 @@ const CSRF_EXEMPT_PATHS = [
   "/api-docs",
   "/api/ocr/process",
   "/api/ocr/process-simple",
+  "/api/node/recognition/process", // 添加图像识别路径
+  "/api/node/recognition/processBase64", // 添加Base64图像识别路径
 ];
 
 /**

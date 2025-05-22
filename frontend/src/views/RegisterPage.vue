@@ -47,7 +47,7 @@
 </template>
 
 <script setup>
-import ThemeToggle from '@/components/ThemeToggle.vue'
+import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import RegisterForm from '@/components/auth/RegisterForm.vue'
 const appTitle = '智能OCR识别系统'
 

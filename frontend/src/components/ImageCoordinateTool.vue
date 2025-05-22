@@ -38,7 +38,7 @@
           <div class="card bg-base-100 shadow-xl mb-4">
             <div class="card-body p-4">
               <!-- 修改按钮样式，确保它不是占满整个宽度 -->
-              <div class="flex">
+              <div class="flex space-x-2">
                 <button
                   v-if="hasImage"
                   class="btn btn-accent btn-sm px-4 inline-flex items-center"
@@ -60,6 +60,39 @@
                   </svg>
                   <span>换一张</span>
                 </button>
+
+                <!-- 绘制模式切换按钮 -->
+                <button
+                  v-if="hasImage"
+                  class="btn btn-sm"
+                  :class="{ 'btn-primary': isDrawingMode, 'btn-outline': !isDrawingMode }"
+                  @click="toggleDrawingMode"
+                >
+                  <span v-if="isDrawingMode">绘制模式: 开启</span>
+                  <span v-else>绘制模式: 关闭</span>
+                </button>
+                <!-- 清空矩形按钮 -->
+                <button
+                  v-if="hasImage"
+                  class="btn btn-error btn-sm px-4 inline-flex items-center"
+                  @click="clearAllRectangles"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                  <span>清空矩形</span>
+                </button>
                 <input
                   type="file"
                   ref="fileInput"
@@ -67,7 +100,6 @@
                   class="hidden"
                   @change="handleImageUpload"
                 />
-                <!-- 这里可以添加其他按钮 -->
               </div>
             </div>
           </div>
@@ -89,14 +121,20 @@
                   'cursor-default': hasImage,
                 }"
               >
-                <div ref="canvasWrapper" class="relative overflow-visible" v-show="hasImage">
-                  <canvas ref="canvas"></canvas>
-                  <!-- 十字线元素 -->
-                  <div ref="crosshairH" class="crosshair-h"></div>
-                  <div ref="crosshairV" class="crosshair-v"></div>
-                  <!-- 坐标显示 -->
-                  <div ref="coordinatesDisplay" class="coordinates-display"></div>
-                </div>
+                <!-- 使用矩形绘制工具子组件 -->
+                <RectangleDrawingTool
+                  ref="rectangleDrawingTool"
+                  :hasImage="hasImage"
+                  :originalImageWidth="originalImageWidth"
+                  :originalImageHeight="originalImageHeight"
+                  :containerWidth="canvasContainer?.clientWidth || 0"
+                  :containerHeight="canvasContainer?.clientHeight || 0"
+                  :currentImageId="currentImageId"
+                  @rectangle-added="handleRectangleAdded"
+                  @rectangle-deleted="handleRectangleDeleted"
+                  @rectangle-highlighted="handleRectangleHighlighted"
+                  @rectangle-unhighlighted="handleRectangleUnhighlighted"
+                />
                 <div v-if="!hasImage" class="text-center">
                   <!-- 显示加载状态或上传提示 -->
                   <div v-if="isLoading" class="flex flex-col items-center justify-center">
@@ -448,18 +486,12 @@
 
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
-// 使用全局的fabric变量，确保在index.html中通过CDN加载了fabric.js
-/* global fabric */
+import RectangleDrawingTool from './RectangleDrawingTool.vue'
 
 // 响应式状态
-const canvas = ref(null)
-const fabricCanvas = ref(null)
 const fileInput = ref(null)
 const canvasContainer = ref(null)
-const canvasWrapper = ref(null)
-const crosshairH = ref(null)
-const crosshairV = ref(null)
-const coordinatesDisplay = ref(null)
+const rectangleDrawingTool = ref(null)
 const originalCoordinates = ref(null)
 const hasImage = ref(false)
 const isLoading = ref(false) // 是否正在加载图片
@@ -467,26 +499,18 @@ const statusText = ref('请上传或拖入图片，也可以直接粘贴')
 const isDarkTheme = ref(false)
 const originalImageWidth = ref(0)
 const originalImageHeight = ref(0)
-const scaleX = ref(1)
-const scaleY = ref(1)
-const isDrawing = ref(false)
-const currentRect = ref(null)
 const rectangles = ref([])
-const startX = ref(0)
-const startY = ref(0)
-const rectCounter = ref(0)
 const currentImageId = ref(null)
 const submitting = ref(false)
 const extractingText = ref(false) // 是否正在提取文本
+const isDrawingMode = ref(false) // 是否处于绘制模式
 
 // 筛选和排序相关状态
 const currentFilter = ref('all')
 const currentSort = ref('position')
 const filteredRectangles = ref([])
 
-// 颜色管理
-const usedColors = ref([])
-const colorPool = [0, 25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350]
+// 结果相关状态
 
 // 结果对话框状态
 const showResultDialog = ref(false)
@@ -513,10 +537,48 @@ const toggleTheme = () => {
   }, 10)
 }
 
+// 切换绘制模式
+const toggleDrawingMode = () => {
+  isDrawingMode.value = !isDrawingMode.value
+  console.log('绘制模式:', isDrawingMode.value ? '开启' : '关闭')
+
+  // 调用子组件的方法切换绘制模式
+  if (rectangleDrawingTool.value) {
+    rectangleDrawingTool.value.toggleDrawingMode()
+  }
+}
+
+// 处理子组件事件
+const handleRectangleAdded = (rect) => {
+  rectangles.value.push(rect)
+  updateFilteredRectangles()
+}
+
+const handleRectangleDeleted = (rect) => {
+  const index = rectangles.value.findIndex((r) => r.id === rect.id)
+  if (index !== -1) {
+    rectangles.value.splice(index, 1)
+    updateFilteredRectangles()
+  }
+}
+
+const handleRectangleHighlighted = (rect) => {
+  const index = rectangles.value.findIndex((r) => r.id === rect.id)
+  if (index !== -1) {
+    rectangles.value[index].isHighlighted = true
+  }
+}
+
+const handleRectangleUnhighlighted = (rect) => {
+  const index = rectangles.value.findIndex((r) => r.id === rect.id)
+  if (index !== -1) {
+    rectangles.value[index].isHighlighted = false
+  }
+}
+
 // 组件挂载
 onMounted(() => {
   initTheme()
-  initCanvas()
 
   // 可以在开发环境中测试后端连接
   if (process.env.NODE_ENV === 'development') {
@@ -617,9 +679,12 @@ const updateFilteredRectangles = () => {
 
 // 更新画布上矩形的可见性
 const updateCanvasRectanglesVisibility = () => {
-  if (!fabricCanvas.value) return
+  if (!rectangleDrawingTool.value) return
 
-  rectangles.value.forEach((rect) => {
+  // 获取子组件中的所有矩形
+  const allRects = rectangleDrawingTool.value.getRectangles()
+
+  allRects.forEach((rect) => {
     if (currentFilter.value === 'all' || (rect.class || 'unknown') === currentFilter.value) {
       // 显示符合筛选条件的矩形
       rect.rect.set('visible', true)
@@ -629,7 +694,8 @@ const updateCanvasRectanglesVisibility = () => {
     }
   })
 
-  fabricCanvas.value.renderAll()
+  // 使用子组件的fabricCanvas渲染
+  rectangleDrawingTool.value.renderCanvas()
 }
 
 // 重写初始化主题
@@ -773,9 +839,6 @@ const handleImageUpload = (e) => {
   statusText.value = '正在上传并分析图片，请稍候...'
   hasImage.value = false
   isLoading.value = true // 设置加载状态为true
-  if (fabricCanvas.value.wrapperEl) {
-    fabricCanvas.value.wrapperEl.style.display = 'none'
-  }
 
   // 发送到后端进行处理
   fetch('/api/python/upload', {
@@ -802,11 +865,14 @@ const handleImageUpload = (e) => {
           originalImageWidth.value = data.width
           originalImageHeight.value = data.height
 
-          // 设置Canvas尺寸
-          setupCanvas(img)
+          // 使用子组件设置Canvas
+          if (rectangleDrawingTool.value) {
+            // 设置Canvas尺寸
+            rectangleDrawingTool.value.setupCanvas(img)
 
-          // 加载图片到Canvas
-          loadImageToCanvas(img)
+            // 加载图片到Canvas
+            rectangleDrawingTool.value.loadImageToCanvas(img)
+          }
 
           // 更新UI状态
           hasImage.value = true
@@ -817,20 +883,13 @@ const handleImageUpload = (e) => {
             canvasContainer.value.classList.add('border-solid')
           }
 
-          // 设置十字线尺寸
-          if (crosshairH.value && crosshairV.value) {
-            crosshairH.value.style.width = fabricCanvas.value.width + 'px'
-            crosshairV.value.style.height = fabricCanvas.value.height + 'px'
-          }
-
-          // 重置矩形和坐标信息
+          // 重置矩形列表
           rectangles.value = []
-          rectCounter.value = 0
 
           // 添加检测到的矩形
-          if (data.rectangles && data.rectangles.length > 0) {
+          if (data.rectangles && data.rectangles.length > 0 && rectangleDrawingTool.value) {
             console.log('添加检测到的矩形:', data.rectangles.length, '个') // 增加日志输出
-            addDetectedRectangles(data.rectangles)
+            rectangleDrawingTool.value.addDetectedRectangles(data.rectangles)
           }
         }
         // 使用图片代理服务
@@ -870,9 +929,6 @@ const processImageFile = (file) => {
   statusText.value = '正在上传并分析图片，请稍候...'
   hasImage.value = false
   isLoading.value = true // 设置加载状态为true
-  if (fabricCanvas.value.wrapperEl) {
-    fabricCanvas.value.wrapperEl.style.display = 'none'
-  }
 
   // 发送到后端进行处理
   fetch('/api/python/upload', {
@@ -899,11 +955,14 @@ const processImageFile = (file) => {
           originalImageWidth.value = data.width
           originalImageHeight.value = data.height
 
-          // 设置Canvas尺寸
-          setupCanvas(img)
+          // 使用子组件设置Canvas
+          if (rectangleDrawingTool.value) {
+            // 设置Canvas尺寸
+            rectangleDrawingTool.value.setupCanvas(img)
 
-          // 加载图片到Canvas
-          loadImageToCanvas(img)
+            // 加载图片到Canvas
+            rectangleDrawingTool.value.loadImageToCanvas(img)
+          }
 
           // 更新UI状态
           hasImage.value = true
@@ -914,20 +973,13 @@ const processImageFile = (file) => {
             canvasContainer.value.classList.add('border-solid')
           }
 
-          // 设置十字线尺寸
-          if (crosshairH.value && crosshairV.value) {
-            crosshairH.value.style.width = fabricCanvas.value.width + 'px'
-            crosshairV.value.style.height = fabricCanvas.value.height + 'px'
-          }
-
-          // 重置矩形和坐标信息
+          // 重置矩形列表
           rectangles.value = []
-          rectCounter.value = 0
 
           // 添加检测到的矩形
-          if (data.rectangles && data.rectangles.length > 0) {
+          if (data.rectangles && data.rectangles.length > 0 && rectangleDrawingTool.value) {
             console.log('添加检测到的矩形:', data.rectangles.length, '个') // 增加日志输出
-            addDetectedRectangles(data.rectangles)
+            rectangleDrawingTool.value.addDetectedRectangles(data.rectangles)
           }
         }
         // 使用图片代理服务
@@ -957,264 +1009,26 @@ const processImageFile = (file) => {
     })
 }
 
-// 初始化Canvas
-const initCanvas = () => {
-  fabricCanvas.value = new fabric.Canvas(canvas.value, {
-    selection: false,
-    width: 100,
-    height: 100,
-  })
+// 测试后端连接
+const testBackendConnection = async () => {
+  try {
+    const response = await fetch('/api/python/test')
+    console.log('测试连接响应状态:', response.status)
 
-  hasImage.value = false
-  if (fabricCanvas.value.wrapperEl) {
-    fabricCanvas.value.wrapperEl.style.display = 'none'
+    const data = await response.json().catch((e) => {
+      console.error('解析测试响应失败:', e)
+      return { status: 'error', message: '无法解析响应' }
+    })
+
+    console.log('测试连接响应数据:', data)
+    if (data.status === 'ok') {
+      console.log('后端服务正常运行')
+    } else {
+      console.error('后端服务异常')
+    }
+  } catch (error) {
+    console.error('测试连接失败:', error)
   }
-
-  // 设置Canvas事件监听
-  setupCanvasEventListeners()
-}
-
-const setupCanvasEventListeners = () => {
-  // 鼠标移动事件，显示十字线和坐标
-  fabricCanvas.value.on('mouse:move', (e) => {
-    if (!hasImage.value) return
-
-    const pointer = fabricCanvas.value.getPointer(e.e)
-
-    // 更新十字线位置
-    if (crosshairH.value && crosshairV.value) {
-      crosshairH.value.style.top = pointer.y + 'px'
-      crosshairV.value.style.left = pointer.x + 'px'
-      crosshairH.value.style.display = 'block'
-      crosshairV.value.style.display = 'block'
-    }
-
-    // 更新坐标显示
-    if (coordinatesDisplay.value) {
-      coordinatesDisplay.value.style.left = pointer.x + 10 + 'px'
-      coordinatesDisplay.value.style.top = pointer.y + 10 + 'px'
-      coordinatesDisplay.value.style.display = 'block'
-
-      // 计算原始图像坐标
-      const originalX = Math.round(pointer.x / scaleX.value)
-      const originalY = Math.round(pointer.y / scaleY.value)
-
-      coordinatesDisplay.value.textContent = `(${originalX}, ${originalY})`
-    }
-
-    // 处理矩形绘制
-    if (isDrawing.value && currentRect.value) {
-      // 计算矩形宽高
-      let width = Math.abs(pointer.x - startX.value)
-      let height = Math.abs(pointer.y - startY.value)
-
-      // 计算矩形左上角
-      let left = pointer.x < startX.value ? pointer.x : startX.value
-      let top = pointer.y < startY.value ? pointer.y : startY.value
-
-      // 确保矩形不超出画布边界
-      const canvasWidth = fabricCanvas.value.width
-      const canvasHeight = fabricCanvas.value.height
-
-      if (left < 0) {
-        width += left
-        left = 0
-      }
-
-      if (top < 0) {
-        height += top
-        top = 0
-      }
-
-      if (left + width > canvasWidth) {
-        width = canvasWidth - left
-      }
-
-      if (top + height > canvasHeight) {
-        height = canvasHeight - top
-      }
-
-      // 更新矩形
-      currentRect.value.set({
-        left: left,
-        top: top,
-        width: width,
-        height: height,
-      })
-
-      fabricCanvas.value.renderAll()
-    }
-  })
-
-  // 鼠标离开Canvas
-  fabricCanvas.value.on('mouse:out', () => {
-    if (crosshairH.value && crosshairV.value && coordinatesDisplay.value) {
-      crosshairH.value.style.display = 'none'
-      crosshairV.value.style.display = 'none'
-      coordinatesDisplay.value.style.display = 'none'
-    }
-  })
-
-  // 鼠标按下，开始绘制矩形
-  fabricCanvas.value.on('mouse:down', (e) => {
-    if (!hasImage.value) return
-
-    const pointer = fabricCanvas.value.getPointer(e.e)
-
-    // 如果不是点击在矩形上，就开始绘制新矩形
-    isDrawing.value = true
-    startX.value = pointer.x
-    startY.value = pointer.y
-
-    // 创建新矩形
-    const colorHue = getRandomColorHue()
-    currentRect.value = new fabric.Rect({
-      left: pointer.x,
-      top: pointer.y,
-      width: 0,
-      height: 0,
-      fill: `hsla(${colorHue}, 80%, 60%, 0.3)`,
-      stroke: `hsla(${colorHue}, 80%, 60%, 0.8)`,
-      strokeWidth: 1,
-      selectable: false,
-    })
-
-    fabricCanvas.value.add(currentRect.value)
-  })
-
-  // 鼠标释放，完成矩形绘制
-  fabricCanvas.value.on('mouse:up', () => {
-    if (!isDrawing.value || !currentRect.value) return
-
-    isDrawing.value = false
-
-    // 检查矩形是否有效（宽高必须大于阈值）
-    if (currentRect.value.width < 10 || currentRect.value.height < 10) {
-      fabricCanvas.value.remove(currentRect.value)
-      currentRect.value = null
-      return
-    }
-
-    // 保存矩形信息
-    const rectId = `rect_${++rectCounter.value}`
-    const newRect = {
-      id: rectId,
-      rect: currentRect.value,
-      coords: calculateCoordinates(currentRect.value),
-      class: 'unknown', // 添加默认类别
-      showJson: true,
-      showText: false,
-      isHighlighted: false,
-      ocrText: null, // OCR识别的文本
-      ocrProcessing: false, // 是否正在OCR处理中
-    }
-
-    // 为矩形添加鼠标事件
-    currentRect.value.on('mouseover', () => {
-      highlightRect(newRect)
-    })
-
-    currentRect.value.on('mouseout', () => {
-      unhighlightRect(newRect)
-    })
-
-    rectangles.value.push(newRect)
-    currentRect.value = null
-
-    // 更新筛选列表
-    updateFilteredRectangles()
-  })
-
-  // 鼠标悬停在矩形上
-  fabricCanvas.value.on('mouse:over', (e) => {
-    if (e.target && e.target.type === 'rect') {
-      const rect = findRectangleByFabricObject(e.target)
-      if (rect) {
-        highlightRect(rect)
-      }
-    }
-  })
-
-  // 鼠标离开矩形
-  fabricCanvas.value.on('mouse:out', (e) => {
-    if (e.target && e.target.type === 'rect') {
-      const rect = findRectangleByFabricObject(e.target)
-      if (rect) {
-        unhighlightRect(rect)
-      }
-    }
-  })
-}
-
-// 在添加检测到的矩形时也添加点击事件
-const addDetectedRectangles = (detectedRects) => {
-  console.log('添加检测到的矩形:', detectedRects.length, '个')
-  detectedRects.forEach((rectData) => {
-    const coords = rectData.coords
-    const topLeft = coords.topLeft
-    const bottomRight = coords.bottomRight
-
-    // 计算显示坐标
-    const displayLeft = topLeft.x * scaleX.value
-    const displayTop = topLeft.y * scaleY.value
-    const displayWidth = (bottomRight.x - topLeft.x) * scaleX.value
-    const displayHeight = (bottomRight.y - topLeft.y) * scaleY.value
-
-    // 生成颜色
-    const colorHue = getRandomColorHue()
-    const fillColor = `hsla(${colorHue}, 80%, 60%, 0.3)`
-    const strokeColor = `hsla(${colorHue}, 80%, 60%, 0.8)`
-
-    // 创建矩形
-    const rect = new fabric.Rect({
-      left: displayLeft,
-      top: displayTop,
-      width: displayWidth,
-      height: displayHeight,
-      fill: fillColor,
-      stroke: strokeColor,
-      strokeWidth: 1,
-      selectable: false,
-    })
-
-    fabricCanvas.value.add(rect)
-
-    // 创建矩形对象
-    const rectObject = {
-      id: rectData.id || `rect_${++rectCounter.value}`,
-      rect: rect,
-      coords: calculateCoordinates(rect),
-      class: rectData.class,
-      confidence: rectData.confidence,
-      showJson: true,
-      showText: false,
-      isHighlighted: false,
-      ocrText: null, // OCR识别的文本
-      ocrProcessing: false, // 是否正在OCR处理中
-    }
-
-    // 添加鼠标事件
-    rect.on('mouseover', () => {
-      highlightRect(rectObject)
-    })
-
-    rect.on('mouseout', () => {
-      unhighlightRect(rectObject)
-    })
-
-    // 保存矩形信息
-    rectangles.value.push(rectObject)
-  })
-
-  fabricCanvas.value.renderAll()
-
-  // 更新筛选列表
-  updateFilteredRectangles()
-}
-
-// 通过fabric对象查找矩形
-const findRectangleByFabricObject = (fabricObject) => {
-  return rectangles.value.find((r) => r.rect === fabricObject)
 }
 
 // 切换JSON视图
@@ -1243,10 +1057,9 @@ const toggleTextView = (rect) => {
 
 // 删除矩形
 const deleteRectangle = (rect) => {
-  // 从canvas中移除矩形
-  if (rect.rect && fabricCanvas.value) {
-    fabricCanvas.value.remove(rect.rect)
-    fabricCanvas.value.renderAll()
+  // 使用子组件的方法删除矩形
+  if (rectangleDrawingTool.value) {
+    rectangleDrawingTool.value.deleteRectangle(rect)
   }
 
   // 从矩形数组中移除
@@ -1256,60 +1069,6 @@ const deleteRectangle = (rect) => {
     // 更新筛选列表
     updateFilteredRectangles()
   }
-}
-
-// 计算矩形的原始坐标
-const calculateCoordinates = (rect) => {
-  // 获取显示坐标
-  const displayLeft = rect.left
-  const displayTop = rect.top
-  const displayRight = displayLeft + rect.width
-  const displayBottom = displayTop + rect.height
-
-  // 转换为原始图像坐标
-  const originalLeft = Math.round(displayLeft / scaleX.value)
-  const originalTop = Math.round(displayTop / scaleY.value)
-  const originalRight = Math.round(displayRight / scaleX.value)
-  const originalBottom = Math.round(displayBottom / scaleY.value)
-
-  // 确保坐标不超出原图范围
-  const boundedLeft = Math.max(0, Math.min(originalLeft, originalImageWidth.value))
-  const boundedTop = Math.max(0, Math.min(originalTop, originalImageHeight.value))
-  const boundedRight = Math.max(0, Math.min(originalRight, originalImageWidth.value))
-  const boundedBottom = Math.max(0, Math.min(originalBottom, originalImageHeight.value))
-
-  // 计算宽度和高度
-  const width = boundedRight - boundedLeft
-  const height = boundedBottom - boundedTop
-
-  // 返回坐标信息
-  return {
-    topLeft: { x: boundedLeft, y: boundedTop },
-    topRight: { x: boundedRight, y: boundedTop },
-    bottomLeft: { x: boundedLeft, y: boundedBottom },
-    bottomRight: { x: boundedRight, y: boundedBottom },
-    width: width,
-    height: height,
-  }
-}
-
-// 获取随机色相
-const getRandomColorHue = () => {
-  if (colorPool.length === 0) {
-    // 所有颜色都已使用，重置
-    colorPool.push(...usedColors.value)
-    usedColors.value = []
-  }
-
-  // 随机选择一个颜色
-  const randomIndex = Math.floor(Math.random() * colorPool.length)
-  const selectedHue = colorPool[randomIndex]
-
-  // 从可用池中移除并加入已使用池
-  colorPool.splice(randomIndex, 1)
-  usedColors.value.push(selectedHue)
-
-  return selectedHue
 }
 
 // 获取矩形颜色（用于边框）
@@ -1522,44 +1281,9 @@ const formatRectToJSON = (rect) => {
 
 // 高亮矩形
 const highlightRect = (rect) => {
-  // 保存原始样式以便恢复
-  if (rect.rect && !rect.rect._originalStyle) {
-    rect.rect._originalStyle = {
-      strokeWidth: rect.rect.strokeWidth,
-      stroke: rect.rect.stroke,
-      fill: rect.rect.fill,
-    }
-  }
-
-  // 设置高亮样式
-  if (rect.rect) {
-    const currentColor = rect.rect.stroke
-    let highlightStroke, highlightFill
-
-    if (currentColor.includes('hsla')) {
-      // 提取色相值
-      const hueMatch = currentColor.match(/hsla\((\d+)/)
-      const hue = hueMatch ? hueMatch[1] : '0'
-
-      // 创建高亮颜色 - 边框为实色，填充为半透明
-      highlightStroke = `hsla(${hue}, 100%, 50%, 1)`
-      highlightFill = `hsla(${hue}, 100%, 60%, 0.5)`
-    } else {
-      // 如果是其他颜色格式则使用明亮的红色
-      highlightStroke = 'rgba(255, 0, 0, 1)'
-      highlightFill = 'rgba(255, 0, 0, 0.5)'
-    }
-
-    // 应用高亮样式
-    rect.rect.set({
-      strokeWidth: 2,
-      stroke: highlightStroke,
-      fill: highlightFill,
-    })
-
-    // 确保矩形在顶层显示
-    fabricCanvas.value.bringToFront(rect.rect)
-    fabricCanvas.value.renderAll()
+  // 使用子组件的方法高亮矩形
+  if (rectangleDrawingTool.value) {
+    rectangleDrawingTool.value.highlightRect(rect)
   }
 
   // 标记为高亮状态
@@ -1568,15 +1292,9 @@ const highlightRect = (rect) => {
 
 // 取消高亮矩形
 const unhighlightRect = (rect) => {
-  // 恢复原始样式
-  if (rect.rect && rect.rect._originalStyle) {
-    rect.rect.set({
-      strokeWidth: rect.rect._originalStyle.strokeWidth,
-      stroke: rect.rect._originalStyle.stroke,
-      fill: rect.rect._originalStyle.fill,
-    })
-
-    fabricCanvas.value.renderAll()
+  // 使用子组件的方法取消高亮矩形
+  if (rectangleDrawingTool.value) {
+    rectangleDrawingTool.value.unhighlightRect(rect)
   }
 
   // 取消高亮状态标记
@@ -1591,73 +1309,18 @@ const triggerFileInput = () => {
   }
 }
 
-// 设置Canvas尺寸
-const setupCanvas = (img) => {
-  // 计算适合容器的尺寸
-  const containerWidth = canvasContainer.value.clientWidth - 40 // 预留边距
-  const containerHeight = canvasContainer.value.clientHeight - 40
+// 清空所有矩形
+const clearAllRectangles = () => {
+  if (rectangleDrawingTool.value) {
+    // 调用子组件的方法清空所有矩形
+    rectangleDrawingTool.value.clearRectangles()
 
-  // 计算缩放比例
-  const scaleWidth = containerWidth / img.width
-  const scaleHeight = containerHeight / img.height
+    // 清空父组件中的矩形数组
+    rectangles.value = []
 
-  // 使用较小的缩放比例，确保图像完全可见
-  const scale = Math.min(scaleWidth, scaleHeight)
-
-  // 设置画布尺寸
-  const canvasWidth = img.width * scale
-  const canvasHeight = img.height * scale
-
-  // 重新初始化Canvas
-  fabricCanvas.value.setWidth(canvasWidth)
-  fabricCanvas.value.setHeight(canvasHeight)
-
-  // 保存缩放比例
-  scaleX.value = scale
-  scaleY.value = scale
-}
-
-// 加载图片到Canvas
-const loadImageToCanvas = (img) => {
-  const imgInstance = new fabric.Image(img, {
-    selectable: false,
-    evented: false,
-    left: 0,
-    top: 0,
-    scaleX: scaleX.value,
-    scaleY: scaleY.value,
-  })
-
-  fabricCanvas.value.clear()
-  fabricCanvas.value.add(imgInstance)
-  fabricCanvas.value.renderAll()
-
-  if (fabricCanvas.value.wrapperEl) {
-    fabricCanvas.value.wrapperEl.style.display = 'block'
+    // 更新筛选后的矩形列表
+    updateFilteredRectangles()
   }
-}
-
-// 测试后端连接
-const testBackendConnection = () => {
-  fetch('/api/python/test')
-    .then((response) => {
-      console.log('测试连接响应状态:', response.status)
-      return response.json().catch((e) => {
-        console.error('解析测试响应失败:', e)
-        return { status: 'error', message: '无法解析响应' }
-      })
-    })
-    .then((data) => {
-      console.log('测试连接响应数据:', data)
-      if (data.status === 'ok') {
-        console.log('后端服务正常运行')
-      } else {
-        console.error('后端服务异常')
-      }
-    })
-    .catch((error) => {
-      console.error('测试连接失败:', error)
-    })
 }
 
 // 提取文本
@@ -1752,45 +1415,7 @@ const extractText = () => {
 }
 </script>
 
-<style scoped>
-/* 十字线样式 */
-.crosshair-h,
-.crosshair-v {
-  position: absolute;
-  pointer-events: none;
-  z-index: 100;
-  display: none;
-}
-.crosshair-h {
-  width: 100%;
-  height: 0;
-  border-top: 1px dashed rgba(255, 0, 0, 0.9);
-  left: 0;
-}
-.crosshair-v {
-  height: 100%;
-  width: 0;
-  border-left: 1px dashed rgba(255, 0, 0, 0.9);
-  top: 0;
-}
-/* 实时坐标显示框 */
-.coordinates-display {
-  position: absolute;
-  background-color: rgba(100, 100, 100, 0.85);
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  pointer-events: none;
-  z-index: 120;
-  display: none;
-  box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
-}
-[data-theme='dark'] .coordinates-display {
-  background-color: rgba(150, 150, 150, 0.85);
-  color: #000;
-}
-</style>
+<style scoped></style>
 
 <style>
 /* 添加全局主题过渡效果 */
