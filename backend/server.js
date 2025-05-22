@@ -13,6 +13,7 @@ import languageRoutes from "./routes/languageRoutes.js";
 import ocrRecordRoutes from "./routes/ocrRecordRoutes.js"; // 引入OCR记录路由
 import recognitionRoutes from "./routes/recognitionRoutes.js"; // 引入图像识别路由
 import savedOcrResultRoutes from "./routes/savedOcrResultRoutes.js"; // 引入保存的OCR结果路由
+import notificationRoutes from "./routes/notificationRoutes.js"; // 引入通知路由
 import { logRequest, logResponse } from "./controllers/adminController.js";
 import connectDB from "./db/config.js"; // 导入数据库连接函数
 import swaggerSetup from "./swagger.js"; // 导入 Swagger 设置
@@ -136,6 +137,17 @@ app.use("/api/languages", languageRoutes);
 app.use("/api/ocr-records", csrfProtection, ocrRecordRoutes); // 添加OCR记录路由
 app.use("/api/node/recognition", recognitionRoutes); // 添加图像识别路由
 app.use("/api/saved-results", savedOcrResultRoutes); // 移除CSRF保护，解决保存问题
+app.use(
+  "/api/published-results",
+  (req, res, next) => {
+    // 将/api/published-results的请求重定向到/api/saved-results/published
+    req.url = "/published" + (req.url === "/" ? "" : req.url);
+    console.log("重定向published-results请求到:", req.url);
+    next();
+  },
+  savedOcrResultRoutes
+); // 公开发布的OCR结果路由
+app.use("/api/notifications", notificationRoutes); // 通知路由
 
 // 健康检查API - 快速诊断系统状态
 app.get("/api/health", async (req, res) => {

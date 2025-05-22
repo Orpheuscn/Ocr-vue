@@ -10,8 +10,11 @@
         <router-link :to="{ name: 'DocDetection' }" class="btn btn-ghost btn-sm mr-2"
           >文档解析</router-link
         >
-        <router-link :to="{ name: 'ImageRecognition' }" class="btn btn-ghost btn-sm"
+        <router-link :to="{ name: 'ImageRecognition' }" class="btn btn-ghost btn-sm mr-2"
           >图像识别</router-link
+        >
+        <router-link :to="{ name: 'PublishedResults' }" class="btn btn-ghost btn-sm"
+          >公开OCR</router-link
         >
       </div>
 
@@ -40,6 +43,7 @@
           <li><router-link :to="{ name: 'Home' }">主页</router-link></li>
           <li><router-link :to="{ name: 'DocDetection' }">文档解析</router-link></li>
           <li><router-link :to="{ name: 'ImageRecognition' }">图像识别</router-link></li>
+          <li><router-link :to="{ name: 'PublishedResults' }">公开OCR</router-link></li>
         </ul>
       </div>
 
@@ -59,7 +63,9 @@
           >
             <li><router-link :to="{ name: 'Profile' }">个人资料</router-link></li>
             <li><router-link :to="{ name: 'SavedResults' }">保存的OCR结果</router-link></li>
-            <!-- 管理功能已移除，改为使用后端API进行管理 -->
+            <li v-if="isUserAdmin">
+              <router-link :to="{ name: 'ContentReview' }">内容审核</router-link>
+            </li>
           </ul>
         </div>
         <div v-else>
@@ -67,6 +73,9 @@
           <router-link :to="{ name: 'Register' }" class="btn btn-sm btn-accent">注册</router-link>
         </div>
       </div>
+
+      <!-- 通知中心 -->
+      <NotificationCenter v-if="isLoggedIn" class="notification-center" />
 
       <LanguageToggle />
       <ThemeToggle />
@@ -80,6 +89,7 @@ import { useI18nStore } from '@/stores/i18nStore'
 import { getCurrentUser, isAdmin, refreshUserInfo } from '@/services/authService'
 import ThemeToggle from './ThemeToggle.vue'
 import LanguageToggle from './LanguageToggle.vue'
+import NotificationCenter from './NotificationCenter.vue'
 
 // Store
 const i18n = useI18nStore()

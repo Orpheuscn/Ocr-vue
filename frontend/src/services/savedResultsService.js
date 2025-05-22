@@ -13,6 +13,13 @@ const API_URL = '/api'
 // 存储键名（用于本地存储备份）
 const SAVED_RESULTS_KEY = 'ocr_saved_results'
 
+// 发布状态
+export const PUBLISH_STATUS = {
+  PUBLISHED: 'published', // 已发布
+  FLAGGED: 'flagged', // 已标记
+  REMOVED: 'removed', // 已移除
+}
+
 /**
  * 获取所有保存的OCR结果
  * @returns {Array} 保存的OCR结果数组
@@ -39,7 +46,18 @@ export const getSavedResults = async () => {
 
       if (response.ok) {
         const data = await response.json()
-        return data.data || []
+
+        // 确保所有结果都有id字段
+        const results = (data.data || []).map((result) => {
+          // 如果没有id字段但有_id字段，使用_id作为id
+          if (!result.id && result._id) {
+            console.log('API结果没有id字段但有_id字段，使用_id作为id:', result._id)
+            result.id = result._id.toString()
+          }
+          return result
+        })
+
+        return results
       } else {
         console.error('从API获取OCR结果失败:', await response.text())
       }
@@ -53,7 +71,16 @@ export const getSavedResults = async () => {
     if (!savedResultsStr) {
       return []
     }
-    return JSON.parse(savedResultsStr)
+
+    // 确保本地存储的结果也有id字段
+    const localResults = JSON.parse(savedResultsStr)
+    return localResults.map((result) => {
+      if (!result.id) {
+        result.id = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+        console.log('为本地存储结果生成临时ID:', result.id)
+      }
+      return result
+    })
   } catch (error) {
     console.error('获取保存的OCR结果时出错:', error)
     return []
@@ -366,5 +393,78 @@ export const getResultById = async (id) => {
   } catch (error) {
     console.error('获取指定ID的OCR结果时出错:', error)
     return null
+  }
+}
+
+/**
+ * 发布OCR结果
+ * @param {string} id - OCR结果ID
+ * @returns {boolean} 是否发布成功
+ */
+export const publishResult = async (id) => {
+  try {
+    // 检查用户是否已登录
+    if (!getToken()) {
+      console.log('用户未登录，不能发布OCR结果')
+      return false
+    }
+
+    // 检查ID是否有效
+    if (!id) {
+      console.error('发布OCR结果失败: 无效的ID', id)
+      return false
+    }
+
+    console.log('发布OCR结果，ID:', id)
+
+    // 尝试从API发布结果
+    try {
+      const response = await fetch(`${API_URL}/saved-results/${id}/publish`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getToken()}`,
+        },
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        console.log('OCR结果已发布')
+
+        // 同时更新本地存储
+        try {
+          const savedResultsStr = localStorage.getItem(SAVED_RESULTS_KEY)
+          if (savedResultsStr) {
+            const savedResults = JSON.parse(savedResultsStr)
+            const updatedResults = savedResults.map((result) => {
+              if (result.id === id) {
+                return {
+                  ...result,
+                  isPublic: true,
+                  publishStatus: PUBLISH_STATUS.PUBLISHED,
+                  publishedAt: new Date().toISOString(),
+                }
+              }
+              return result
+            })
+            localStorage.setItem(SAVED_RESULTS_KEY, JSON.stringify(updatedResults))
+          }
+        } catch (localError) {
+          console.error('更新本地存储时出错:', localError)
+        }
+
+        return true
+      } else {
+        const errorText = await response.text()
+        console.error('发布OCR结果失败:', errorText)
+        return false
+      }
+    } catch (apiError) {
+      console.error('API发布OCR结果失败:', apiError)
+      return false
+    }
+  } catch (error) {
+    console.error('发布OCR结果时出错:', error)
+    return false
   }
 }

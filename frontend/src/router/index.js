@@ -4,6 +4,8 @@ import HomePage from '@/views/HomePage.vue'
 import LoginPage from '@/views/LoginPage.vue'
 import RegisterPage from '@/views/RegisterPage.vue'
 import SavedResultsPage from '@/views/SavedResultsPage.vue'
+import PublishedResultsPage from '@/views/PublishedResultsPage.vue'
+import ContentReviewPage from '@/views/admin/ContentReviewPage.vue'
 import DocDetection from '@/components/doc-detection/DocDetection.vue'
 import ImageRecognitionTool from '@/components/recognition/ImageRecognitionTool.vue'
 
@@ -60,6 +62,18 @@ const routes = [
     name: 'SavedResults',
     component: SavedResultsPage,
     meta: { requiresAuth: true },
+  },
+  {
+    path: '/published-results',
+    name: 'PublishedResults',
+    component: PublishedResultsPage,
+    // 无需登录即可访问
+  },
+  {
+    path: '/admin/content-review',
+    name: 'ContentReview',
+    component: ContentReviewPage,
+    meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
     path: '/:pathMatch(.*)*',

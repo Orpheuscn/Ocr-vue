@@ -45,15 +45,36 @@
         <!-- 结果卡片列表 -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div
-            v-for="result in savedResults"
-            :key="result.id"
+            v-for="(result, index) in savedResults"
+            :key="result.id || 'unknown_' + index"
             class="card bg-base-100 shadow-md hover:shadow-lg transition-shadow cursor-pointer"
-            @click="viewResult(result)"
+            @click="
+              result.id
+                ? viewResult(result)
+                : store._showNotification('无法查看详情，结果ID不存在', 'error')
+            "
           >
             <div class="card-body p-4">
               <!-- 语言标签和日期 -->
               <div class="flex justify-between items-center mb-2">
-                <div class="badge badge-accent">{{ result.languageName || '未知语言' }}</div>
+                <div class="flex gap-1">
+                  <div class="badge badge-accent">{{ result.languageName || '未知语言' }}</div>
+                  <div
+                    v-if="result.isPublic || result.publishStatus"
+                    class="badge"
+                    :class="{
+                      'badge-success': result.isPublic && result.publishStatus === 'published',
+                      'badge-warning': result.publishStatus === 'flagged',
+                      'badge-error': result.publishStatus === 'removed',
+                    }"
+                  >
+                    {{
+                      result.isPublic && !result.publishStatus
+                        ? '已发布'
+                        : getPublishStatusText(result.publishStatus)
+                    }}
+                  </div>
+                </div>
                 <div class="text-xs opacity-70">{{ formatDate(result.timestamp) }}</div>
               </div>
 
@@ -79,7 +100,27 @@
         <div class="flex justify-between items-center mb-4">
           <h3 class="font-bold text-lg">OCR结果详情</h3>
           <div class="flex gap-2">
-            <button @click="copySelectedResult" class="btn btn-sm btn-outline gap-1">
+            <button
+              @click="
+                selectedResult?.id
+                  ? publishOcrResult()
+                  : store._showNotification('发布失败，结果ID不存在', 'error')
+              "
+              class="btn btn-sm gap-1"
+              :class="{
+                'btn-outline': !selectedResult?.isPublic && !selectedResult?.publishStatus,
+                'btn-success':
+                  selectedResult?.isPublic && selectedResult?.publishStatus === 'published',
+                'btn-warning': selectedResult?.publishStatus === 'flagged',
+                'btn-error': selectedResult?.publishStatus === 'removed',
+              }"
+              :disabled="
+                isSubmitting ||
+                !selectedResult?.id ||
+                (selectedResult?.isPublic && selectedResult?.publishStatus === 'published') ||
+                selectedResult?.publishStatus === 'removed'
+              "
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 class="h-4 w-4"
@@ -91,10 +132,10 @@
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                 />
               </svg>
-              复制
+              {{ getPublishButtonText() }}
             </button>
             <button @click="confirmDelete" class="btn btn-sm btn-error">删除</button>
           </div>
@@ -102,7 +143,28 @@
 
         <div v-if="selectedResult" class="mb-4">
           <div class="flex justify-between items-center mb-2 text-sm">
-            <div class="badge badge-accent">{{ selectedResult.languageName || '未知语言' }}</div>
+            <div class="flex gap-1 items-center">
+              <div class="badge badge-accent">{{ selectedResult.languageName || '未知语言' }}</div>
+              <div
+                v-if="selectedResult.isPublic || selectedResult.publishStatus"
+                class="badge"
+                :class="{
+                  'badge-success':
+                    selectedResult.isPublic && selectedResult.publishStatus === 'published',
+                  'badge-warning': selectedResult.publishStatus === 'flagged',
+                  'badge-error': selectedResult.publishStatus === 'removed',
+                }"
+              >
+                {{
+                  selectedResult.isPublic && !selectedResult.publishStatus
+                    ? '已发布'
+                    : getPublishStatusText(selectedResult.publishStatus)
+                }}
+              </div>
+              <div v-if="selectedResult.id" class="text-xs opacity-70">
+                ID: {{ selectedResult.id }}
+              </div>
+            </div>
             <div class="opacity-70">{{ formatDate(selectedResult.timestamp, true) }}</div>
           </div>
 
@@ -162,6 +224,7 @@ import {
   getSavedResults,
   deleteResult as deleteResultService,
   clearAllResults as clearAllResultsService,
+  publishResult,
 } from '@/services/savedResultsService'
 
 const store = useOcrStore()
@@ -170,6 +233,7 @@ const savedResults = ref([])
 const selectedResult = ref(null)
 const showDeleteConfirm = ref(false)
 const showClearAllConfirm = ref(false)
+const isSubmitting = ref(false)
 
 // 加载保存的结果
 onMounted(() => {
@@ -186,12 +250,48 @@ onMounted(() => {
 
 // 加载保存的OCR结果
 const loadSavedResults = async () => {
-  savedResults.value = await getSavedResults()
+  const results = await getSavedResults()
+
+  // 确保所有结果都有id字段
+  const processedResults = results.map((result) => {
+    // 如果没有id字段但有_id字段，使用_id作为id
+    if (!result.id && result._id) {
+      console.log('结果没有id字段但有_id字段，使用_id作为id:', result._id)
+      result.id = result._id.toString()
+    }
+
+    // 如果既没有id也没有_id，生成一个临时ID
+    if (!result.id) {
+      result.id = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+      console.log('为结果生成临时ID:', result.id)
+    }
+
+    return result
+  })
+
+  savedResults.value = processedResults
+  console.log('已加载保存结果数量:', savedResults.value.length)
 }
 
 // 查看结果详情
 const viewResult = (result) => {
+  // 打印完整的结果对象，用于调试
+  console.log('查看结果详情，完整结果对象:', JSON.stringify(result))
+
+  // 确保结果对象有ID
+  if (!result.id && result._id) {
+    console.log('结果没有id字段但有_id字段，使用_id作为id')
+    result.id = result._id.toString()
+  }
+
+  if (!result.id) {
+    console.error('查看结果详情失败: 结果ID不存在', result)
+    store._showNotification('无法查看详情，结果ID不存在', 'error')
+    return
+  }
+
   selectedResult.value = result
+  console.log('查看OCR结果详情，ID:', result.id)
 }
 
 // 关闭模态框
@@ -199,16 +299,47 @@ const closeModal = () => {
   selectedResult.value = null
 }
 
-// 复制选中的结果
-const copySelectedResult = async () => {
+// 发布OCR结果
+const publishOcrResult = async () => {
   if (!selectedResult.value) return
 
   try {
-    await navigator.clipboard.writeText(selectedResult.value.text)
-    store._showNotification('文本已复制到剪贴板', 'success')
+    isSubmitting.value = true
+
+    // 打印完整的结果对象，用于调试
+    console.log('发布OCR结果，完整结果对象:', JSON.stringify(selectedResult.value))
+
+    // 确保结果对象有ID
+    if (!selectedResult.value.id && selectedResult.value._id) {
+      console.log('结果没有id字段但有_id字段，使用_id作为id')
+      selectedResult.value.id = selectedResult.value._id.toString()
+    }
+
+    // 检查ID是否存在
+    if (!selectedResult.value.id) {
+      console.error('发布OCR结果失败: 结果ID不存在')
+      store._showNotification('发布失败，结果ID不存在', 'error')
+      isSubmitting.value = false
+      return
+    }
+
+    console.log('准备发布OCR结果，ID:', selectedResult.value.id)
+    const success = await publishResult(selectedResult.value.id)
+
+    if (success) {
+      store._showNotification('OCR结果已成功发布，现在可以在公开页面查看', 'success')
+      // 重新加载结果以更新状态
+      await loadSavedResults()
+      // 关闭模态框
+      selectedResult.value = null
+    } else {
+      store._showNotification('发布失败，请重试', 'error')
+    }
   } catch (error) {
-    console.error('复制文本失败:', error)
-    store._showNotification('复制失败，请重试', 'error')
+    console.error('发布OCR结果失败:', error)
+    store._showNotification('发布失败，请重试', 'error')
+  } finally {
+    isSubmitting.value = false
   }
 }
 
@@ -276,6 +407,38 @@ const getTextDirection = (language) => {
   // 阿拉伯语、希伯来语等从右到左的语言
   const rtlLanguages = ['ar', 'he', 'ur', 'fa']
   return rtlLanguages.includes(language) ? 'rtl' : 'ltr'
+}
+
+// 获取发布状态文本
+const getPublishStatusText = (status) => {
+  switch (status) {
+    case 'published':
+      return '已发布'
+    case 'flagged':
+      return '已标记'
+    case 'removed':
+      return '已移除'
+    default:
+      return '未发布'
+  }
+}
+
+// 获取发布按钮文本
+const getPublishButtonText = () => {
+  if (!selectedResult.value) return '发布'
+
+  if (selectedResult.value.isPublic && selectedResult.value.publishStatus === 'published') {
+    return '已发布'
+  }
+
+  switch (selectedResult.value.publishStatus) {
+    case 'flagged':
+      return '已标记'
+    case 'removed':
+      return '已移除'
+    default:
+      return '发布'
+  }
 }
 </script>
 

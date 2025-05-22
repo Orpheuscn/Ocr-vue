@@ -58,41 +58,63 @@ const savedOcrResultSchema = new mongoose.Schema(
       type: String,
       ref: "User",
       required: true,
-      index: true
+      index: true,
     },
     text: {
       type: String,
-      required: true
+      required: true,
     },
     language: {
       type: String,
-      default: "und"
+      default: "und",
     },
     languageName: {
       type: String,
-      default: "未知语言"
+      default: "未知语言",
     },
     preview: {
       type: String,
-      default: function() {
+      default: function () {
         // 自动生成预览，取前100个字符
-        return this.text ? (this.text.substring(0, 100) + (this.text.length > 100 ? "..." : "")) : "";
-      }
+        return this.text ? this.text.substring(0, 100) + (this.text.length > 100 ? "..." : "") : "";
+      },
     },
     wordCount: {
       type: Number,
-      default: function() {
+      default: function () {
         // 自动计算单词数量
         return this.text ? this.text.split(/\s+/).filter(Boolean).length : 0;
-      }
+      },
     },
     charCount: {
       type: Number,
-      default: function() {
+      default: function () {
         // 自动计算字符数量
         return this.text ? this.text.length : 0;
-      }
-    }
+      },
+    },
+    isPublic: {
+      type: Boolean,
+      default: false,
+    },
+    publishStatus: {
+      type: String,
+      enum: ["published", "flagged", "removed", null],
+      default: null,
+    },
+    publishedAt: {
+      type: Date,
+      default: null,
+    },
+    reviewedBy: {
+      type: String,
+      ref: "User",
+      default: null,
+    },
+    reviewNote: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -101,8 +123,8 @@ const savedOcrResultSchema = new mongoose.Schema(
         ret.id = ret._id;
         delete ret._id;
         delete ret.__v;
-      }
-    }
+      },
+    },
   }
 );
 
