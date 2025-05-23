@@ -214,11 +214,32 @@ export async function fetchWithProxy(url, options = {}) {
 
   // 如果有代理设置，添加代理代理
   if (proxySettings) {
-    return fetch(url, { ...options, agent: proxySettings.agent });
+    console.log(`[fetchWithProxy] 使用代理发送请求到: ${url}`);
+    console.log(`[fetchWithProxy] 代理地址: ${proxySettings.proxyUrl}`);
+    console.log(`[fetchWithProxy] 代理类型: ${proxySettings.agent.constructor.name}`);
+
+    try {
+      const response = await fetch(url, { ...options, agent: proxySettings.agent });
+      console.log(`[fetchWithProxy] 代理请求成功，状态码: ${response.status}`);
+      return response;
+    } catch (error) {
+      console.error(`[fetchWithProxy] 代理请求失败:`, error.message);
+      console.error(`[fetchWithProxy] 错误类型: ${error.constructor.name}`);
+      throw error;
+    }
   }
 
   // 否则直接使用fetch
-  return fetch(url, options);
+  console.log(`[fetchWithProxy] 直接发送请求到: ${url}`);
+  try {
+    const response = await fetch(url, options);
+    console.log(`[fetchWithProxy] 直接请求成功，状态码: ${response.status}`);
+    return response;
+  } catch (error) {
+    console.error(`[fetchWithProxy] 直接请求失败:`, error.message);
+    console.error(`[fetchWithProxy] 错误类型: ${error.constructor.name}`);
+    throw error;
+  }
 }
 
 // 导出默认的fetch函数

@@ -29,6 +29,7 @@ limiter = Limiter(
 from api.routes.ocr_routes import ocr_bp
 from api.routes.upload_routes import upload_bp
 from api.routes.image_proxy_routes import image_proxy_bp
+from api.routes.queue_routes import queue_bp
 from utils.log_client import info, error
 
 def create_app(config: Optional[dict] = None) -> Flask:
@@ -106,6 +107,7 @@ def create_app(config: Optional[dict] = None) -> Flask:
     app.register_blueprint(ocr_bp)
     app.register_blueprint(upload_bp)
     app.register_blueprint(image_proxy_bp)
+    app.register_blueprint(queue_bp, url_prefix='/queue')
 
     # 健康检查端点
     @app.route('/health')

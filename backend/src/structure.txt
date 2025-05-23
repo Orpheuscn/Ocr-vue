@@ -1,0 +1,27 @@
+backend/
+├── src/
+│   ├── queues/
+│   │   ├── managers/
+│   │   │   └── RabbitMQManager.ts          # RabbitMQ连接管理器
+│   │   ├── services/
+│   │   │   ├── BaseQueueService.ts         # 基础队列服务类
+│   │   │   ├── OcrQueueService.ts          # OCR队列服务
+│   │   │   └── NotificationService.ts      # 通知服务
+│   │   ├── types/
+│   │   │   └── messages.ts                 # 消息类型定义
+│   │   ├── config/
+│   │   │   └── queues.ts                   # 队列配置
+│   │   └── QueueManager.ts                 # 队列管理器
+│   ├── controllers/
+│   │   └── ocrController.ts                # OCR控制器（集成队列）
+│   ├── utils/
+│   │   └── logger.ts                       # 日志工具
+│   ├── scripts/
+│   │   └── queueMonitor.ts                 # 队列监控脚本
+│   └── app.ts                              # 应用启动文件
+├── scripts/
+│   └── setup-rabbitmq.sh                  # RabbitMQ安装脚本
+├── package.json                            # 更新的依赖配置
+├── tsconfig.json                           # TypeScript配置
+├── .env.example                            # 更新的环境变量示例
+└── README-RabbitMQ.md                      # 详细使用指南

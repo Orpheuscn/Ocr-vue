@@ -37,12 +37,18 @@ export async function recognizeImage(base64Image, apiKey) {
     console.log("发送API请求...");
 
     // 使用fetchWithProxy函数，它会根据环境自动处理代理
+    // 设置超时控制
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
+
     const response = await fetchWithProxy(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
-      timeout: 30000, // 增加超时时间到30秒
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     console.log(`API响应状态: ${response.status}`);
     const data = await response.json();
@@ -64,7 +70,7 @@ export async function recognizeImage(base64Image, apiKey) {
     }
 
     console.log("API响应成功，处理识别结果...");
-    
+
     // 处理识别结果
     const result = processRecognitionResult(data.responses[0]);
     console.log("识别结果处理完成");
@@ -85,41 +91,41 @@ export async function recognizeImage(base64Image, apiKey) {
 function processRecognitionResult(recognitionResult) {
   // 提取物体定位结果
   const localizedObjects = recognitionResult.localizedObjectAnnotations || [];
-  
+
   // 提取标签检测结果
   const labelAnnotations = recognitionResult.labelAnnotations || [];
-  
+
   // 合并结果，优先使用物体定位结果（因为它们有边界框）
   const results = [];
-  
+
   // 处理物体定位结果
-  localizedObjects.forEach(object => {
+  localizedObjects.forEach((object) => {
     results.push({
       description: object.name,
       score: object.score,
       boundingPoly: object.boundingPoly,
-      type: 'object'
+      type: "object",
     });
   });
-  
+
   // 处理没有边界框的标签
-  labelAnnotations.forEach(label => {
+  labelAnnotations.forEach((label) => {
     // 检查是否已经有相同名称的物体
-    const existingObject = results.find(r => 
-      r.description.toLowerCase() === label.description.toLowerCase()
+    const existingObject = results.find(
+      (r) => r.description.toLowerCase() === label.description.toLowerCase()
     );
-    
+
     if (!existingObject) {
       results.push({
         description: label.description,
         score: label.score,
-        type: 'label'
+        type: "label",
       });
     }
   });
-  
+
   // 按置信度排序
   results.sort((a, b) => b.score - a.score);
-  
+
   return results;
 }

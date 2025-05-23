@@ -2086,6 +2086,85 @@
         "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/downloads/crop_6e33a9f9-cf9d-4cb4-aacc-6e2a05136d83_d5788265-b8c8-417a-b69c-316aeb7db952.zip"
       ],
       "created_at": 1747942106.0102322
+    },
+    "346885195312b03894ad0312ba32f34f": {
+      "category": "crop",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/abandon/98a33f1d-8f36-4d99-829b-a0ef4d04d523_abandon_4.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/98a33f1d-8f36-4d99-829b-a0ef4d04d523/4.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/98a33f1d-8f36-4d99-829b-a0ef4d04d523/8.jpg"
+      ],
+      "created_at": 1748044079.989892
+    },
+    "91d7c2ed22fffc949ae27c9e5074976d": {
+      "category": "crop",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/plain_text/98a33f1d-8f36-4d99-829b-a0ef4d04d523_plain_text_5.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/98a33f1d-8f36-4d99-829b-a0ef4d04d523/5.jpg"
+      ],
+      "created_at": 1748044080.075677
+    },
+    "46d145bd378c755af827ff3968e835bf": {
+      "category": "crop",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/title/98a33f1d-8f36-4d99-829b-a0ef4d04d523_title_2.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/98a33f1d-8f36-4d99-829b-a0ef4d04d523/2.jpg"
+      ],
+      "created_at": 1748044080.138211
+    },
+    "ade9155cbb8bb1ab4f0b96c7dd2a641b": {
+      "category": "crop",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/plain_text/98a33f1d-8f36-4d99-829b-a0ef4d04d523_plain_text_7.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/98a33f1d-8f36-4d99-829b-a0ef4d04d523/7.jpg"
+      ],
+      "created_at": 1748044080.159281
+    },
+    "1af1cd13454aa7317841544ea606e186": {
+      "category": "crop",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/plain_text/98a33f1d-8f36-4d99-829b-a0ef4d04d523_plain_text_3.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/98a33f1d-8f36-4d99-829b-a0ef4d04d523/3.jpg"
+      ],
+      "created_at": 1748044080.183436
+    },
+    "8ee0868f2df967379ac4be827da55849": {
+      "category": "crop",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/plain_text/98a33f1d-8f36-4d99-829b-a0ef4d04d523_plain_text_6.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/98a33f1d-8f36-4d99-829b-a0ef4d04d523/6.jpg"
+      ],
+      "created_at": 1748044080.199739
+    },
+    "63785800386f9b25eb2a61f876b74587": {
+      "category": "crop",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/abandon/98a33f1d-8f36-4d99-829b-a0ef4d04d523_abandon_1.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/98a33f1d-8f36-4d99-829b-a0ef4d04d523/1.jpg"
+      ],
+      "created_at": 1748044080.215501
+    },
+    "f9b8a79b381b6b06baec59f35094cdd9": {
+      "category": "crop",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/abandon/98a33f1d-8f36-4d99-829b-a0ef4d04d523_abandon_0.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/98a33f1d-8f36-4d99-829b-a0ef4d04d523/0.jpg"
+      ],
+      "created_at": 1748044080.229236
+    },
+    "17bda7705a514af805ca355233736b57": {
+      "category": "annotated",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/temp/98a33f1d-8f36-4d99-829b-a0ef4d04d523_annotated.jpg"
+      ],
+      "created_at": 1748044080.253823
+    },
+    "454870c8f8c44a2ab296b9d9dd4b23e1": {
+      "category": "zip",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/downloads/crop_98a33f1d-8f36-4d99-829b-a0ef4d04d523_0e56e8a2-66af-49bd-9805-f7b6cb1b9ab6.zip"
+      ],
+      "created_at": 1748044080.2783458
     }
   }
 }

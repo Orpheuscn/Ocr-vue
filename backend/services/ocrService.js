@@ -85,12 +85,18 @@ export async function performOcr(
     console.log("发送API请求...");
 
     // 使用我们的fetchWithProxy函数，它会根据环境自动处理代理
+    // 设置超时控制
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
+
     const response = await fetchWithProxy(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
-      timeout: 30000, // 增加超时时间到30秒
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     console.log(`API响应状态: ${response.status}`);
     const data = await response.json();

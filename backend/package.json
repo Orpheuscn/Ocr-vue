@@ -10,10 +10,16 @@
     "test": "node start.js test",
     "migrate": "node ../tools/migrate-to-mongodb.js",
     "check-mongodb": "node ../tools/check-mongodb-config.js",
-    "normalize-data": "node ../tools/normalize-mongodb-data.js"
+    "normalize-data": "node ../tools/normalize-mongodb-data.js",
+    "build:ts": "tsc",
+    "start:ts": "node dist/app.js",
+    "dev:ts": "ts-node-dev --respawn --transpile-only src/app.ts",
+    "queue:worker": "ts-node-dev src/workers/queueWorker.ts",
+    "queue:monitor": "ts-node-dev src/scripts/queueMonitor.ts"
   },
   "dependencies": {
     "@google-cloud/vision": "^5.1.0",
+    "amqplib": "^0.10.3",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
     "cookie-parser": "^1.4.7",
@@ -26,6 +32,7 @@
     "mongodb": "^5.9.2",
     "mongoose": "^7.8.7",
     "multer": "^1.4.5-lts.2",
+    "node-cron": "^4.0.7",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
@@ -35,11 +42,19 @@
     "winston": "^3.17.0"
   },
   "devDependencies": {
+    "@types/amqplib": "^0.10.1",
+    "@types/cors": "^2.8.13",
+    "@types/express": "^4.17.17",
+    "@types/node": "^20.4.5",
+    "@types/uuid": "^9.0.2",
     "dotenv": "^16.5.0",
     "form-data": "^4.0.2",
     "https-proxy-agent": "^7.0.6",
     "node-fetch": "^2.7.0",
     "proxy-agent": "^6.5.0",
-    "socks-proxy-agent": "^8.0.5"
+    "socks-proxy-agent": "^8.0.5",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.1.6"
   }
 }

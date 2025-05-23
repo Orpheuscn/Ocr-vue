@@ -39,12 +39,19 @@ export async function recognizeImage(base64Image, apiKey) {
 
     // 使用fetchWithProxy函数，它会根据环境自动处理代理
     console.log("[Vision API] 使用fetchWithProxy发送请求");
+
+    // 设置超时控制
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
+
     const response = await fetchWithProxy(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
-      timeout: 30000, // 增加超时时间到30秒
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
     console.log("[Vision API] 请求已发送，等待响应");
 
     console.log(`API响应状态: ${response.status}`);
@@ -142,12 +149,20 @@ export async function performOcr(base64Image, languageHints = [], apiKey) {
     console.log("发送OCR API请求...");
 
     // 使用fetchWithProxy函数，它会根据环境自动处理代理
+    console.log("[OCR API] 使用fetchWithProxy发送请求");
+
+    // 设置超时控制
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
+
     const response = await fetchWithProxy(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
-      timeout: 30000, // 增加超时时间到30秒
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     console.log(`API响应状态: ${response.status}`);
     const data = await response.json();

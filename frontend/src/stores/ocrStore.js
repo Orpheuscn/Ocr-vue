@@ -247,14 +247,14 @@ export const useOcrStore = defineStore('ocr', () => {
         try {
           processedFile = await convertHeicToJpeg(file)
           console.log('HEIC转换成功:', processedFile.type, processedFile.size)
-          
+
           // 确保转换后的文件类型正确
           if (processedFile.type !== 'image/jpeg') {
             console.warn('HEIC转换后的文件类型不是image/jpeg:', processedFile.type)
             // 强制设置类型为image/jpeg
             processedFile = new File([processedFile], processedFile.name, {
               type: 'image/jpeg',
-              lastModified: processedFile.lastModified
+              lastModified: processedFile.lastModified,
             })
           }
         } catch (heicError) {
@@ -304,7 +304,7 @@ export const useOcrStore = defineStore('ocr', () => {
         if (filePreviewUrl.value && filePreviewUrl.value.startsWith('blob:')) {
           URL.revokeObjectURL(filePreviewUrl.value)
         }
-        
+
         // 确保图片能够正确预览，特别是HEIC转换后的图片
         try {
           // 创建新的Blob URL用于预览
@@ -316,7 +316,7 @@ export const useOcrStore = defineStore('ocr', () => {
           // 回退到原始方法
           filePreviewUrl.value = URL.createObjectURL(processedFile)
         }
-        
+
         // 尺寸将在 ImageCanvas 组件加载图片后通过事件设置
         // isDimensionsKnown 会在事件回调中设置为 true
       } else {
@@ -518,18 +518,15 @@ export const useOcrStore = defineStore('ocr', () => {
       // 获取当前用户ID（如果已登录）
       let userId = null
       try {
-        const userStr = localStorage.getItem('user')
-        console.log('localStorage中的user数据:', userStr)
-        if (userStr) {
-          const user = JSON.parse(userStr)
-          console.log('解析后的用户数据:', user)
+        // 使用正确的用户信息获取方式
+        const { getCurrentUser } = await import('@/services/authService')
+        const user = getCurrentUser()
+
+        if (user && user.id) {
           userId = user.id
           console.log('当前用户ID:', userId)
-          if (!userId) {
-            console.warn('用户数据中没有ID字段:', user)
-          }
         } else {
-          console.warn('localStorage中没有user数据')
+          console.log('用户未登录，OCR结果不会保存到历史记录')
         }
       } catch (userError) {
         console.error('获取用户信息失败:', userError)
@@ -541,13 +538,13 @@ export const useOcrStore = defineStore('ocr', () => {
 
       // 不再需要提前转换为Base64，直接使用文件对象
       // 只有在需要处理遮挡区域时才转换为Base64
-      let useOriginalFile = true;
-      
+      let useOriginalFile = true
+
       // 检查是否有遮挡区域需要处理
       if (maskedAreas.value.length > 0) {
         console.log('检测到遮挡区域，需要在前端处理图像...')
-        useOriginalFile = false;
-        
+        useOriginalFile = false
+
         if (isPdfFile.value) {
           console.log('处理PDF文件...')
           // 对于 PDF，使用当前渲染页面的 Data URL
@@ -593,12 +590,12 @@ export const useOcrStore = defineStore('ocr', () => {
         console.log(`应用${maskedAreas.value.length}个遮挡区域...`)
         loadingMessage.value = i18n.tf('processingMasks', { count: maskedAreas.value.length })
         base64Image = await applyMasksToImage(base64Image, processDimensions)
-        
+
         // 创建处理后的图片URL
         processedPreviewUrl.value = `data:image/png;base64,${base64Image}`
       } else if (maskedAreas.value.length > 0 && processedPreviewUrl.value) {
         console.log('图片已包含遮挡区域，无需再次应用')
-        useOriginalFile = false;
+        useOriginalFile = false
       }
 
       // 准备API请求参数
@@ -615,13 +612,15 @@ export const useOcrStore = defineStore('ocr', () => {
         try {
           // 使用安全的服务器端处理
           // 如果有遮挡区域处理，使用处理后的图像数据
-          const fileToProcess = useOriginalFile ? currentFiles.value[0] : {
-            processedImage: base64Image,
-            isProcessed: true,
-            originalName: currentFiles.value[0].name,
-            type: currentFiles.value[0].type
-          };
-          
+          const fileToProcess = useOriginalFile
+            ? currentFiles.value[0]
+            : {
+                processedImage: base64Image,
+                isProcessed: true,
+                originalName: currentFiles.value[0].name,
+                type: currentFiles.value[0].type,
+              }
+
           const simpleResult = await processWithServerApi(
             fileToProcess,
             languageHints,
@@ -1143,7 +1142,7 @@ export const useOcrStore = defineStore('ocr', () => {
     try {
       // 使用apiClient中的checkApiStatus函数
       const { checkApiStatus } = await import('@/services/apiClient')
-      
+
       // 增加超时处理
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('检查API状态超时')), 5000) // 减少超时时间提高响应速度

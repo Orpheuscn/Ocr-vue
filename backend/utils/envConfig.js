@@ -114,6 +114,31 @@ export default {
   swaggerUser: process.env.SWAGGER_USER,
   swaggerPassword: process.env.SWAGGER_PASSWORD,
 
+  // RabbitMQ配置
+  rabbitmqHost: process.env.RABBITMQ_HOST || "localhost",
+  rabbitmqPort: parseInt(process.env.RABBITMQ_PORT || "5672"),
+  rabbitmqUsername: process.env.RABBITMQ_USERNAME || "guest",
+  rabbitmqPassword: process.env.RABBITMQ_PASSWORD || "guest",
+  rabbitmqVhost: process.env.RABBITMQ_VHOST || "/",
+  rabbitmqHeartbeat: parseInt(process.env.RABBITMQ_HEARTBEAT || "60"),
+  rabbitmqConnectionTimeout: parseInt(process.env.RABBITMQ_CONNECTION_TIMEOUT || "30000"),
+  rabbitmqReconnectDelay: parseInt(process.env.RABBITMQ_RECONNECT_DELAY || "5000"),
+  rabbitmqMaxReconnectAttempts: parseInt(process.env.RABBITMQ_MAX_RECONNECT_ATTEMPTS || "5"),
+  rabbitmqPrefetchCount: parseInt(process.env.RABBITMQ_PREFETCH_COUNT || "10"),
+
+  // 队列功能配置
+  enableOcrQueue: process.env.ENABLE_OCR_QUEUE === "true",
+  enableNotifications: process.env.ENABLE_NOTIFICATIONS === "true",
+  enableWebsocket: process.env.ENABLE_WEBSOCKET === "true",
+  enableEmail: process.env.ENABLE_EMAIL === "true",
+
+  // 队列监控配置
+  healthCheckInterval: parseInt(process.env.HEALTH_CHECK_INTERVAL || "30000"),
+  metricsCollectionInterval: parseInt(process.env.METRICS_COLLECTION_INTERVAL || "60000"),
+  queueAlertThreshold: parseInt(process.env.QUEUE_ALERT_THRESHOLD || "1000"),
+  processingTimeAlertThreshold: parseInt(process.env.PROCESSING_TIME_ALERT_THRESHOLD || "300000"),
+  errorRateAlertThreshold: parseFloat(process.env.ERROR_RATE_ALERT_THRESHOLD || "0.1"),
+
   // 验证配置是否加载成功的辅助函数
   isConfigValid() {
     return !!this.jwtSecret;

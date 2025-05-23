@@ -5,9 +5,10 @@
 # ==========================================
 # 此脚本用于管理OCR应用的所有组件:
 # 1. MongoDB数据库服务
-# 2. 后端API服务器
-# 3. Nginx服务器(用于提供前端静态文件并代理API请求)
-# 4. Python服务器(用于图像坐标映射功能)
+# 2. RabbitMQ消息队列服务
+# 3. 后端API服务器
+# 4. Nginx服务器(用于提供前端静态文件并代理API请求)
+# 5. Python服务器(用于图像坐标映射功能)
 #
 # 使用方法:
 #   ./ocr-app.sh start - 启动所有服务
@@ -299,6 +300,43 @@ check_status() {
     echo -e "${RED}✗ MongoDB服务未运行${NC}"
   fi
 
+  # 检查RabbitMQ服务
+  if pgrep -f "rabbitmq" > /dev/null; then
+    RABBITMQ_PID=$(pgrep -f "rabbitmq-server")
+    echo -e "${GREEN}✓ RabbitMQ服务正在运行 (PID: $RABBITMQ_PID)${NC}"
+
+    # 测试RabbitMQ连接
+    if command -v rabbitmqctl &> /dev/null; then
+      rabbitmqctl status > /dev/null 2>&1
+      RABBITMQ_RESULT=$?
+      if [ $RABBITMQ_RESULT -eq 0 ]; then
+        echo -e "${GREEN}✓ RabbitMQ连接测试成功${NC}"
+
+        # 检查RabbitMQ端口
+        RABBITMQ_PORT_USAGE=$(check_port 5672)
+        if [ ! -z "$RABBITMQ_PORT_USAGE" ]; then
+          echo -e "${GREEN}  - 端口 5672 已绑定${NC}"
+        else
+          echo -e "${YELLOW}  - 警告: 端口 5672 未绑定${NC}"
+        fi
+
+        # 检查管理界面端口
+        RABBITMQ_MGMT_PORT_USAGE=$(check_port 15672)
+        if [ ! -z "$RABBITMQ_MGMT_PORT_USAGE" ]; then
+          echo -e "${GREEN}  - 管理界面端口 15672 已绑定${NC}"
+        else
+          echo -e "${YELLOW}  - 警告: 管理界面端口 15672 未绑定${NC}"
+        fi
+      else
+        echo -e "${YELLOW}警告: RabbitMQ服务已启动但连接测试失败${NC}"
+      fi
+    else
+      echo -e "${YELLOW}警告: rabbitmqctl命令不可用，无法测试连接${NC}"
+    fi
+  else
+    echo -e "${RED}✗ RabbitMQ服务未运行${NC}"
+  fi
+
   # 检查后端服务
   BACKEND_PID=$(ps aux | grep "node start.js" | grep -v grep | awk '{print $2}')
   if [ ! -z "$BACKEND_PID" ]; then
@@ -452,7 +490,7 @@ stop_services() {
     echo -e "${RED}Python服务停止失败，继续停止其他服务${NC}"
   fi
 
-  # 先停止后端服务，确保关闭与 MongoDB 的连接
+  # 先停止后端服务，确保关闭与 MongoDB 和 RabbitMQ 的连接
   BACKEND_PID=$(ps aux | grep "node start.js" | grep -v grep | awk '{print $2}')
   if [ ! -z "$BACKEND_PID" ]; then
     echo -e "${BLUE}正在停止后端服务 (PID: $BACKEND_PID)...${NC}"
@@ -484,8 +522,14 @@ stop_services() {
     echo -e "${YELLOW}后端服务未运行${NC}"
   fi
 
-  # 等待一秒，确保所有数据库连接已关闭
+  # 等待一秒，确保所有数据库和消息队列连接已关闭
   sleep 1
+
+  # 停止RabbitMQ服务
+  stop_rabbitmq
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}RabbitMQ服务停止失败，继续停止其他服务${NC}"
+  fi
 
   # 然后停止MongoDB数据库
   stop_mongodb
@@ -665,6 +709,133 @@ start_monitor() {
   echo -e "${BLUE}监控日志将写入: $WATCHDOG_LOG${NC}"
 
   return 0
+}
+
+# 功能函数：启动RabbitMQ服务
+start_rabbitmq() {
+  echo -e "${BLUE}正在启动RabbitMQ服务...${NC}"
+
+  # 检查RabbitMQ是否已经运行
+  if pgrep -f "rabbitmq" > /dev/null; then
+    echo -e "${YELLOW}RabbitMQ已在运行，跳过启动步骤${NC}"
+    return 0
+  fi
+
+  # 检测操作系统并启动RabbitMQ
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS - 使用Homebrew
+    if command -v brew &> /dev/null; then
+      echo -e "${BLUE}使用Homebrew启动RabbitMQ...${NC}"
+      brew services start rabbitmq
+      if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ RabbitMQ服务已成功启动${NC}"
+      else
+        echo -e "${RED}✗ RabbitMQ启动失败${NC}"
+        return 1
+      fi
+    else
+      echo -e "${RED}错误: 未找到Homebrew，无法启动RabbitMQ${NC}"
+      return 1
+    fi
+  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux - 使用systemctl
+    if command -v systemctl &> /dev/null; then
+      echo -e "${BLUE}使用systemctl启动RabbitMQ...${NC}"
+      sudo systemctl start rabbitmq-server
+      if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ RabbitMQ服务已成功启动${NC}"
+      else
+        echo -e "${RED}✗ RabbitMQ启动失败${NC}"
+        return 1
+      fi
+    else
+      echo -e "${RED}错误: 未找到systemctl，无法启动RabbitMQ${NC}"
+      return 1
+    fi
+  else
+    echo -e "${RED}错误: 不支持的操作系统: $OSTYPE${NC}"
+    return 1
+  fi
+
+  # 等待RabbitMQ完全启动
+  echo -e "${BLUE}等待RabbitMQ初始化...${NC}"
+  sleep 5
+
+  # 测试RabbitMQ连接
+  if command -v rabbitmqctl &> /dev/null; then
+    rabbitmqctl status > /dev/null 2>&1
+    RABBITMQ_RESULT=$?
+    if [ $RABBITMQ_RESULT -eq 0 ]; then
+      echo -e "${GREEN}✓ RabbitMQ连接测试成功${NC}"
+      return 0
+    else
+      echo -e "${YELLOW}警告: RabbitMQ服务已启动但连接测试失败${NC}"
+      return 0
+    fi
+  else
+    echo -e "${YELLOW}警告: rabbitmqctl命令不可用，无法测试连接${NC}"
+    return 0
+  fi
+}
+
+# 功能函数：停止RabbitMQ服务
+stop_rabbitmq() {
+  echo -e "${BLUE}正在停止RabbitMQ服务...${NC}"
+
+  # 检查RabbitMQ是否在运行
+  if ! pgrep -f "rabbitmq" > /dev/null; then
+    echo -e "${YELLOW}RabbitMQ服务未运行${NC}"
+    return 0
+  fi
+
+  # 检测操作系统并停止RabbitMQ
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS - 使用Homebrew
+    if command -v brew &> /dev/null; then
+      echo -e "${BLUE}使用Homebrew停止RabbitMQ...${NC}"
+      brew services stop rabbitmq
+      if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ RabbitMQ服务已成功停止${NC}"
+      else
+        echo -e "${RED}✗ RabbitMQ停止失败${NC}"
+        return 1
+      fi
+    else
+      echo -e "${RED}错误: 未找到Homebrew，无法停止RabbitMQ${NC}"
+      return 1
+    fi
+  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux - 使用systemctl
+    if command -v systemctl &> /dev/null; then
+      echo -e "${BLUE}使用systemctl停止RabbitMQ...${NC}"
+      sudo systemctl stop rabbitmq-server
+      if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ RabbitMQ服务已成功停止${NC}"
+      else
+        echo -e "${RED}✗ RabbitMQ停止失败${NC}"
+        return 1
+      fi
+    else
+      echo -e "${RED}错误: 未找到systemctl，无法停止RabbitMQ${NC}"
+      return 1
+    fi
+  else
+    echo -e "${RED}错误: 不支持的操作系统: $OSTYPE${NC}"
+    return 1
+  fi
+
+  # 等待RabbitMQ完全停止
+  echo -e "${BLUE}等待RabbitMQ停止...${NC}"
+  sleep 3
+
+  # 验证RabbitMQ已停止
+  if ! pgrep -f "rabbitmq" > /dev/null; then
+    echo -e "${GREEN}✓ RabbitMQ已完全停止${NC}"
+    return 0
+  else
+    echo -e "${YELLOW}警告: RabbitMQ进程可能仍在运行${NC}"
+    return 0
+  fi
 }
 
 # 功能函数：启动MongoDB数据库
@@ -1128,6 +1299,13 @@ start_services() {
       return 1
     fi
     echo -e "${YELLOW}继续启动应用，但可能会出现数据库连接错误${NC}"
+  fi
+
+  # 启动RabbitMQ服务
+  start_rabbitmq
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}RabbitMQ启动失败，队列功能可能无法正常工作${NC}"
+    echo -e "${YELLOW}应用将继续启动，但异步处理功能可能不可用${NC}"
   fi
 
   # 检查后端服务是否已运行
