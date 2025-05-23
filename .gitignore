@@ -29,6 +29,12 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+.cursor/*
+.cursoractions.json
+.cursorignore
+.cursorrc
+.editorconfig
+.windsurfrules
 
 *.tsbuildinfo
 
@@ -44,6 +50,7 @@ backend/.env.*
 database/mongodb/data
 database/mongodb/mongod.conf
 database/mongodb/*.lock
+database/mongodb/README.md
 
 # SSL证书
 ssl/*.pem
