@@ -79,6 +79,7 @@ const emit = defineEmits([
   'rectangle-created', // 新创建矩形（仅包含坐标和基本信息）
   'rectangle-moved', // 矩形移动后的坐标更新
   'rectangle-selected', // 矩形被选中
+  'rectangle-unhighlighted', // 矩形取消高亮
   'rectangle-deleted', // 矩形被删除
 ])
 
@@ -324,6 +325,9 @@ const setupCanvasEventListeners = () => {
         currentRect.value.colorHue = colorHue
         currentRect.value.hexColor = hexColor
 
+        // 添加唯一标识符，用于后续查找
+        currentRect.value.rectId = `rect_${rectCounter.value + 1}`
+
         fabricCanvas.value.add(currentRect.value)
       }
     } catch (error) {
@@ -378,7 +382,8 @@ const setupCanvasEventListeners = () => {
       const rect = findRectangleByFabricObject(e.target)
       if (rect) {
         console.log('找到矩形:', rect.id)
-        highlightRect(rect)
+        // 通知父组件进行高亮，保持状态同步
+        emit('rectangle-selected', rect)
 
         // 设置焦点到画布容器，以便能够接收键盘事件
         if (canvasWrapper.value) {
@@ -397,8 +402,8 @@ const setupCanvasEventListeners = () => {
       const rect = findRectangleByFabricObject(e.target)
       if (rect) {
         console.log('找到矩形:', rect.id)
-        // 直接取消高亮，因为现在没有选中状态
-        unhighlightRect(rect)
+        // 通知父组件取消高亮，保持状态同步
+        emit('rectangle-unhighlighted', rect)
       } else {
         console.warn('未找到对应的矩形对象')
       }
@@ -414,7 +419,16 @@ const setupCanvasEventListeners = () => {
 const findRectangleByFabricObject = (fabricObject) => {
   console.log('查找矩形对象，当前矩形总数:', props.rectangles.length)
 
-  // 首先尝试通过fabric对象引用查找
+  // 首先尝试通过fabric对象的rectId查找
+  if (fabricObject.rectId) {
+    const rectById = props.rectangles.find((r) => r.id === fabricObject.rectId)
+    if (rectById) {
+      console.log('通过rectId找到矩形:', rectById.id)
+      return rectById
+    }
+  }
+
+  // 然后尝试通过fabric对象引用查找
   const rect = props.rectangles.find((r) => r.fabricObject === fabricObject)
   if (rect) {
     console.log('通过fabric对象引用找到矩形:', rect.id)
@@ -501,9 +515,6 @@ const highlightRect = (rect) => {
   if (canvasWrapper.value) {
     canvasWrapper.value.focus()
   }
-
-  // 通知父组件矩形被选中
-  emit('rectangle-selected', rect)
 }
 
 // 取消高亮矩形（仅处理视觉效果）
@@ -627,11 +638,15 @@ defineExpose({
       rect.colorHue = colorHue
       rect.hexColor = hexColor
 
+      // 生成矩形ID并保存到fabric对象
+      const rectId = rectData.id || `rect_${++rectCounter.value}`
+      rect.rectId = rectId
+
       fabricCanvas.value.add(rect)
 
       // 通知父组件新创建了矩形
       emit('rectangle-created', {
-        id: rectData.id || `rect_${++rectCounter.value}`,
+        id: rectId,
         coords: rectData.coords,
         fabricObject: rect,
         class: rectData.class,

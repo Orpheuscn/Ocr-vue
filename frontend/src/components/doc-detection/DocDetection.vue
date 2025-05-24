@@ -114,6 +114,7 @@
                   @rectangle-created="handleRectangleCreated"
                   @rectangle-moved="handleRectangleMoved"
                   @rectangle-selected="handleRectangleSelected"
+                  @rectangle-unhighlighted="handleRectangleUnhighlighted"
                   @rectangle-deleted="handleRectangleDeleted"
                 />
                 <div v-if="!hasImage" class="text-center">
@@ -262,18 +263,13 @@ const handleRectangleMoved = (moveInfo) => {
 }
 
 const handleRectangleSelected = (rect) => {
-  // 先取消所有其他矩形的高亮状态
-  rectangles.value.forEach((r) => {
-    if (r.id !== rect.id) {
-      r.isHighlighted = false
-    }
-  })
+  // 调用统一的高亮方法
+  highlightRect(rect)
+}
 
-  // 设置当前矩形为高亮状态
-  const index = rectangles.value.findIndex((r) => r.id === rect.id)
-  if (index !== -1) {
-    rectangles.value[index].isHighlighted = true
-  }
+const handleRectangleUnhighlighted = (rect) => {
+  // 调用统一的取消高亮方法
+  unhighlightRect(rect)
 }
 
 const handleRectangleDeleted = (rect) => {
