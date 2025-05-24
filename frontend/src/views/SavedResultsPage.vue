@@ -7,7 +7,7 @@
       <div class="flex flex-col space-y-4">
         <!-- 页面标题 -->
         <div class="flex justify-between items-center">
-          <h1 class="text-2xl font-bold">保存的OCR结果</h1>
+          <h1 class="text-2xl font-bold">提取结果</h1>
           <div class="flex gap-2">
             <button
               v-if="savedResults.length > 0"
@@ -36,7 +36,7 @@
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
             </svg>
-            <p class="text-lg mb-2">暂无保存的OCR结果</p>
+            <p class="text-lg mb-2">暂无提取结果</p>
             <p class="text-sm opacity-70 mb-4">当您在OCR结果页面复制文本时，结果将自动保存在这里</p>
             <router-link :to="{ name: 'Home' }" class="btn btn-primary"> 开始OCR识别 </router-link>
           </div>
@@ -188,7 +188,7 @@
     <div class="modal" :class="{ 'modal-open': showDeleteConfirm }">
       <div class="modal-box">
         <h3 class="font-bold text-lg">确认删除</h3>
-        <p class="py-4">您确定要删除这个保存的OCR结果吗？此操作无法撤销。</p>
+        <p class="py-4">您确定要删除这个提取结果吗？此操作无法撤销。</p>
         <div class="modal-action">
           <button @click="deleteResult" class="btn btn-error">删除</button>
           <button @click="showDeleteConfirm = false" class="btn">取消</button>
@@ -200,7 +200,7 @@
     <div class="modal" :class="{ 'modal-open': showClearAllConfirm }">
       <div class="modal-box">
         <h3 class="font-bold text-lg">确认清除所有</h3>
-        <p class="py-4">您确定要清除所有保存的OCR结果吗？此操作无法撤销。</p>
+        <p class="py-4">您确定要清除所有提取结果吗？此操作无法撤销。</p>
         <div class="modal-action">
           <button @click="clearAllResults" class="btn btn-error">清除所有</button>
           <button @click="showClearAllConfirm = false" class="btn">取消</button>
@@ -248,7 +248,7 @@ onMounted(() => {
   loadSavedResults()
 })
 
-// 加载保存的OCR结果
+// 加载提取结果
 const loadSavedResults = async () => {
   const results = await getSavedResults()
 

@@ -2818,6 +2818,28 @@
         "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/downloads/crop_7e7c5ad0-0692-4392-9fe5-f1569ff3ed1e_e482a9ee-df37-439e-b693-3c9cad7adc53.zip"
       ],
       "created_at": 1748059020.7380583
+    },
+    "86890983db57b531e86590763830a627": {
+      "category": "crop",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/abandon/e7bd59a3-f252-4f64-b106-d87aeda9da3c_abandon_3.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/e7bd59a3-f252-4f64-b106-d87aeda9da3c/3.jpg"
+      ],
+      "created_at": 1748062558.830372
+    },
+    "7320d91bb1467a44b9761ff20756ae6e": {
+      "category": "annotated",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/temp/e7bd59a3-f252-4f64-b106-d87aeda9da3c_annotated.jpg"
+      ],
+      "created_at": 1748062558.88255
+    },
+    "ea5ea353b17695ce0aaef7bb3dd5e512": {
+      "category": "zip",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/downloads/crop_e7bd59a3-f252-4f64-b106-d87aeda9da3c_967d5816-473f-489e-8ff5-cc9059619726.zip"
+      ],
+      "created_at": 1748062558.9077995
     }
   }
 }

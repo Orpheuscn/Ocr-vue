@@ -116,6 +116,7 @@
                   @rectangle-selected="handleRectangleSelected"
                   @rectangle-unhighlighted="handleRectangleUnhighlighted"
                   @rectangle-deleted="handleRectangleDeleted"
+                  @rectangle-modified="handleRectangleModified"
                 />
                 <div v-if="!hasImage" class="text-center">
                   <!-- 显示加载状态或上传提示 -->
@@ -286,6 +287,15 @@ const handleRectangleDeleted = (rect) => {
 
   // 更新坐标管理器
   docDetectService.removeRectangle(rect.id)
+}
+
+const handleRectangleModified = (modifyInfo) => {
+  // 更新矩形坐标（拖拽或调整大小后）
+  const index = rectangles.value.findIndex((r) => r.id === modifyInfo.id)
+  if (index !== -1) {
+    rectangles.value[index].coords = modifyInfo.coords
+    console.log('矩形坐标已更新:', modifyInfo.id, modifyInfo.coords)
+  }
 }
 
 // 组件挂载

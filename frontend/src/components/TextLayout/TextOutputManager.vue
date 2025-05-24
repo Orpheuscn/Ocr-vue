@@ -99,7 +99,12 @@
 
       <!-- 文本内容区 -->
       <div
-        class="flex-1 overflow-y-auto p-2 text-content-area bg-base-100"
+        :class="[
+          'flex-1 p-2 bg-base-100',
+          isVerticalTextMode
+            ? 'text-content-area-vertical overflow-x-auto overflow-y-auto'
+            : 'text-content-area overflow-y-auto overflow-x-hidden',
+        ]"
         :dir="textDirection"
         ref="textContentRef"
       >
@@ -304,6 +309,14 @@ const isRtlText = computed(() => {
 // 设置文本方向
 const textDirection = computed(() => {
   return isRtlText.value ? 'rtl' : 'ltr'
+})
+
+// 判断当前是否处于垂直文本模式
+const isVerticalTextMode = computed(() => {
+  return (
+    activeTextComponent.value === TextVerticalParallel ||
+    activeTextComponent.value === TextVerticalParagraph
+  )
 })
 
 // 监听容器高度变化
@@ -632,7 +645,6 @@ const resetFilters = () => {
 
 .text-content-area {
   flex: 1;
-  overflow-y: auto;
   color: var(--bc, inherit);
   transition: background-color 0.3s;
   word-break: break-word;
@@ -643,6 +655,30 @@ const resetFilters = () => {
   min-height: 400px;
   padding: 1rem;
   border-radius: 0.375rem;
+}
+
+/* 垂直文本专用样式 */
+.text-content-area-vertical {
+  flex: 1;
+  color: var(--bc, inherit);
+  transition: background-color 0.3s;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 400px;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  /* 垂直文本允许正常的文本换行 */
+  white-space: pre-wrap;
+  word-break: break-word;
+  /* 隐藏垂直滚动条但保持滚动功能 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+/* 隐藏垂直文本的垂直滚动条 */
+.text-content-area-vertical::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Edge */
 }
 
 .divider {

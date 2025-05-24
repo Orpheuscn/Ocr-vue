@@ -81,6 +81,7 @@ const emit = defineEmits([
   'rectangle-selected', // 矩形被选中
   'rectangle-unhighlighted', // 矩形取消高亮
   'rectangle-deleted', // 矩形被删除
+  'rectangle-modified', // 矩形被修改（拖拽或调整大小）
 ])
 
 // 响应式状态（仅保留渲染相关状态）
@@ -183,9 +184,10 @@ watch(
 // 初始化Canvas
 const initCanvas = () => {
   fabricCanvas.value = new fabric.Canvas(canvas.value, {
-    selection: false, // 禁用选择功能
+    selection: true, // 启用选择功能以支持拖拽和调整大小
     width: 100,
     height: 100,
+    preserveObjectStacking: true, // 保持对象层级
   })
 
   if (fabricCanvas.value.wrapperEl) {
@@ -311,14 +313,12 @@ const setupCanvasEventListeners = () => {
           fill: colors.fill,
           stroke: colors.stroke,
           strokeWidth: 1,
-          selectable: false, // 禁用选中功能
-          movable: false, // 禁用移动功能
-          hasControls: false, // 不显示控制点
-          hasBorders: false, // 不显示边框
+          selectable: false, // 绘制时禁用选中功能
+          movable: false, // 绘制时禁用移动功能
+          hasControls: false, // 绘制时不显示控制点
+          hasBorders: false, // 绘制时不显示边框
           lockRotation: true, // 锁定旋转
-          lockScalingX: true, // 锁定X轴缩放
-          lockScalingY: true, // 锁定Y轴缩放
-          hoverCursor: 'default', // 默认光标样式
+          hoverCursor: 'crosshair', // 绘制时的光标样式
         })
 
         // 保存颜色信息到fabric对象
@@ -369,6 +369,9 @@ const setupCanvasEventListeners = () => {
       color: currentRect.value.hexColor,
     }
 
+    // 启用矩形的交互功能
+    enableRectangleInteraction(currentRect.value)
+
     // 通知父组件新创建了矩形
     emit('rectangle-created', rectInfo)
 
@@ -410,9 +413,104 @@ const setupCanvasEventListeners = () => {
     }
   })
 
-  // 移除对象移动事件处理，因为现在禁用了移动功能
+  // 监听对象移动事件
+  fabricCanvas.value.on('object:moving', (e) => {
+    if (e.target && e.target.type === 'rect') {
+      // 实时更新坐标信息
+      updateRectangleCoordinates(e.target)
+    }
+  })
 
-  // 移除所有选中相关的事件处理，因为现在禁用了点击选中功能
+  // 监听对象修改事件（包括缩放、移动等）
+  fabricCanvas.value.on('object:modified', (e) => {
+    if (e.target && e.target.type === 'rect') {
+      // 更新坐标信息
+      updateRectangleCoordinates(e.target)
+    }
+  })
+
+  // 监听对象缩放事件
+  fabricCanvas.value.on('object:scaling', (e) => {
+    if (e.target && e.target.type === 'rect') {
+      // 实时更新坐标信息
+      updateRectangleCoordinates(e.target)
+    }
+  })
+}
+
+// 启用矩形的交互功能（拖拽和调整大小）
+const enableRectangleInteraction = (rect) => {
+  if (!rect) return
+
+  // 启用选择和移动功能
+  rect.set({
+    selectable: true,
+    movable: true,
+    hasControls: true, // 显示控制点
+    hasBorders: true, // 显示边框
+    lockRotation: true, // 锁定旋转
+    hoverCursor: 'move', // 移动光标
+    moveCursor: 'move', // 移动时的光标
+  })
+
+  // 自定义控制点样式
+  rect.set({
+    cornerStyle: 'circle', // 圆形控制点
+    cornerSize: 8, // 控制点大小
+    cornerColor: '#ffffff', // 控制点颜色
+    cornerStrokeColor: '#333333', // 控制点边框颜色
+    transparentCorners: false, // 不透明控制点
+    borderColor: '#333333', // 边框颜色
+    borderScaleFactor: 2, // 边框缩放因子
+  })
+
+  // 设置控制点的鼠标样式
+  rect.setControlsVisibility({
+    mt: true, // 上中
+    mb: true, // 下中
+    ml: true, // 左中
+    mr: true, // 右中
+    tl: true, // 左上角
+    tr: true, // 右上角
+    bl: true, // 左下角
+    br: true, // 右下角
+    mtr: false, // 禁用旋转控制点
+  })
+
+  // 自定义控制点的鼠标样式
+  rect.controls.mt.cursorStyle = 'n-resize'
+  rect.controls.mb.cursorStyle = 's-resize'
+  rect.controls.ml.cursorStyle = 'w-resize'
+  rect.controls.mr.cursorStyle = 'e-resize'
+  rect.controls.tl.cursorStyle = 'nw-resize'
+  rect.controls.tr.cursorStyle = 'ne-resize'
+  rect.controls.bl.cursorStyle = 'sw-resize'
+  rect.controls.br.cursorStyle = 'se-resize'
+}
+
+// 更新矩形坐标信息
+const updateRectangleCoordinates = (fabricRect) => {
+  if (!fabricRect) return
+
+  // 查找对应的矩形数据
+  const rect = findRectangleByFabricObject(fabricRect)
+  if (!rect) return
+
+  // 使用工具函数计算新的坐标
+  const newCoords = calculateRectCoordinates(
+    fabricRect,
+    scaleX.value,
+    scaleY.value,
+    props.originalImageWidth,
+    props.originalImageHeight,
+  )
+
+  // 通知父组件坐标已更新
+  emit('rectangle-modified', {
+    id: rect.id,
+    coords: newCoords,
+    fabricObject: fabricRect,
+  })
 }
 
 // 通过fabric对象查找矩形
@@ -624,13 +722,11 @@ defineExpose({
         fill: colors.fill,
         stroke: colors.stroke,
         strokeWidth: 1,
-        selectable: false, // 禁用选中功能
-        movable: false, // 禁用移动功能
-        hasControls: false, // 不显示控制点
-        hasBorders: false, // 不显示边框
+        selectable: false, // 初始时禁用选中功能
+        movable: false, // 初始时禁用移动功能
+        hasControls: false, // 初始时不显示控制点
+        hasBorders: false, // 初始时不显示边框
         lockRotation: true, // 锁定旋转
-        lockScalingX: true, // 锁定X轴缩放
-        lockScalingY: true, // 锁定Y轴缩放
         hoverCursor: 'default', // 默认光标样式
       })
 
@@ -643,6 +739,9 @@ defineExpose({
       rect.rectId = rectId
 
       fabricCanvas.value.add(rect)
+
+      // 启用矩形的交互功能
+      enableRectangleInteraction(rect)
 
       // 通知父组件新创建了矩形
       emit('rectangle-created', {

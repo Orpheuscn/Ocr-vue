@@ -62,7 +62,7 @@
             class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
           >
             <li><router-link :to="{ name: 'Profile' }">个人资料</router-link></li>
-            <li><router-link :to="{ name: 'SavedResults' }">保存的OCR结果</router-link></li>
+            <li><router-link :to="{ name: 'SavedResults' }">提取结果</router-link></li>
             <li v-if="isUserAdmin">
               <router-link :to="{ name: 'ContentReview' }">内容审核</router-link>
             </li>
