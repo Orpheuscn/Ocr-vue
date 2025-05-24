@@ -243,6 +243,8 @@ const handleRectangleCreated = (rectInfo) => {
     ocrProcessing: false,
     isUserDrawn: !rectInfo.isAutoDetected,
     isAutoDetected: rectInfo.isAutoDetected || false,
+    colorHue: rectInfo.colorHue,
+    color: rectInfo.color, // 保存十六进制颜色用于卡片显示
   }
 
   rectangles.value.push(newRect)

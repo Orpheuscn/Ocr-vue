@@ -34,7 +34,7 @@ export const getRandomColorHue = () => {
   }
 
   // 从未使用的颜色中随机选择
-  const availableColors = colorPool.filter(color => !usedColors.includes(color))
+  const availableColors = colorPool.filter((color) => !usedColors.includes(color))
   const randomIndex = Math.floor(Math.random() * availableColors.length)
   const selectedColor = availableColors[randomIndex]
 
@@ -45,12 +45,19 @@ export const getRandomColorHue = () => {
 }
 
 /**
- * 根据矩形ID获取预定义颜色（用于矩形卡片显示）
+ * 根据矩形对象获取颜色（用于矩形卡片显示）
  * @param {Object} rect - 矩形对象
  * @returns {string} 十六进制颜色值
  */
 export const getRectColor = (rect) => {
-  return predefinedColors[rect.id.replace('rect_', '') % predefinedColors.length]
+  // 如果矩形对象中已经保存了颜色信息，直接使用
+  if (rect.color) {
+    return rect.color
+  }
+
+  // 否则使用预定义颜色作为后备方案
+  const rectNumber = parseInt(rect.id.replace('rect_', '')) || 0
+  return predefinedColors[rectNumber % predefinedColors.length]
 }
 
 /**
@@ -61,7 +68,7 @@ export const getRectColor = (rect) => {
 export const generateCanvasColors = (hue) => {
   return {
     fill: `hsla(${hue}, 80%, 60%, 0.3)`,
-    stroke: `hsla(${hue}, 80%, 60%, 0.8)`
+    stroke: `hsla(${hue}, 80%, 60%, 0.8)`,
   }
 }
 
@@ -86,4 +93,55 @@ export const getUsedColorCount = () => {
  */
 export const hasAvailableColors = () => {
   return usedColors.length < colorPool.length
+}
+
+/**
+ * 将HSL色相值转换为十六进制颜色（用于卡片显示）
+ * @param {number} hue - HSL色相值
+ * @returns {string} 十六进制颜色值
+ */
+export const hueToHexColor = (hue) => {
+  // 使用固定的饱和度和亮度值
+  const saturation = 70 // 70%
+  const lightness = 60 // 60%
+
+  // 将HSL转换为RGB
+  const c = ((1 - Math.abs((2 * lightness) / 100 - 1)) * saturation) / 100
+  const x = c * (1 - Math.abs(((hue / 60) % 2) - 1))
+  const m = lightness / 100 - c / 2
+
+  let r, g, b
+
+  if (hue >= 0 && hue < 60) {
+    r = c
+    g = x
+    b = 0
+  } else if (hue >= 60 && hue < 120) {
+    r = x
+    g = c
+    b = 0
+  } else if (hue >= 120 && hue < 180) {
+    r = 0
+    g = c
+    b = x
+  } else if (hue >= 180 && hue < 240) {
+    r = 0
+    g = x
+    b = c
+  } else if (hue >= 240 && hue < 300) {
+    r = x
+    g = 0
+    b = c
+  } else {
+    r = c
+    g = 0
+    b = x
+  }
+
+  // 转换为0-255范围并转换为十六进制
+  const red = Math.round((r + m) * 255)
+  const green = Math.round((g + m) * 255)
+  const blue = Math.round((b + m) * 255)
+
+  return `#${red.toString(16).padStart(2, '0')}${green.toString(16).padStart(2, '0')}${blue.toString(16).padStart(2, '0')}`
 }

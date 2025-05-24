@@ -26,7 +26,7 @@ import {
   calculateScaleFactor,
 } from '@/utils/coordinateUtils'
 // 引入颜色管理工具函数
-import { getRandomColorHue, generateCanvasColors } from '@/utils/colorUtils'
+import { getRandomColorHue, generateCanvasColors, hueToHexColor } from '@/utils/colorUtils'
 // 使用全局的fabric变量，确保在index.html中通过CDN加载了fabric.js
 /* global fabric */
 
@@ -300,6 +300,8 @@ const setupCanvasEventListeners = () => {
         // 创建新矩形 - 使用颜色工具函数
         const colorHue = getRandomColorHue()
         const colors = generateCanvasColors(colorHue)
+        const hexColor = hueToHexColor(colorHue)
+
         currentRect.value = new fabric.Rect({
           left: pointer.x,
           top: pointer.y,
@@ -317,6 +319,10 @@ const setupCanvasEventListeners = () => {
           lockScalingY: true, // 锁定Y轴缩放
           hoverCursor: 'default', // 默认光标样式
         })
+
+        // 保存颜色信息到fabric对象
+        currentRect.value.colorHue = colorHue
+        currentRect.value.hexColor = hexColor
 
         fabricCanvas.value.add(currentRect.value)
       }
@@ -350,11 +356,13 @@ const setupCanvasEventListeners = () => {
     // 生成矩形ID
     const rectId = `rect_${++rectCounter.value}`
 
-    // 创建矩形基本信息（只包含渲染必需的信息）
+    // 创建矩形基本信息（包含颜色信息）
     const rectInfo = {
       id: rectId,
       coords: coords,
       fabricObject: currentRect.value, // 保存fabric对象引用
+      colorHue: currentRect.value.colorHue,
+      color: currentRect.value.hexColor,
     }
 
     // 通知父组件新创建了矩形
@@ -594,6 +602,7 @@ defineExpose({
       // 生成颜色
       const colorHue = getRandomColorHue()
       const colors = generateCanvasColors(colorHue)
+      const hexColor = hueToHexColor(colorHue)
 
       // 创建矩形
       const rect = new fabric.Rect({
@@ -614,6 +623,10 @@ defineExpose({
         hoverCursor: 'default', // 默认光标样式
       })
 
+      // 保存颜色信息到fabric对象
+      rect.colorHue = colorHue
+      rect.hexColor = hexColor
+
       fabricCanvas.value.add(rect)
 
       // 通知父组件新创建了矩形
@@ -624,6 +637,8 @@ defineExpose({
         class: rectData.class,
         confidence: rectData.confidence,
         isAutoDetected: true,
+        colorHue: colorHue,
+        color: hexColor,
       })
     })
 
