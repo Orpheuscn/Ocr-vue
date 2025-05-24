@@ -10,6 +10,10 @@ import os
 import sys
 import logging
 from pathlib import Path
+from dotenv import load_dotenv
+
+# 加载环境变量文件
+load_dotenv()
 
 # 确保能够导入自定义模块
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))

@@ -295,7 +295,7 @@ def crop_image():
         return jsonify({'success': False, 'error': result.get('error')}), 500
 
 @upload_bp.route('/extract', methods=['POST'])
-@limiter.limit("30 per minute")
+@limiter.limit("60 per minute")
 def extract_text():
     """
     处理OCR文本提取请求

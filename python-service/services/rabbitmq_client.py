@@ -116,15 +116,34 @@ class RabbitMQClient:
             )
 
             # 声明队列
-            for queue_name in self.queues.values():
-                self.channel.queue_declare(
-                    queue=queue_name,
-                    durable=True,
-                    arguments={
-                        'x-dead-letter-exchange': self.exchanges['dead_letter'],
-                        'x-dead-letter-routing-key': 'dead.letter'
-                    }
-                )
+            for queue_key, queue_name in self.queues.items():
+                # user.notification队列不使用死信交换机，以保持与Node服务器的兼容性
+                if queue_key == 'notification':
+                    self.channel.queue_declare(
+                        queue=queue_name,
+                        durable=True
+                    )
+                else:
+                    self.channel.queue_declare(
+                        queue=queue_name,
+                        durable=True,
+                        arguments={
+                            'x-dead-letter-exchange': self.exchanges['dead_letter'],
+                            'x-dead-letter-routing-key': 'dead.letter'
+                        }
+                    )
+
+            # 声明Python到Node的OCR队列
+            self.channel.queue_declare(
+                queue='python.to.node.ocr',
+                durable=True
+            )
+
+            # 声明Node到Python的OCR结果队列
+            self.channel.queue_declare(
+                queue='node.to.python.ocr.result',
+                durable=True
+            )
 
             # 绑定队列到交换机
             self.channel.queue_bind(

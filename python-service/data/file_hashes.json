@@ -2840,6 +2840,111 @@
         "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/downloads/crop_e7bd59a3-f252-4f64-b106-d87aeda9da3c_967d5816-473f-489e-8ff5-cc9059619726.zip"
       ],
       "created_at": 1748062558.9077995
+    },
+    "cd54820e333e41146a999995ee117495": {
+      "category": "crop",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/figure/baa3b391-85df-45bb-85b4-4f1440b86666_figure_0.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/baa3b391-85df-45bb-85b4-4f1440b86666/0.jpg"
+      ],
+      "created_at": 1748078349.293524
+    },
+    "9818c4e612a0094bddf39dae90ba310a": {
+      "category": "crop",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/plain_text/6499d9a4-84a6-4416-a3aa-d7e4561175ee_plain_text_1.jpg",
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/crops/6499d9a4-84a6-4416-a3aa-d7e4561175ee/1.jpg",
+        "crops/13509ecd-c012-477f-9fff-01674257cf6e/1.jpg"
+      ],
+      "created_at": 1748078603.527636
+    },
+    "a46cadd6d9f3b1a287983419743b7971": {
+      "category": "annotated",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/temp/6499d9a4-84a6-4416-a3aa-d7e4561175ee_annotated.jpg",
+        "temp/13509ecd-c012-477f-9fff-01674257cf6e_annotated.jpg"
+      ],
+      "created_at": 1748078603.566625
+    },
+    "448272087b229d7f053bd31198b54f6a": {
+      "category": "zip",
+      "paths": [
+        "/Users/patrick/Documents/应用开发/ocr-vue-app/python-service/downloads/crop_6499d9a4-84a6-4416-a3aa-d7e4561175ee_785d4b3b-dfc6-4c7b-a4f7-67a261471849.zip"
+      ],
+      "created_at": 1748078603.588016
+    },
+    "da24a8be1afef84cecf363e6c54acf09": {
+      "category": "crop",
+      "paths": [
+        "crops/plain_text/13febb44-dc11-44c0-9df3-7fa8dc9d07bc_plain_text_1.jpg",
+        "crops/13febb44-dc11-44c0-9df3-7fa8dc9d07bc/1.jpg"
+      ],
+      "created_at": 1748087002.347372
+    },
+    "568eab00cda6f3b3f3dcfecf954b4a08": {
+      "category": "annotated",
+      "paths": [
+        "temp/13febb44-dc11-44c0-9df3-7fa8dc9d07bc_annotated.jpg"
+      ],
+      "created_at": 1748087002.387173
+    },
+    "c4241eff64af284002f70f6c14824ce4": {
+      "category": "zip",
+      "paths": [
+        "downloads/crop_13febb44-dc11-44c0-9df3-7fa8dc9d07bc_84de3df0-2d1b-46c9-9d32-ae6b77b64704.zip"
+      ],
+      "created_at": 1748087002.4048908
+    },
+    "77a6240ddf7411b2530da391f7f9a095": {
+      "category": "crop",
+      "paths": [
+        "crops/plain_text/bc6d0ee9-bf2e-4a46-9e0d-10f437829086_plain_text_0.jpg",
+        "crops/bc6d0ee9-bf2e-4a46-9e0d-10f437829086/0.jpg"
+      ],
+      "created_at": 1748087360.239328
+    },
+    "0cafdb22424d58aba47f27c2f6e5866f": {
+      "category": "annotated",
+      "paths": [
+        "temp/bc6d0ee9-bf2e-4a46-9e0d-10f437829086_annotated.jpg"
+      ],
+      "created_at": 1748087360.297112
+    },
+    "2daacd9687fc109ea6f4920fe581c12d": {
+      "category": "zip",
+      "paths": [
+        "downloads/crop_bc6d0ee9-bf2e-4a46-9e0d-10f437829086_2c49036d-2096-404b-aac2-1dd46da7162f.zip"
+      ],
+      "created_at": 1748087360.3794563
+    },
+    "23f0718635b9ef13bc118b14604411f5": {
+      "category": "crop",
+      "paths": [
+        "crops/plain_text/d577736a-fe11-49d8-ab04-4307cecc9214_plain_text_0.jpg",
+        "crops/d577736a-fe11-49d8-ab04-4307cecc9214/0.jpg"
+      ],
+      "created_at": 1748087665.758733
+    },
+    "915c04dd2b1ab64c61437f53010364bb": {
+      "category": "annotated",
+      "paths": [
+        "temp/d577736a-fe11-49d8-ab04-4307cecc9214_annotated.jpg"
+      ],
+      "created_at": 1748087665.829181
+    },
+    "5fe1a42b7747ac0fcb3cd647a4935b73": {
+      "category": "zip",
+      "paths": [
+        "downloads/crop_d577736a-fe11-49d8-ab04-4307cecc9214_b5df3032-0518-4393-8528-5b720af9b6ea.zip"
+      ],
+      "created_at": 1748087665.8545086
+    },
+    "8f6917cf814d899e2df4a3fe8ce4cf58": {
+      "category": "zip",
+      "paths": [
+        "downloads/crop_13509ecd-c012-477f-9fff-01674257cf6e_3f89408a-aedc-4872-a36f-648c014bb9be.zip"
+      ],
+      "created_at": 1748088882.409472
     }
   }
 }

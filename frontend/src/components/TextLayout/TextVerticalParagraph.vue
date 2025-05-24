@@ -9,13 +9,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useOcrStore } from '@/stores/ocrStore'
-import {
-  processSymbolText,
-  cleanLineBreaks,
-  shouldSkipSymbol,
-  processVerticalParagraphText,
-} from '@/utils/textProcessors'
-import { isCJKLanguage } from '@/services/languageService'
+import { processVerticalParagraphText } from '@/utils/textProcessors'
 
 const store = useOcrStore()
 
@@ -67,7 +61,7 @@ const verticalParagraphText = computed(() => {
   padding: 1rem;
   color: var(--bc, inherit); /* 使用主题颜色变量 */
   background-color: transparent; /* 透明背景 */
-  min-height: max-content;
+  height: 26rem;
   min-width: max-content; /* 确保内容不被压缩 */
 }
 </style>

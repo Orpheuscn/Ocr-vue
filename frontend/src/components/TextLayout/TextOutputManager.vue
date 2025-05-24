@@ -193,11 +193,6 @@ import { useI18nStore } from '@/stores/i18nStore'
 import { shouldUseRtlDirection, getLanguageName } from '@/services/languageService'
 import {
   replaceCJKPunctuation,
-  processSymbolText,
-  formatParagraphText,
-  shouldSkipSymbol,
-  cleanLineBreaks,
-  cleanTextSpaces,
   processHorizontalParallelText,
   processHorizontalParagraphText,
   processVerticalParallelText,

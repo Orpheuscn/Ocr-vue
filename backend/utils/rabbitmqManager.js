@@ -196,8 +196,13 @@ class RabbitMQManager {
           if (msg) {
             try {
               const content = JSON.parse(msg.content.toString());
-              await handler(content, msg);
-              this.channel.ack(msg);
+
+              // 创建ack和nack回调函数
+              const ack = () => this.channel.ack(msg);
+              const nack = (requeue = false) => this.channel.nack(msg, false, requeue);
+
+              // 调用处理器，传入ack和nack回调
+              await handler(content, ack, nack);
             } catch (error) {
               logger.error("处理消息时出错", {
                 queue: queueName,
