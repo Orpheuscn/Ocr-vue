@@ -18,7 +18,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+// 引入坐标计算工具函数
+import {
+  calculateRectCoordinates,
+  calculateMouseCoordinates,
+  calculateScaleFactor,
+} from '@/utils/coordinateUtils'
+// 引入颜色管理工具函数
+import { getRandomColorHue, generateCanvasColors } from '@/utils/colorUtils'
 // 使用全局的fabric变量，确保在index.html中通过CDN加载了fabric.js
 /* global fabric */
 
@@ -54,18 +62,27 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  // 矩形数据（从父组件传入）
+  rectangles: {
+    type: Array,
+    default: () => [],
+  },
+  // 绘制模式状态（从父组件传入）
+  isDrawingMode: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 // 向父组件发送的事件
 const emit = defineEmits([
-  'rectangle-added',
-  'rectangle-updated',
-  'rectangle-deleted',
-  'rectangle-highlighted',
-  'rectangle-unhighlighted',
+  'rectangle-created', // 新创建矩形（仅包含坐标和基本信息）
+  'rectangle-moved', // 矩形移动后的坐标更新
+  'rectangle-selected', // 矩形被选中
+  'rectangle-deleted', // 矩形被删除
 ])
 
-// 响应式状态
+// 响应式状态（仅保留渲染相关状态）
 const canvas = ref(null)
 const fabricCanvas = ref(null)
 const canvasWrapper = ref(null)
@@ -79,13 +96,7 @@ const currentRect = ref(null)
 const startX = ref(0)
 const startY = ref(0)
 const rectCounter = ref(0)
-const rectangles = ref([])
 const selectedRect = ref(null) // 当前选中的矩形
-const isDrawingMode = ref(false) // 是否处于绘制模式
-
-// 颜色管理
-const usedColors = ref([])
-const colorPool = [0, 25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350]
 
 // 组件挂载
 onMounted(() => {
@@ -94,11 +105,19 @@ onMounted(() => {
   // 添加点击事件监听，用于设置焦点
   if (canvasWrapper.value) {
     canvasWrapper.value.addEventListener('click', handleCanvasClick)
-
-    // 设置默认鼠标样式
-    canvasWrapper.value.style.cursor = isDrawingMode.value ? 'crosshair' : 'default'
   }
 })
+
+// 监听绘制模式变化，更新鼠标样式
+watch(
+  () => props.isDrawingMode,
+  (newMode) => {
+    if (canvasWrapper.value) {
+      canvasWrapper.value.style.cursor = newMode ? 'crosshair' : 'default'
+    }
+  },
+  { immediate: true },
+)
 
 // 组件卸载时移除事件监听
 onUnmounted(() => {
@@ -107,24 +126,10 @@ onUnmounted(() => {
   }
 })
 
-// 切换绘制模式
-const toggleDrawingMode = () => {
-  isDrawingMode.value = !isDrawingMode.value
-  console.log('绘制模式:', isDrawingMode.value ? '开启' : '关闭')
-
-  // 切换到选择模式时，清除当前选中的矩形
-  if (!isDrawingMode.value) {
-    selectedRect.value = null
-  }
-
-  // 更新鼠标样式
-  if (canvasWrapper.value) {
-    canvasWrapper.value.style.cursor = isDrawingMode.value ? 'crosshair' : 'default'
-  }
-}
+// 绘制模式切换逻辑已移至父组件
 
 // 处理画布点击事件，用于设置焦点
-const handleCanvasClick = (e) => {
+const handleCanvasClick = () => {
   // 设置tabindex属性，使元素可以获取焦点
   if (canvasWrapper.value && !canvasWrapper.value.hasAttribute('tabindex')) {
     canvasWrapper.value.setAttribute('tabindex', '0')
@@ -142,7 +147,7 @@ const handleCanvasClick = (e) => {
 // 处理键盘事件
 const handleKeyDown = (e) => {
   // 查找当前高亮的矩形
-  const highlightedRect = rectangles.value.find((rect) => rect.isHighlighted)
+  const highlightedRect = props.rectangles.find((rect) => rect.isHighlighted)
 
   console.log('键盘事件触发:', e.key, '选中矩形:', highlightedRect ? highlightedRect.id : 'none')
 
@@ -150,8 +155,8 @@ const handleKeyDown = (e) => {
   if ((e.key === 'Backspace' || e.key === 'Delete') && highlightedRect) {
     console.log('删除矩形:', highlightedRect.id)
 
-    // 删除矩形
-    deleteRectangle(highlightedRect)
+    // 通知父组件删除矩形
+    emit('rectangle-deleted', highlightedRect)
 
     // 清除选中状态
     selectedRect.value = null
@@ -177,10 +182,7 @@ watch(
 // 初始化Canvas
 const initCanvas = () => {
   fabricCanvas.value = new fabric.Canvas(canvas.value, {
-    selection: true, // 允许选择
-    selectionColor: 'rgba(100, 100, 255, 0.3)', // 选择区域的颜色
-    selectionBorderColor: 'rgba(100, 100, 255, 0.8)', // 选择边框的颜色
-    selectionLineWidth: 1, // 选择边框的宽度
+    selection: false, // 禁用选择功能
     width: 100,
     height: 100,
   })
@@ -215,11 +217,15 @@ const setupCanvasEventListeners = () => {
       coordinatesDisplay.value.style.top = pointer.y + 10 + 'px'
       coordinatesDisplay.value.style.display = 'block'
 
-      // 计算原始图像坐标
-      const originalX = Math.round(pointer.x / scaleX.value)
-      const originalY = Math.round(pointer.y / scaleY.value)
+      // 使用工具函数计算原始图像坐标
+      const originalCoords = calculateMouseCoordinates(
+        pointer.x,
+        pointer.y,
+        scaleX.value,
+        scaleY.value,
+      )
 
-      coordinatesDisplay.value.textContent = `(${originalX}, ${originalY})`
+      coordinatesDisplay.value.textContent = `(${originalCoords.x}, ${originalCoords.y})`
     }
 
     // 处理矩形绘制
@@ -277,36 +283,13 @@ const setupCanvasEventListeners = () => {
 
   // 使用已定义的isDrawingMode变量来跟踪绘制模式
 
-  // 鼠标按下，开始绘制矩形或选中矩形
+  // 鼠标按下，仅用于绘制新矩形（移除点击选中功能）
   fabricCanvas.value.on('mouse:down', (e) => {
     if (!props.hasImage) return
 
     try {
-      // 如果点击在矩形上，选中该矩形
-      if (e.target && e.target.type === 'rect') {
-        const rect = findRectangleByFabricObject(e.target)
-        if (rect) {
-          console.log('点击选中矩形:', rect.id)
-
-          // 设置为选中状态
-          selectedRect.value = rect
-          highlightRect(rect)
-
-          // 设置焦点到画布容器，以便能够接收键盘事件
-          if (canvasWrapper.value) {
-            canvasWrapper.value.focus()
-          }
-
-          // 阻止继续处理，避免创建新矩形
-          return
-        }
-      }
-
-      // 如果点击在空白处，清除选中状态
-      selectedRect.value = null
-
       // 只有在绘制模式下才创建新矩形
-      if (isDrawingMode.value) {
+      if (props.isDrawingMode) {
         const pointer = fabricCanvas.value.getPointer(e.e)
 
         // 开始绘制新矩形
@@ -314,24 +297,25 @@ const setupCanvasEventListeners = () => {
         startX.value = pointer.x
         startY.value = pointer.y
 
-        // 创建新矩形
+        // 创建新矩形 - 使用颜色工具函数
         const colorHue = getRandomColorHue()
+        const colors = generateCanvasColors(colorHue)
         currentRect.value = new fabric.Rect({
           left: pointer.x,
           top: pointer.y,
           width: 0,
           height: 0,
-          fill: `hsla(${colorHue}, 80%, 60%, 0.3)`,
-          stroke: `hsla(${colorHue}, 80%, 60%, 0.8)`,
+          fill: colors.fill,
+          stroke: colors.stroke,
           strokeWidth: 1,
-          selectable: true, // 设置为可选中
-          movable: true, // 设置为可移动
+          selectable: false, // 禁用选中功能
+          movable: false, // 禁用移动功能
           hasControls: false, // 不显示控制点
-          hasBorders: true, // 显示边框
+          hasBorders: false, // 不显示边框
           lockRotation: true, // 锁定旋转
           lockScalingX: true, // 锁定X轴缩放
           lockScalingY: true, // 锁定Y轴缩放
-          hoverCursor: 'move', // 鼠标悬停时的光标样式
+          hoverCursor: 'default', // 默认光标样式
         })
 
         fabricCanvas.value.add(currentRect.value)
@@ -354,46 +338,27 @@ const setupCanvasEventListeners = () => {
       return
     }
 
-    // 计算原始坐标
-    const coords = calculateCoordinates(currentRect.value)
+    // 使用工具函数计算原始坐标
+    const coords = calculateRectCoordinates(
+      currentRect.value,
+      scaleX.value,
+      scaleY.value,
+      props.originalImageWidth,
+      props.originalImageHeight,
+    )
 
-    // 保存矩形信息
+    // 生成矩形ID
     const rectId = `rect_${++rectCounter.value}`
-    const newRect = {
+
+    // 创建矩形基本信息（只包含渲染必需的信息）
+    const rectInfo = {
       id: rectId,
-      rect: currentRect.value,
-      coords: coords, // 使用计算的坐标
-      class: 'unknown', // 添加默认类别
-      showJson: true,
-      showText: false,
-      isHighlighted: false,
-      ocrText: null, // OCR识别的文本
-      ocrProcessing: false, // 是否正在OCR处理中
-      isUserDrawn: true, // 标记为用户绘制的矩形
+      coords: coords,
+      fabricObject: currentRect.value, // 保存fabric对象引用
     }
 
-    // 不需要单独为每个矩形添加鼠标事件
-    // 这些事件会通过 fabric.js 的 mouse:over 和 mouse:out 事件自动处理
-    // 确保所有矩形都能正确响应鼠标悬停
-
-    // 添加选中事件，使矩形可以被选中
-    currentRect.value.on('selected', () => {
-      console.log('矩形被选中:', newRect.id)
-
-      // 设置为选中状态
-      selectedRect.value = newRect
-      highlightRect(newRect)
-
-      // 设置焦点到画布容器，以便能够接收键盘事件
-      if (canvasWrapper.value) {
-        canvasWrapper.value.focus()
-      }
-    })
-
-    rectangles.value.push(newRect)
-
-    // 通知父组件新增了矩形
-    emit('rectangle-added', newRect)
+    // 通知父组件新创建了矩形
+    emit('rectangle-created', rectInfo)
 
     currentRect.value = null
   })
@@ -424,98 +389,45 @@ const setupCanvasEventListeners = () => {
       const rect = findRectangleByFabricObject(e.target)
       if (rect) {
         console.log('找到矩形:', rect.id)
-        // 只有当没有其他交互（如选中）时才取消高亮
-        if (!selectedRect.value || selectedRect.value.id !== rect.id) {
-          unhighlightRect(rect)
-        }
+        // 直接取消高亮，因为现在没有选中状态
+        unhighlightRect(rect)
       } else {
         console.warn('未找到对应的矩形对象')
       }
     }
   })
 
-  // 对象移动后更新坐标
-  fabricCanvas.value.on('object:modified', (e) => {
-    if (e.target && e.target.type === 'rect') {
-      const rect = findRectangleByFabricObject(e.target)
-      if (rect) {
-        // 更新矩形的坐标
-        rect.coords = calculateCoordinates(e.target)
-        console.log('矩形移动后更新坐标:', rect.id, rect.coords)
-      }
-    }
-  })
+  // 移除对象移动事件处理，因为现在禁用了移动功能
 
-  // 选中对象时的事件处理
-  fabricCanvas.value.on('selection:created', (e) => {
-    if (e.selected && e.selected.length > 0 && e.selected[0].type === 'rect') {
-      const rect = findRectangleByFabricObject(e.selected[0])
-      if (rect) {
-        console.log('Fabric.js 选中矩形:', rect.id)
-        selectedRect.value = rect
-        highlightRect(rect)
-
-        // 设置焦点到画布容器，以便能够接收键盘事件
-        if (canvasWrapper.value) {
-          canvasWrapper.value.focus()
-        }
-      }
-    }
-  })
-
-  // 选中对象更新时的事件处理
-  fabricCanvas.value.on('selection:updated', (e) => {
-    if (e.selected && e.selected.length > 0 && e.selected[0].type === 'rect') {
-      const rect = findRectangleByFabricObject(e.selected[0])
-      if (rect) {
-        console.log('Fabric.js 更新选中矩形:', rect.id)
-        selectedRect.value = rect
-        highlightRect(rect)
-      }
-    }
-  })
-
-  // 清除选中时的事件处理
-  fabricCanvas.value.on('selection:cleared', () => {
-    console.log('Fabric.js 清除选中')
-    // 不清除选中状态，保持矩形的选中状态以便删除
-  })
+  // 移除所有选中相关的事件处理，因为现在禁用了点击选中功能
 }
 
 // 通过fabric对象查找矩形
 const findRectangleByFabricObject = (fabricObject) => {
-  console.log('查找矩形对象，当前矩形总数:', rectangles.value.length)
+  console.log('查找矩形对象，当前矩形总数:', props.rectangles.length)
 
-  // 首先尝试通过严格相等查找
-  const rect = rectangles.value.find((r) => r.rect === fabricObject)
+  // 首先尝试通过fabric对象引用查找
+  const rect = props.rectangles.find((r) => r.fabricObject === fabricObject)
   if (rect) {
-    console.log(
-      '通过严格相等找到矩形:',
-      rect.id,
-      rect.isUserDrawn ? '(用户绘制)' : rect.isAutoDetected ? '(自动检测)' : '',
-    )
+    console.log('通过fabric对象引用找到矩形:', rect.id)
     return rect
   }
 
-  console.log('通过严格相等未找到矩形，尝试通过位置和尺寸匹配')
+  console.log('通过fabric对象引用未找到矩形，尝试通过位置和尺寸匹配')
 
   // 如果找不到，尝试通过位置和尺寸匹配
-  const matchedRect = rectangles.value.find((r) => {
-    if (!r.rect) return false
+  const matchedRect = props.rectangles.find((r) => {
+    if (!r.fabricObject) return false
 
     // 比较位置和尺寸是否相近
     const positionMatch =
-      Math.abs(r.rect.left - fabricObject.left) < 1 &&
-      Math.abs(r.rect.top - fabricObject.top) < 1 &&
-      Math.abs(r.rect.width - fabricObject.width) < 1 &&
-      Math.abs(r.rect.height - fabricObject.height) < 1
+      Math.abs(r.fabricObject.left - fabricObject.left) < 1 &&
+      Math.abs(r.fabricObject.top - fabricObject.top) < 1 &&
+      Math.abs(r.fabricObject.width - fabricObject.width) < 1 &&
+      Math.abs(r.fabricObject.height - fabricObject.height) < 1
 
     if (positionMatch) {
-      console.log(
-        '通过位置和尺寸找到矩形:',
-        r.id,
-        r.isUserDrawn ? '(用户绘制)' : r.isAutoDetected ? '(自动检测)' : '',
-      )
+      console.log('通过位置和尺寸找到矩形:', r.id)
     }
 
     return positionMatch
@@ -528,81 +440,24 @@ const findRectangleByFabricObject = (fabricObject) => {
   return matchedRect
 }
 
-// 计算矩形的原始坐标
-const calculateCoordinates = (rect) => {
-  // 获取显示坐标
-  const displayLeft = rect.left
-  const displayTop = rect.top
-  const displayRight = displayLeft + rect.width
-  const displayBottom = displayTop + rect.height
+// 计算矩形的原始坐标函数已移至工具函数文件
 
-  // 转换为原始图像坐标
-  const originalLeft = Math.round(displayLeft / scaleX.value)
-  const originalTop = Math.round(displayTop / scaleY.value)
-  const originalRight = Math.round(displayRight / scaleX.value)
-  const originalBottom = Math.round(displayBottom / scaleY.value)
+// 颜色管理已移至 colorUtils.js 工具函数
 
-  // 确保坐标不超出原图范围
-  const boundedLeft = Math.max(0, Math.min(originalLeft, props.originalImageWidth))
-  const boundedTop = Math.max(0, Math.min(originalTop, props.originalImageHeight))
-  const boundedRight = Math.max(0, Math.min(originalRight, props.originalImageWidth))
-  const boundedBottom = Math.max(0, Math.min(originalBottom, props.originalImageHeight))
-
-  // 计算宽度和高度
-  const width = boundedRight - boundedLeft
-  const height = boundedBottom - boundedTop
-
-  // 返回坐标信息
-  return {
-    topLeft: { x: boundedLeft, y: boundedTop },
-    topRight: { x: boundedRight, y: boundedTop },
-    bottomLeft: { x: boundedLeft, y: boundedBottom },
-    bottomRight: { x: boundedRight, y: boundedBottom },
-    width: width,
-    height: height,
-  }
-}
-
-// 获取随机色相
-const getRandomColorHue = () => {
-  if (colorPool.length === 0) {
-    // 所有颜色都已使用，重置
-    colorPool.push(...usedColors.value)
-    usedColors.value = []
-  }
-
-  // 随机选择一个颜色
-  const randomIndex = Math.floor(Math.random() * colorPool.length)
-  const selectedHue = colorPool[randomIndex]
-
-  // 从可用池中移除并加入已使用池
-  colorPool.splice(randomIndex, 1)
-  usedColors.value.push(selectedHue)
-
-  return selectedHue
-}
-
-// 高亮矩形
+// 高亮矩形（仅处理视觉效果）
 const highlightRect = (rect) => {
-  // 先取消所有其他矩形的高亮状态
-  rectangles.value.forEach((r) => {
-    if (r.id !== rect.id && r.isHighlighted) {
-      unhighlightRect(r)
-    }
-  })
-
   // 保存原始样式以便恢复
-  if (rect.rect && !rect.rect._originalStyle) {
-    rect.rect._originalStyle = {
-      strokeWidth: rect.rect.strokeWidth,
-      stroke: rect.rect.stroke,
-      fill: rect.rect.fill,
+  if (rect.fabricObject && !rect.fabricObject._originalStyle) {
+    rect.fabricObject._originalStyle = {
+      strokeWidth: rect.fabricObject.strokeWidth,
+      stroke: rect.fabricObject.stroke,
+      fill: rect.fabricObject.fill,
     }
   }
 
   // 设置高亮样式
-  if (rect.rect) {
-    const currentColor = rect.rect.stroke || 'hsla(0, 80%, 60%, 0.8)' // 提供默认颜色
+  if (rect.fabricObject) {
+    const currentColor = rect.fabricObject.stroke || 'hsla(0, 80%, 60%, 0.8)' // 提供默认颜色
     let highlightStroke, highlightFill
 
     if (currentColor.includes('hsla')) {
@@ -620,19 +475,16 @@ const highlightRect = (rect) => {
     }
 
     // 应用高亮样式
-    rect.rect.set({
+    rect.fabricObject.set({
       strokeWidth: 2,
       stroke: highlightStroke,
       fill: highlightFill,
     })
 
     // 确保矩形在顶层显示
-    fabricCanvas.value.bringToFront(rect.rect)
+    fabricCanvas.value.bringToFront(rect.fabricObject)
     fabricCanvas.value.renderAll()
   }
-
-  // 标记为高亮状态
-  rect.isHighlighted = true
 
   // 设置为当前选中的矩形
   selectedRect.value = rect
@@ -642,50 +494,30 @@ const highlightRect = (rect) => {
     canvasWrapper.value.focus()
   }
 
-  // 通知父组件矩形被高亮
-  emit('rectangle-highlighted', rect)
+  // 通知父组件矩形被选中
+  emit('rectangle-selected', rect)
 }
 
-// 取消高亮矩形
+// 取消高亮矩形（仅处理视觉效果）
 const unhighlightRect = (rect) => {
-  // 如果矩形是当前选中的矩形，则不取消高亮
-  if (selectedRect.value && selectedRect.value.id === rect.id) {
-    return
-  }
-
   // 恢复原始样式
-  if (rect.rect && rect.rect._originalStyle) {
-    rect.rect.set({
-      strokeWidth: rect.rect._originalStyle.strokeWidth,
-      stroke: rect.rect._originalStyle.stroke,
-      fill: rect.rect._originalStyle.fill,
+  if (rect.fabricObject && rect.fabricObject._originalStyle) {
+    rect.fabricObject.set({
+      strokeWidth: rect.fabricObject._originalStyle.strokeWidth,
+      stroke: rect.fabricObject._originalStyle.stroke,
+      fill: rect.fabricObject._originalStyle.fill,
     })
 
     fabricCanvas.value.renderAll()
   }
-
-  // 取消高亮状态标记
-  rect.isHighlighted = false
-
-  // 通知父组件矩形取消高亮
-  emit('rectangle-unhighlighted', rect)
 }
 
-// 删除矩形
+// 删除矩形（仅处理Canvas删除）
 const deleteRectangle = (rect) => {
   // 从canvas中移除矩形
-  if (rect.rect && fabricCanvas.value) {
-    fabricCanvas.value.remove(rect.rect)
+  if (rect.fabricObject && fabricCanvas.value) {
+    fabricCanvas.value.remove(rect.fabricObject)
     fabricCanvas.value.renderAll()
-  }
-
-  // 从矩形数组中移除
-  const index = rectangles.value.findIndex((r) => r.id === rect.id)
-  if (index !== -1) {
-    rectangles.value.splice(index, 1)
-
-    // 通知父组件矩形被删除
-    emit('rectangle-deleted', rect)
   }
 }
 
@@ -693,28 +525,26 @@ const deleteRectangle = (rect) => {
 defineExpose({
   // 设置Canvas尺寸
   setupCanvas(img) {
-    // 计算适合容器的尺寸
-    const containerWidth = props.containerWidth - 40 // 预留边距
-    const containerHeight = props.containerHeight - 40
+    // 使用工具函数计算缩放比例
+    const scale = calculateScaleFactor(
+      img.width,
+      img.height,
+      props.containerWidth,
+      props.containerHeight,
+    )
 
-    // 计算缩放比例
-    const scaleWidth = containerWidth / img.width
-    const scaleHeight = containerHeight / img.height
-
-    // 使用较小的缩放比例，确保图像完全可见
-    const scale = Math.min(scaleWidth, scaleHeight)
+    scaleX.value = scale.scaleX
+    scaleY.value = scale.scaleY
 
     // 设置画布尺寸
-    const canvasWidth = img.width * scale
-    const canvasHeight = img.height * scale
+    const canvasWidth = img.width * scale.scaleX
+    const canvasHeight = img.height * scale.scaleY
 
     // 重新初始化Canvas
     fabricCanvas.value.setWidth(canvasWidth)
     fabricCanvas.value.setHeight(canvasHeight)
 
-    // 保存缩放比例
-    scaleX.value = scale
-    scaleY.value = scale
+    // 缩放比例已在之前设置
 
     // 设置十字线尺寸
     if (crosshairH.value && crosshairV.value) {
@@ -744,14 +574,13 @@ defineExpose({
       fabricCanvas.value.wrapperEl.style.display = 'block'
     }
 
-    // 重置矩形
-    rectangles.value = []
+    // 重置计数器
     rectCounter.value = 0
   },
 
-  // 添加检测到的矩形
-  addDetectedRectangles(detectedRects) {
-    detectedRects.forEach((rectData) => {
+  // 渲染检测到的矩形（仅处理Canvas渲染）
+  renderDetectedRectangles(rectanglesData) {
+    rectanglesData.forEach((rectData) => {
       const coords = rectData.coords
       const topLeft = coords.topLeft
       const bottomRight = coords.bottomRight
@@ -764,8 +593,7 @@ defineExpose({
 
       // 生成颜色
       const colorHue = getRandomColorHue()
-      const fillColor = `hsla(${colorHue}, 80%, 60%, 0.3)`
-      const strokeColor = `hsla(${colorHue}, 80%, 60%, 0.8)`
+      const colors = generateCanvasColors(colorHue)
 
       // 创建矩形
       const rect = new fabric.Rect({
@@ -773,88 +601,71 @@ defineExpose({
         top: displayTop,
         width: displayWidth,
         height: displayHeight,
-        fill: fillColor,
-        stroke: strokeColor,
+        fill: colors.fill,
+        stroke: colors.stroke,
         strokeWidth: 1,
-        selectable: true, // 设置为可选中
-        movable: true, // 设置为可移动
+        selectable: false, // 禁用选中功能
+        movable: false, // 禁用移动功能
         hasControls: false, // 不显示控制点
-        hasBorders: true, // 显示边框
+        hasBorders: false, // 不显示边框
         lockRotation: true, // 锁定旋转
         lockScalingX: true, // 锁定X轴缩放
         lockScalingY: true, // 锁定Y轴缩放
-        hoverCursor: 'move', // 鼠标悬停时的光标样式
+        hoverCursor: 'default', // 默认光标样式
       })
 
       fabricCanvas.value.add(rect)
 
-      // 创建矩形对象
-      const rectObject = {
+      // 通知父组件新创建了矩形
+      emit('rectangle-created', {
         id: rectData.id || `rect_${++rectCounter.value}`,
-        rect: rect,
-        coords: rectData.coords, // 使用原始坐标信息
+        coords: rectData.coords,
+        fabricObject: rect,
         class: rectData.class,
         confidence: rectData.confidence,
-        showJson: true,
-        showText: false,
-        isHighlighted: false,
-        ocrText: null, // OCR识别的文本
-        ocrProcessing: false, // 是否正在OCR处理中
-        isAutoDetected: true, // 标记为自动检测的矩形
-      }
+        isAutoDetected: true,
+      })
+    })
 
-      // 不需要单独为每个矩形添加鼠标事件
-      // 这些事件会通过 fabric.js 的 mouse:over 和 mouse:out 事件自动处理
-      // 确保所有矩形都能正确响应鼠标悬停
+    fabricCanvas.value.renderAll()
+  },
 
-      // 添加选中事件，使矩形可以被选中
-      rect.on('selected', () => {
-        console.log('矩形被选中:', rectObject.id)
+  // 高亮矩形（仅视觉效果）
+  highlightRect,
 
-        // 设置为选中状态
-        selectedRect.value = rectObject
-        highlightRect(rectObject)
+  // 取消高亮矩形（仅视觉效果）
+  unhighlightRect,
 
-        // 设置焦点到画布容器，以便能够接收键盘事件
-        if (canvasWrapper.value) {
-          canvasWrapper.value.focus()
+  // 删除矩形（仅Canvas删除）
+  deleteRectangle,
+
+  // 清除所有矩形（只清除矩形，保留图片）
+  clearRectangles() {
+    if (fabricCanvas.value) {
+      // 获取所有对象
+      const objects = fabricCanvas.value.getObjects()
+
+      // 只删除矩形对象，保留图片对象
+      objects.forEach((obj) => {
+        if (obj.type === 'rect') {
+          fabricCanvas.value.remove(obj)
         }
       })
 
-      // 保存矩形信息
-      rectangles.value.push(rectObject)
-
-      // 通知父组件新增了矩形
-      emit('rectangle-added', rectObject)
-    })
-
-    fabricCanvas.value.renderAll()
-  },
-
-  // 获取所有矩形
-  getRectangles() {
-    return rectangles.value
-  },
-
-  // 删除矩形
-  deleteRectangle,
-
-  // 高亮矩形
-  highlightRect,
-
-  // 取消高亮矩形
-  unhighlightRect,
-
-  // 清除所有矩形
-  clearRectangles() {
-    rectangles.value.forEach((rect) => {
-      if (rect.rect && fabricCanvas.value) {
-        fabricCanvas.value.remove(rect.rect)
-      }
-    })
-    rectangles.value = []
+      fabricCanvas.value.renderAll()
+    }
     rectCounter.value = 0
-    fabricCanvas.value.renderAll()
+    selectedRect.value = null
+  },
+
+  // 清空整个画布（包括图片和矩形）
+  clearCanvas() {
+    if (fabricCanvas.value) {
+      fabricCanvas.value.clear()
+      fabricCanvas.value.renderAll()
+    }
+    rectCounter.value = 0
+    selectedRect.value = null
   },
 
   // 渲染画布
@@ -864,12 +675,44 @@ defineExpose({
     }
   },
 
-  // 切换绘制模式
-  toggleDrawingMode,
+  // 更新可见矩形（用于筛选显示）
+  updateVisibleRectangles(filteredRectangles) {
+    if (!fabricCanvas.value) return
 
-  // 获取当前绘制模式状态
-  isInDrawingMode() {
-    return isDrawingMode.value
+    // 获取所有矩形对象
+    const objects = fabricCanvas.value.getObjects()
+
+    // 创建筛选后矩形ID的集合，用于快速查找
+    const filteredIds = new Set(filteredRectangles.map((rect) => rect.id))
+
+    objects.forEach((obj) => {
+      if (obj.type === 'rect') {
+        // 查找对应的矩形数据
+        const rect = props.rectangles.find((r) => r.fabricObject === obj)
+        if (rect) {
+          // 根据筛选结果设置可见性
+          obj.visible = filteredIds.has(rect.id)
+        }
+      }
+    })
+
+    fabricCanvas.value.renderAll()
+  },
+
+  // 显示所有矩形
+  showAllRectangles() {
+    if (!fabricCanvas.value) return
+
+    // 获取所有矩形对象
+    const objects = fabricCanvas.value.getObjects()
+
+    objects.forEach((obj) => {
+      if (obj.type === 'rect') {
+        obj.visible = true
+      }
+    })
+
+    fabricCanvas.value.renderAll()
   },
 })
 </script>
