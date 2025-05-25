@@ -105,26 +105,5 @@ export default defineConfig({
     host: '0.0.0.0', // 同样使所有网络接口可访问
     port: 8080,
     strictPort: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-        secure: false,
-        ws: true,
-        xfwd: true,
-        cookieDomainRewrite: 'localhost',
-        cookiePathRewrite: '/',
-      },
-      '/api/python': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-        secure: false,
-        ws: true,
-        xfwd: true,
-        cookieDomainRewrite: 'localhost',
-        cookiePathRewrite: '/',
-        rewrite: (path) => path.replace(/^\/api\/python/, ''),
-      },
-    },
   },
 })

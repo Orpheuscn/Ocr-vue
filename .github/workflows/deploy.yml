@@ -87,7 +87,8 @@ jobs:
             --allow-unauthenticated \
             --memory=512Mi \
             --cpu=1 \
-            --max-instances=10
+            --max-instances=10 \
+            --port=8080
 
   verify-deployment:
     name: Verify Deployment
