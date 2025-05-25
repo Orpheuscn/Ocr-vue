@@ -39,9 +39,6 @@ export const submitDocumentAnalysisTask = async (req, res) => {
 
     // 获取参数
     const {
-      languageHints = [],
-      recognitionDirection = "horizontal",
-      recognitionMode = "text",
       rectangles = [],
       enableLayoutDetection = true,
       enableImageCropping = true,
@@ -61,9 +58,6 @@ export const submitDocumentAnalysisTask = async (req, res) => {
       imageData: base64Data,
       originalFilename: req.file.originalname || "未命名图片",
       options: {
-        languageHints,
-        recognitionDirection,
-        recognitionMode,
         rectangles,
         enableLayoutDetection,
         enableImageCropping,

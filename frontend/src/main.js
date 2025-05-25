@@ -1,6 +1,7 @@
 // src/main.js
 import './assets/base.css' // Import global styles first
 import './assets/index.css' // Import Tailwind CSS
+import './components/UI/floating-button-styles.css' // Import floating button styles
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
@@ -8,6 +9,9 @@ import router from './router'
 
 // 导入令牌服务，用于会话恢复
 import { getToken, getUserInfo } from './services/tokenService'
+
+// 导入UI组件
+import { install as installUIComponents } from './components/UI'
 
 import App from './App.vue'
 
@@ -17,6 +21,9 @@ const app = createApp(App)
 // 创建并使用 Pinia
 const pinia = createPinia()
 app.use(pinia)
+
+// 注册UI组件
+installUIComponents(app)
 
 // 在应用启动时尝试恢复会话
 console.log('应用启动，尝试恢复会话...')

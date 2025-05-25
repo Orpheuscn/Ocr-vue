@@ -23,7 +23,7 @@ const translations = {
     table: '表格',
     planA: '方案1',
     planB: '方案2',
-    tutorial: '教程',
+    tutorial: '文档',
     loading: '加载中...',
     copyright: '版权所有',
     // 网格对齐工具
@@ -136,7 +136,7 @@ const translations = {
     table: 'Table',
     planA: 'PlanA',
     planB: 'PlanB',
-    tutorial: 'Tutorial',
+    tutorial: 'Documents',
     loading: 'Loading...',
     copyright: 'Copyright',
     // Grid alignment tool

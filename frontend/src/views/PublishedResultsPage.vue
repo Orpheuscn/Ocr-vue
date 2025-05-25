@@ -7,7 +7,7 @@
       <div class="flex flex-col space-y-4">
         <!-- 页面标题 -->
         <div class="flex justify-between items-center">
-          <h1 class="text-2xl font-bold">公开OCR结果</h1>
+          <h1 class="text-2xl font-bold">公开内容</h1>
           <div class="flex gap-2">
             <div class="form-control">
               <div class="input-group">
@@ -66,8 +66,8 @@
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
             </svg>
-            <p class="text-lg mb-2">暂无公开的OCR结果</p>
-            <p class="text-sm opacity-70 mb-4">当用户发布OCR结果并通过审核后，将会显示在这里</p>
+            <p class="text-lg mb-2">暂无公开内容</p>
+            <p class="text-sm opacity-70 mb-4">当用户发布提取内容并通过审核后，将会显示在这里</p>
           </div>
         </div>
 
@@ -135,7 +135,7 @@
     <div class="modal" :class="{ 'modal-open': selectedResult }">
       <div class="modal-box max-w-3xl">
         <div class="flex justify-between items-center mb-4">
-          <h3 class="font-bold text-lg">OCR结果详情</h3>
+          <h3 class="font-bold text-lg">提取结果详情</h3>
           <div class="flex gap-2 items-center">
             <button @click="copySelectedResult" class="btn btn-sm btn-outline gap-1">
               <svg
@@ -216,7 +216,7 @@
     <div class="modal" :class="{ 'modal-open': showDeleteConfirm }">
       <div class="modal-box">
         <h3 class="font-bold text-lg">确认删除</h3>
-        <p class="py-4">您确定要删除这个已发布的OCR结果吗？此操作无法撤销。</p>
+        <p class="py-4">您确定要删除这个已发布的提取结果吗？此操作无法撤销。</p>
         <div class="modal-action">
           <button @click="deleteResult" class="btn btn-error" :disabled="isDeleting">
             <span v-if="isDeleting">

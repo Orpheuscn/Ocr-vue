@@ -16,8 +16,8 @@ APP_DIR="$(dirname "$SCRIPT_DIR")"
 UPLOADS_DIR="$SCRIPT_DIR/uploads"
 TEMP_DIR="$SCRIPT_DIR/temp"
 LOG_DIR="$APP_DIR/logs"
-LOG_FILE="$LOG_DIR/cleanup.log"
-SECURITY_LOG="$LOG_DIR/python_security.log"
+LOG_FILE="$LOG_DIR/system/cleanup.log"
+SECURITY_LOG="$LOG_DIR/system/python_security.log"
 PYCACHE_DIRS="$SCRIPT_DIR/__pycache__ $SCRIPT_DIR/*/__pycache__"
 
 # 确保日志目录存在

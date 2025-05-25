@@ -1,13 +1,12 @@
 <template>
-  <div class="image-recognition-tool">
+  <div class="image-recognition-tool min-h-screen bg-base-200 flex flex-col">
+    <TheHeader />
+
     <!-- 主容器 -->
     <div class="container mx-auto px-4 py-6">
-      <!-- 标题和说明 -->
-      <div class="mb-6 text-center">
-        <h1 class="text-2xl font-bold mb-2">图像识别工具</h1>
-        <p class="text-base-content/70">
-          上传图片，使用 Google Cloud Vision API 识别图像中的物体和场景
-        </p>
+      <!-- 标题 -->
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold">图像识别工具</h1>
       </div>
 
       <!-- 主要内容区域 -->
@@ -16,9 +15,6 @@
         <div class="lg:col-span-1">
           <div class="card bg-base-100 shadow-xl">
             <div class="card-body">
-              <h2 class="card-title">上传图片</h2>
-              <p class="text-sm mb-4">支持 JPG、PNG、WEBP 等常见图片格式</p>
-
               <!-- 文件上传区域 -->
               <div
                 class="border-2 border-dashed border-base-300 rounded-box p-6 text-center cursor-pointer hover:bg-base-200 transition-colors"
@@ -147,6 +143,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import TheHeader from '../common/TheHeader.vue'
 // 使用全局的 fabric 对象，而不是导入它
 // fabric.js 已通过 CDN 在 index.html 中引入
 

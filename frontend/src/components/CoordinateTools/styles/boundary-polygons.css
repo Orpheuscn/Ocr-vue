@@ -1,0 +1,45 @@
+.block-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.block-polygon {
+  fill: var(--polygon-fill-color, rgba(100, 149, 237, 0.2));
+  stroke: var(--polygon-stroke-color, rgba(100, 149, 237, 0.8));
+  stroke-width: 1px;
+  pointer-events: none;
+  transition: all var(--transition-time, 0.2s) ease;
+}
+
+.block-polygon:hover,
+.polygon-hover {
+  fill: var(--polygon-hover-fill-color, rgba(100, 149, 237, 0.4));
+  stroke: var(--polygon-hover-stroke-color, rgba(65, 105, 225, 1));
+  stroke-width: 2px;
+  stroke-dasharray: none;
+  z-index: 100; /* 确保悬停时可见 */
+}
+
+.block-polygon-click-layer {
+  fill: transparent;
+  stroke: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.block-polygon-click-layer:hover + .block-polygon {
+  fill: var(--polygon-hover-fill-color, rgba(100, 149, 237, 0.4));
+  stroke: var(--polygon-hover-stroke-color, rgba(65, 105, 225, 1));
+  stroke-width: 2px;
+}
+
+[data-theme="dark"] .block-polygon-click-layer:hover + .block-polygon {
+  fill: var(--polygon-hover-fill-color, rgba(135, 206, 250, 0.3));
+  stroke: var(--polygon-hover-stroke-color, rgba(0, 191, 255, 1));
+  stroke-width: 2px;
+}

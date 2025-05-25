@@ -1,0 +1,45 @@
+:root {
+  /* 坐标系统颜色 */
+  --coordinate-axis-color: #ddd;
+  --coordinate-axis-opacity: 0.5;
+
+  /* 标签样式 */
+  --label-font-size: 10px;
+  --label-opacity: 0.6;
+
+  /* 多边形样式 */
+  --polygon-fill-color: rgba(100, 149, 237, 0.2);
+  --polygon-stroke-color: rgba(100, 149, 237, 0.8);
+  --polygon-hover-fill-color: rgba(100, 149, 237, 0.4);
+  --polygon-hover-stroke-color: rgba(65, 105, 225, 1);
+
+  /* 文本样式 */
+  --text-font-family: 'Inter', sans-serif;
+  --text-shadow: 0 0 2px var(--b2, white);
+
+  /* 网格样式 */
+  --grid-line-color: rgba(220, 220, 220, 0.5);
+  --grid-cell-border-color: rgba(200, 200, 200, 0.3);
+
+  /* 通知样式 */
+  --notification-bg-color: rgba(54, 211, 153, 0.8);
+  --notification-text-color: white;
+
+  /* 动画时间 */
+  --transition-time: 0.2s;
+  --animation-time: 1s;
+
+  /* 调试信息样式 */
+  --debug-bg-color: rgba(200, 200, 200, 0.7);
+  --debug-text-size: 0.75rem;
+}
+
+/* 暗色模式变量覆盖 */
+[data-theme='dark'] {
+  --polygon-fill-color: rgba(70, 130, 180, 0.2);
+  --polygon-stroke-color: rgba(70, 130, 180, 0.8);
+  --polygon-hover-fill-color: rgba(135, 206, 250, 0.3);
+  --polygon-hover-stroke-color: rgba(0, 191, 255, 1);
+  --grid-line-color: rgba(100, 100, 100, 0.5);
+  --grid-cell-border-color: rgba(100, 100, 100, 0.3);
+}

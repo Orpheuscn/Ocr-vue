@@ -14,8 +14,7 @@ export interface BaseMessage {
 // OCR任务选项
 export interface OcrOptions {
   languageHints: string[];
-  recognitionDirection: 'horizontal' | 'vertical';
-  recognitionMode: 'text' | 'table';
+  recognitionMode: "text" | "table";
   imageFormat?: string;
   dpi?: number;
 }
@@ -47,11 +46,11 @@ export interface OcrTaskMessage extends BaseMessage {
 
 // 任务状态枚举
 export enum TaskStatus {
-  PENDING = 'pending',
-  PROCESSING = 'processing',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
-  CANCELLED = 'cancelled'
+  PENDING = "pending",
+  PROCESSING = "processing",
+  COMPLETED = "completed",
+  FAILED = "failed",
+  CANCELLED = "cancelled",
 }
 
 // 任务状态消息
@@ -72,11 +71,11 @@ export interface TaskStatusMessage extends BaseMessage {
 
 // 通知类型枚举
 export enum NotificationType {
-  OCR_COMPLETED = 'ocr_completed',
-  OCR_FAILED = 'ocr_failed',
-  OCR_PROGRESS = 'ocr_progress',
-  SYSTEM_MAINTENANCE = 'system_maintenance',
-  QUOTA_WARNING = 'quota_warning'
+  OCR_COMPLETED = "ocr_completed",
+  OCR_FAILED = "ocr_failed",
+  OCR_PROGRESS = "ocr_progress",
+  SYSTEM_MAINTENANCE = "system_maintenance",
+  QUOTA_WARNING = "quota_warning",
 }
 
 // 用户通知消息
@@ -87,8 +86,8 @@ export interface UserNotificationMessage extends BaseMessage {
   title: string;
   message: string;
   data?: any;
-  priority: 'low' | 'normal' | 'high' | 'urgent';
-  channels: ('websocket' | 'email' | 'sms')[];
+  priority: "low" | "normal" | "high" | "urgent";
+  channels: ("websocket" | "email" | "sms")[];
   expiresAt?: Date;
 }
 
@@ -98,7 +97,7 @@ export interface ImageProcessingMessage extends BaseMessage {
   userId: string;
   imageId: string;
   imageData: string;
-  processingType: 'detection' | 'cropping' | 'enhancement';
+  processingType: "detection" | "cropping" | "enhancement";
   options: {
     detectRectangles?: boolean;
     cropRegions?: Array<{
@@ -107,7 +106,7 @@ export interface ImageProcessingMessage extends BaseMessage {
       width: number;
       height: number;
     }>;
-    enhancementLevel?: 'low' | 'medium' | 'high';
+    enhancementLevel?: "low" | "medium" | "high";
   };
 }
 
@@ -149,7 +148,7 @@ export interface ErrorReportMessage extends BaseMessage {
     userAgent?: string;
     ip?: string;
   };
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
 }
 
 // 消息处理结果
@@ -265,42 +264,48 @@ export interface MessageContext {
 
 // 类型守卫函数
 export function isOcrTaskMessage(message: any): message is OcrTaskMessage {
-  return message && 
-         typeof message.taskId === 'string' &&
-         typeof message.userId === 'string' &&
-         typeof message.imageData === 'string' &&
-         message.options &&
-         Array.isArray(message.options.languageHints);
+  return (
+    message &&
+    typeof message.taskId === "string" &&
+    typeof message.userId === "string" &&
+    typeof message.imageData === "string" &&
+    message.options &&
+    Array.isArray(message.options.languageHints)
+  );
 }
 
 export function isTaskStatusMessage(message: any): message is TaskStatusMessage {
-  return message && 
-         typeof message.taskId === 'string' &&
-         typeof message.status === 'string' &&
-         typeof message.progress === 'number';
+  return (
+    message &&
+    typeof message.taskId === "string" &&
+    typeof message.status === "string" &&
+    typeof message.progress === "number"
+  );
 }
 
 export function isUserNotificationMessage(message: any): message is UserNotificationMessage {
-  return message && 
-         typeof message.userId === 'string' &&
-         typeof message.type === 'string' &&
-         typeof message.title === 'string' &&
-         typeof message.message === 'string';
+  return (
+    message &&
+    typeof message.userId === "string" &&
+    typeof message.type === "string" &&
+    typeof message.title === "string" &&
+    typeof message.message === "string"
+  );
 }
 
 // 消息验证函数
 export function validateOcrTaskMessage(message: any): string[] {
   const errors: string[] = [];
-  
-  if (!message.taskId) errors.push('taskId is required');
-  if (!message.userId) errors.push('userId is required');
-  if (!message.imageData) errors.push('imageData is required');
-  if (!message.options) errors.push('options is required');
+
+  if (!message.taskId) errors.push("taskId is required");
+  if (!message.userId) errors.push("userId is required");
+  if (!message.imageData) errors.push("imageData is required");
+  if (!message.options) errors.push("options is required");
   if (message.options && !Array.isArray(message.options.languageHints)) {
-    errors.push('options.languageHints must be an array');
+    errors.push("options.languageHints must be an array");
   }
-  if (typeof message.priority !== 'number') errors.push('priority must be a number');
-  
+  if (typeof message.priority !== "number") errors.push("priority must be a number");
+
   return errors;
 }
 
@@ -316,7 +321,7 @@ export function createOcrTaskMessage(params: {
   return {
     messageId: `ocr_${params.taskId}_${Date.now()}`,
     timestamp: new Date(),
-    version: '1.0',
+    version: "1.0",
     taskId: params.taskId,
     userId: params.userId,
     imageId: params.imageId,
@@ -325,7 +330,7 @@ export function createOcrTaskMessage(params: {
     priority: params.priority || 1,
     retryCount: 0,
     maxRetries: 3,
-    createdAt: new Date()
+    createdAt: new Date(),
   };
 }
 
@@ -340,13 +345,13 @@ export function createTaskStatusMessage(params: {
   return {
     messageId: `status_${params.taskId}_${Date.now()}`,
     timestamp: new Date(),
-    version: '1.0',
+    version: "1.0",
     taskId: params.taskId,
     userId: params.userId,
     status: params.status,
     progress: params.progress,
     result: params.result,
-    error: params.error
+    error: params.error,
   };
 }
 
@@ -357,20 +362,20 @@ export function createUserNotificationMessage(params: {
   message: string;
   taskId?: string;
   data?: any;
-  priority?: 'low' | 'normal' | 'high' | 'urgent';
-  channels?: ('websocket' | 'email' | 'sms')[];
+  priority?: "low" | "normal" | "high" | "urgent";
+  channels?: ("websocket" | "email" | "sms")[];
 }): UserNotificationMessage {
   return {
     messageId: `notification_${params.userId}_${Date.now()}`,
     timestamp: new Date(),
-    version: '1.0',
+    version: "1.0",
     userId: params.userId,
     taskId: params.taskId,
     type: params.type,
     title: params.title,
     message: params.message,
     data: params.data,
-    priority: params.priority || 'normal',
-    channels: params.channels || ['websocket']
+    priority: params.priority || "normal",
+    channels: params.channels || ["websocket"],
   };
 }

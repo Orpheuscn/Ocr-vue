@@ -329,12 +329,17 @@ def extract_text():
 
     try:
         data = request.json
+        info(f"OCR请求数据: {data}")
+
         if not data:
             error("未提供数据")
             return jsonify({'success': False, 'error': '未提供数据'}), 400
 
         image_id = data.get('image_id')
         rectangles = data.get('rectangles', [])
+
+        info(f"解析的参数 - image_id: {image_id}, rectangles数量: {len(rectangles)}")
+        info(f"矩形详情: {rectangles}")
 
         if not image_id:
             error("未提供图片ID")
@@ -344,8 +349,10 @@ def extract_text():
             error(f"未提供矩形区域信息，image_id: {image_id}")
             return jsonify({'success': False, 'error': '未提供矩形区域信息'}), 400
 
+        info(f"开始调用OCR处理函数 - image_id: {image_id}")
         # 调用OCR处理函数
         result = process_ocr_request(image_id, rectangles)
+        info(f"OCR处理函数返回结果: {result}")
 
         if result['success']:
             info(f"OCR文本提取成功，image_id: {image_id}")

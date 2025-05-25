@@ -172,8 +172,8 @@ def create_app(config: Optional[dict] = None) -> Flask:
 
     # 旧的健康检查端点已删除，避免路由冲突
 
-    # 配置日志轮转
-    log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+    # 配置日志轮转 - 统一到根目录的logs/python-service文件夹
+    log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs', 'python-service')
     os.makedirs(log_dir, exist_ok=True)
     log_file = os.path.join(log_dir, 'app.log')
 

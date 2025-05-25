@@ -1,0 +1,33 @@
+.text-block {
+  position: absolute;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bc, #333);
+  font-family: var(--text-font-family, 'Inter', sans-serif);
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  z-index: 50;
+  cursor: default;
+  user-select: none;
+  pointer-events: none;
+  padding: 0;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  text-shadow: var(--text-shadow, 0 0 2px var(--b2, white));
+}
+
+.coordinate-system.with-grid .text-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  vertical-align: middle;
+  font-weight: normal;
+  font-family: 'Arial', sans-serif;
+  font-style: normal;
+  letter-spacing: normal;
+  border: 1px solid var(--grid-cell-border-color, rgba(200, 200, 200, 0.3));
+}

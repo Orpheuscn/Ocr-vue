@@ -30,6 +30,8 @@ class RabbitMQOcrService:
         self.pending_requests = {}  # 存储待处理的OCR请求
         self.request_timeout = 300  # 5分钟超时
         self.result_lock = threading.Lock()
+        self.listener_thread = None  # 监听线程引用
+        self.is_shutting_down = False  # 关闭标志
 
         # 确保RabbitMQ连接
         if not self.rabbitmq_client.connect():
@@ -37,6 +39,24 @@ class RabbitMQOcrService:
 
         # 启动结果监听器
         self._start_result_listener()
+
+    def shutdown(self):
+        """关闭OCR服务，清理资源"""
+        try:
+            info("开始关闭RabbitMQ OCR服务...")
+            self.is_shutting_down = True
+
+            # 清理待处理的请求
+            with self.result_lock:
+                self.pending_requests.clear()
+
+            # 关闭RabbitMQ客户端
+            if self.rabbitmq_client:
+                self.rabbitmq_client.close()
+
+            info("RabbitMQ OCR服务已关闭")
+        except Exception as e:
+            error(f"关闭RabbitMQ OCR服务时出错: {e}")
 
     def process_ocr_via_node(self, image_id: str, rectangles: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
@@ -70,11 +90,6 @@ class RabbitMQOcrService:
                 'imageId': image_id,
                 'timestamp': time.time(),
                 'cropsData': crops_data,
-                'options': {
-                    'languageHints': ['zh-CN', 'en'],
-                    'recognitionDirection': 'horizontal',
-                    'recognitionMode': 'text'
-                }
             }
 
             # 注册待处理请求
@@ -118,7 +133,7 @@ class RabbitMQOcrService:
 
     def _prepare_crops_data(self, image_id: str, rectangles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        准备裁剪图片数据
+        准备裁剪图片数据 - 重构版本，确保稳定性
 
         Args:
             image_id: 图片ID
@@ -128,18 +143,22 @@ class RabbitMQOcrService:
             裁剪图片数据列表
         """
         try:
-            crops_dir = Path(CROPS_FOLDER) / image_id
-            if not crops_dir.exists():
-                info(f"裁剪图片目录不存在，尝试自动裁剪: {crops_dir}")
-                # 尝试自动进行裁剪操作
-                if not self._auto_crop_image(image_id, rectangles):
-                    error(f"自动裁剪失败: {image_id}")
-                    return []
+            info(f"准备裁剪图片数据 - 图片ID: {image_id}, 矩形数量: {len(rectangles)}")
+            info(f"矩形数据详情: {rectangles}")
 
+            # 确保裁剪图片存在，如果不存在则强制重新裁剪
+            if not self._ensure_crops_exist(image_id, rectangles):
+                error(f"无法确保裁剪图片存在: {image_id}")
+                return []
+
+            crops_dir = Path(CROPS_FOLDER) / image_id
             crops_data = []
+
             for rect in rectangles:
                 rect_id = rect.get('id')
                 rect_class = rect.get('class', 'unknown')
+
+                info(f"处理矩形: ID={rect_id}, class={rect_class}")
 
                 # 跳过图片类型的矩形
                 if rect_class.lower() == 'figure':
@@ -147,15 +166,15 @@ class RabbitMQOcrService:
                     continue
 
                 # 查找裁剪图片文件
-                crop_path = None
-                for ext in ['.jpg', '.png', '.jpeg']:
-                    potential_path = crops_dir / f"{rect_id}{ext}"
-                    if potential_path.exists():
-                        crop_path = potential_path
-                        break
+                crop_path = self._find_crop_file(crops_dir, rect_id)
 
                 if not crop_path:
-                    error(f"找不到矩形 {rect_id} 的裁剪图片")
+                    error(f"找不到矩形 {rect_id} 的裁剪图片，尝试实时裁剪")
+                    # 尝试实时裁剪单个矩形
+                    crop_path = self._crop_single_rectangle(image_id, rect)
+
+                if not crop_path:
+                    error(f"无法为矩形 {rect_id} 生成裁剪图片")
                     continue
 
                 # 读取图片并转换为base64
@@ -183,6 +202,161 @@ class RabbitMQOcrService:
             logger.error(f"准备裁剪图片数据失败: {e}")
             error(f"准备裁剪图片数据失败: {e}", metadata={'image_id': image_id})
             return []
+
+    def _ensure_crops_exist(self, image_id: str, rectangles: List[Dict[str, Any]]) -> bool:
+        """
+        确保裁剪图片存在，如果不存在则重新裁剪
+
+        Args:
+            image_id: 图片ID
+            rectangles: 矩形信息列表
+
+        Returns:
+            是否成功确保裁剪图片存在
+        """
+        try:
+            crops_dir = Path(CROPS_FOLDER) / image_id
+
+            # 检查裁剪目录是否存在
+            if not crops_dir.exists():
+                info(f"裁剪目录不存在，创建并执行裁剪: {crops_dir}")
+                return self._auto_crop_image(image_id, rectangles)
+
+            # 检查是否有足够的裁剪图片
+            existing_crops = list(crops_dir.glob('*.jpg')) + list(crops_dir.glob('*.png')) + list(crops_dir.glob('*.jpeg'))
+            text_rectangles = [r for r in rectangles if r.get('class', '').lower() != 'figure']
+
+            if len(existing_crops) < len(text_rectangles):
+                info(f"裁剪图片数量不足 (现有: {len(existing_crops)}, 需要: {len(text_rectangles)})，重新裁剪")
+                return self._auto_crop_image(image_id, rectangles)
+
+            info(f"裁剪图片已存在，数量: {len(existing_crops)}")
+            return True
+
+        except Exception as e:
+            error(f"检查裁剪图片存在性时出错: {e}")
+            return False
+
+    def _find_crop_file(self, crops_dir: Path, rect_id: str) -> Path:
+        """
+        查找裁剪图片文件
+
+        Args:
+            crops_dir: 裁剪目录路径
+            rect_id: 矩形ID
+
+        Returns:
+            裁剪图片文件路径，如果找不到返回None
+        """
+        try:
+            # 尝试直接匹配
+            for ext in ['.jpg', '.png', '.jpeg']:
+                potential_path = crops_dir / f"{rect_id}{ext}"
+                if potential_path.exists():
+                    info(f"直接匹配找到裁剪图片: {potential_path}")
+                    return potential_path
+
+            # 尝试模糊匹配
+            if crops_dir.exists():
+                for file_path in crops_dir.iterdir():
+                    if file_path.is_file() and file_path.suffix.lower() in ['.jpg', '.png', '.jpeg']:
+                        filename = file_path.stem
+                        # 多种匹配规则
+                        if (filename == rect_id or
+                            filename == str(rect_id) or
+                            (str(rect_id).isdigit() and filename == str(rect_id)) or
+                            (filename.isdigit() and filename == str(rect_id))):
+                            info(f"模糊匹配找到裁剪图片: {file_path}")
+                            return file_path
+
+            return None
+
+        except Exception as e:
+            error(f"查找裁剪图片文件时出错: {e}")
+            return None
+
+    def _crop_single_rectangle(self, image_id: str, rect: Dict[str, Any]) -> Path:
+        """
+        实时裁剪单个矩形
+
+        Args:
+            image_id: 图片ID
+            rect: 矩形信息
+
+        Returns:
+            裁剪图片文件路径，如果失败返回None
+        """
+        try:
+            from services.cropper import get_cropper
+            import cv2
+            import os
+
+            # 获取原始图片路径
+            cropper = get_cropper()
+            original_image_path = cropper.find_original_image(image_id)
+
+            if not original_image_path:
+                error(f"找不到原始图片: {image_id}")
+                return None
+
+            # 读取原始图片
+            image = cv2.imread(original_image_path)
+            if image is None:
+                error(f"无法读取原始图片: {original_image_path}")
+                return None
+
+            # 获取矩形坐标 - 支持多种格式
+            coords = rect.get('coords', {})
+
+            # 处理不同的坐标格式
+            if isinstance(coords, dict):
+                # 前端格式: {"topLeft": {"x": 100, "y": 100}, "bottomRight": {"x": 200, "y": 150}}
+                if 'topLeft' in coords and 'bottomRight' in coords:
+                    top_left = coords['topLeft']
+                    bottom_right = coords['bottomRight']
+                    x_min = int(top_left['x'])
+                    y_min = int(top_left['y'])
+                    x_max = int(bottom_right['x'])
+                    y_max = int(bottom_right['y'])
+                else:
+                    error(f"矩形坐标格式错误 (对象格式): {coords}")
+                    return None
+            elif isinstance(coords, list) and len(coords) == 4:
+                # 数组格式: [x_min, y_min, x_max, y_max]
+                x_min, y_min, x_max, y_max = coords
+            else:
+                error(f"矩形坐标格式错误: {coords}")
+                return None
+
+            # 确保坐标在图片范围内
+            height, width = image.shape[:2]
+            x_min = max(0, min(x_min, width))
+            y_min = max(0, min(y_min, height))
+            x_max = max(0, min(x_max, width))
+            y_max = max(0, min(y_max, height))
+
+            # 裁剪图片
+            cropped = image[y_min:y_max, x_min:x_max]
+
+            # 确保裁剪目录存在
+            crops_dir = Path(CROPS_FOLDER) / image_id
+            crops_dir.mkdir(parents=True, exist_ok=True)
+
+            # 保存裁剪图片
+            rect_id = rect.get('id')
+            crop_path = crops_dir / f"{rect_id}.jpg"
+
+            success = cv2.imwrite(str(crop_path), cropped)
+            if success:
+                info(f"成功实时裁剪矩形 {rect_id}: {crop_path}")
+                return crop_path
+            else:
+                error(f"保存裁剪图片失败: {crop_path}")
+                return None
+
+        except Exception as e:
+            error(f"实时裁剪矩形失败: {e}")
+            return None
 
     def _auto_crop_image(self, image_id: str, rectangles: List[Dict[str, Any]]) -> bool:
         """
@@ -270,64 +444,101 @@ class RabbitMQOcrService:
         """启动结果监听器"""
         try:
             # 在后台线程中启动结果监听
-            listener_thread = threading.Thread(
+            self.listener_thread = threading.Thread(
                 target=self._listen_for_results,
-                daemon=True
+                daemon=True,
+                name="OCR-Result-Listener"
             )
-            listener_thread.start()
+            self.listener_thread.start()
             info("OCR结果监听器已启动")
         except Exception as e:
             error(f"启动OCR结果监听器失败: {e}")
 
     def _listen_for_results(self):
-        """监听OCR结果"""
-        try:
-            # 创建新的RabbitMQ连接用于监听结果
-            import pika
-            import json
+        """监听OCR结果 - 带自动重连机制"""
+        import pika
+        import json
 
-            # 创建连接参数
-            credentials = pika.PlainCredentials(
-                self.rabbitmq_client.config['username'],
-                self.rabbitmq_client.config['password']
-            )
+        retry_count = 0
+        max_retries = 5
+        retry_delay = 5  # 秒
 
-            parameters = pika.ConnectionParameters(
-                host=self.rabbitmq_client.config['host'],
-                port=self.rabbitmq_client.config['port'],
-                virtual_host=self.rabbitmq_client.config['vhost'],
-                credentials=credentials,
-                heartbeat=600,
-                blocked_connection_timeout=300
-            )
+        while not self.is_shutting_down and retry_count < max_retries:
+            connection = None
+            channel = None
 
-            # 建立连接
-            connection = pika.BlockingConnection(parameters)
-            channel = connection.channel()
+            try:
+                info(f"尝试建立OCR结果监听连接 (第{retry_count + 1}次)")
 
-            # 声明队列
-            channel.queue_declare(queue='node.to.python.ocr.result', durable=True)
+                # 创建连接参数
+                credentials = pika.PlainCredentials(
+                    self.rabbitmq_client.config['username'],
+                    self.rabbitmq_client.config['password']
+                )
 
-            def callback(ch, method, properties, body):
+                parameters = pika.ConnectionParameters(
+                    host=self.rabbitmq_client.config['host'],
+                    port=self.rabbitmq_client.config['port'],
+                    virtual_host=self.rabbitmq_client.config['vhost'],
+                    credentials=credentials,
+                    heartbeat=600,
+                    blocked_connection_timeout=300
+                )
+
+                # 建立连接
+                connection = pika.BlockingConnection(parameters)
+                channel = connection.channel()
+
+                # 声明队列
+                channel.queue_declare(queue='node.to.python.ocr.result', durable=True)
+
+                def callback(ch, method, properties, body):
+                    try:
+                        message = json.loads(body.decode('utf-8'))
+                        self._handle_ocr_result(message)
+                        ch.basic_ack(delivery_tag=method.delivery_tag)
+                    except Exception as e:
+                        error(f"处理OCR结果消息失败: {e}")
+                        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+
+                # 开始消费
+                channel.basic_consume(
+                    queue='node.to.python.ocr.result',
+                    on_message_callback=callback
+                )
+
+                info("OCR结果监听器已启动，开始监听...")
+                retry_count = 0  # 重置重试计数
+                channel.start_consuming()
+
+            except Exception as e:
+                error(f"OCR结果监听失败 (第{retry_count + 1}次): {e}")
+                retry_count += 1
+
+                # 确保连接正确关闭
                 try:
-                    message = json.loads(body.decode('utf-8'))
-                    self._handle_ocr_result(message)
-                    ch.basic_ack(delivery_tag=method.delivery_tag)
-                except Exception as e:
-                    error(f"处理OCR结果消息失败: {e}")
-                    ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+                    if channel and not channel.is_closed:
+                        channel.stop_consuming()
+                        channel.close()
+                except Exception as close_e:
+                    error(f"关闭OCR监听通道时出错: {close_e}")
 
-            # 开始消费
-            channel.basic_consume(
-                queue='node.to.python.ocr.result',
-                on_message_callback=callback
-            )
+                try:
+                    if connection and not connection.is_closed:
+                        connection.close()
+                except Exception as close_e:
+                    error(f"关闭OCR监听连接时出错: {close_e}")
 
-            info("开始监听OCR结果...")
-            channel.start_consuming()
+                # 如果不是最后一次重试，等待后重试
+                if retry_count < max_retries and not self.is_shutting_down:
+                    info(f"等待 {retry_delay} 秒后重试...")
+                    time.sleep(retry_delay)
+                    retry_delay = min(retry_delay * 2, 60)  # 指数退避，最大60秒
 
-        except Exception as e:
-            error(f"监听OCR结果失败: {e}")
+        if retry_count >= max_retries:
+            error("OCR结果监听器达到最大重试次数，停止重试")
+        else:
+            info("OCR结果监听器正常退出")
 
     def _handle_ocr_result(self, message: Dict[str, Any]) -> bool:
         """

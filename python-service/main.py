@@ -8,6 +8,8 @@
 
 import os
 import sys
+import signal
+import atexit
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
@@ -29,12 +31,32 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def cleanup_resources():
+    """清理应用资源"""
+    try:
+        from services.ocr_service import cleanup_rabbitmq_ocr_service
+        cleanup_rabbitmq_ocr_service()
+        logger.info("应用资源清理完成")
+    except Exception as e:
+        logger.error(f"清理应用资源时出错: {e}")
+
+def signal_handler(signum, frame):
+    """信号处理器"""
+    logger.info(f"接收到信号 {signum}，开始清理资源...")
+    cleanup_resources()
+    sys.exit(0)
+
+# 注册信号处理器和退出清理
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+atexit.register(cleanup_resources)
+
 def create_app():
     """创建Flask应用，供Gunicorn调用"""
     try:
         # 获取环境变量
         host = os.environ.get('FLASK_HOST', '0.0.0.0')
-        port = int(os.environ.get('FLASK_PORT', 5000))
+        port = int(os.environ.get('FLASK_PORT', 5001))
         debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
 
         # 创建Flask应用
@@ -56,7 +78,7 @@ def main():
     try:
         # 获取环境变量
         host = os.environ.get('FLASK_HOST', '0.0.0.0')
-        port = int(os.environ.get('FLASK_PORT', 5000))
+        port = int(os.environ.get('FLASK_PORT', 5001))
         debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
 
         # 创建Flask应用

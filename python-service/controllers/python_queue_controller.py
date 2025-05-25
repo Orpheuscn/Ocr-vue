@@ -161,7 +161,7 @@ def submit_python_ocr_task():
         task_id = str(uuid.uuid4())
 
         # 获取OCR参数
-        language = data.get('language', 'chi_sim+eng')
+        language = data.get('language')  # 移除硬编码默认值
         psm_mode = data.get('psmMode', 6)
 
         # 构建Python OCR任务消息

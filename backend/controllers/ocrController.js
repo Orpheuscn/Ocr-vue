@@ -36,22 +36,18 @@ export const processSimple = async (req, res) => {
     }
 
     // 获取参数
-    const {
-      languageHints = [],
-      recognitionDirection = "horizontal",
-      recognitionMode = "text",
-    } = req.body;
-    
+    const { languageHints = [], recognitionMode = "text" } = req.body;
+
     // 从认证中间件提供的req.user中获取用户ID
     // 这样可以确保用户ID是经过认证的有效ID
-    const userId = req.user ? (req.user.id || req.user._id) : null;
-    
-    console.log('当前请求的用户认证信息:', {
+    const userId = req.user ? req.user.id || req.user._id : null;
+
+    console.log("当前请求的用户认证信息:", {
       hasUser: !!req.user,
       userId: userId,
-      userObject: req.user ? JSON.stringify(req.user) : '无用户对象',
-      authHeader: req.headers.authorization ? '存在' : '不存在',
-      cookies: req.cookies ? Object.keys(req.cookies).join(', ') : '无cookies'
+      userObject: req.user ? JSON.stringify(req.user) : "无用户对象",
+      authHeader: req.headers.authorization ? "存在" : "不存在",
+      cookies: req.cookies ? Object.keys(req.cookies).join(", ") : "无cookies",
     });
 
     // 检测文件类型
@@ -77,7 +73,6 @@ export const processSimple = async (req, res) => {
         base64Data,
         serverApiKey,
         languageHints,
-        recognitionDirection,
         recognitionMode
       );
 
@@ -88,10 +83,10 @@ export const processSimple = async (req, res) => {
       if (userId) {
         try {
           console.log(`尝试为用户 ${userId} 创建OCR记录，用户ID类型: ${typeof userId}`);
-          
+
           // 确保文件名使用正确的UTF-8编码
           const originalFilename = req.file.originalname || "未命名图片";
-          
+
           // 准备记录数据并记录日志
           const recordData = {
             userId,
@@ -104,13 +99,15 @@ export const processSimple = async (req, res) => {
             textLength,
             status: "success",
           };
-          
-          console.log('准备创建OCR记录，数据:', JSON.stringify(recordData));
+
+          console.log("准备创建OCR记录，数据:", JSON.stringify(recordData));
 
           // 创建OCR记录
           const newRecord = await ocrRecordService.createOcrRecord(recordData);
-          
-          console.log(`成功为用户 ${userId} 创建了OCR记录，记录ID: ${newRecord ? newRecord._id : '未返回ID'}`);
+
+          console.log(
+            `成功为用户 ${userId} 创建了OCR记录，记录ID: ${newRecord ? newRecord._id : "未返回ID"}`
+          );
         } catch (recordError) {
           console.error("创建OCR记录失败:", {
             error: recordError.message,
@@ -118,7 +115,7 @@ export const processSimple = async (req, res) => {
             userId,
             filename: req.file.originalname,
             recognitionMode,
-            language: result.detectedLanguageCode || "auto"
+            language: result.detectedLanguageCode || "auto",
           });
           // 不中断主流程，继续返回OCR结果
         }
@@ -126,7 +123,7 @@ export const processSimple = async (req, res) => {
         console.warn("未能创建OCR记录: 用户ID不存在", {
           hasUser: !!req.user,
           reqUserId: req.user ? req.user.id : null,
-          authHeader: req.headers.authorization ? '存在' : '不存在'
+          authHeader: req.headers.authorization ? "存在" : "不存在",
         });
       }
 
@@ -196,13 +193,7 @@ export const processFile = async (req, res) => {
       });
     }
 
-    const {
-      apiKey,
-      languageHints = [],
-      recognitionDirection = "horizontal",
-      recognitionMode = "text",
-      userId,
-    } = req.body;
+    const { apiKey, languageHints = [], recognitionMode = "text", userId } = req.body;
 
     if (!apiKey) {
       return res.status(400).json({
@@ -221,26 +212,13 @@ export const processFile = async (req, res) => {
 
     if (mimeType === "application/pdf") {
       // 处理PDF文件
-      result = await ocrService.processPdf(
-        fileBuffer,
-        apiKey,
-        languageHints,
-        1,
-        recognitionDirection,
-        recognitionMode
-      );
+      result = await ocrService.processPdf(fileBuffer, apiKey, languageHints, 1, recognitionMode);
       // 获取PDF页面数量
       filePageCount = result.totalPages || 1;
     } else if (mimeType.startsWith("image/")) {
       // 处理图像文件
       const base64Data = fileBuffer.toString("base64");
-      result = await ocrService.performOcr(
-        base64Data,
-        apiKey,
-        languageHints,
-        recognitionDirection,
-        recognitionMode
-      );
+      result = await ocrService.performOcr(base64Data, apiKey, languageHints, recognitionMode);
     } else {
       return res.status(400).json({
         success: false,
@@ -261,13 +239,15 @@ export const processFile = async (req, res) => {
         const originalFilename =
           req.file.originalname || `未命名${fileType === "pdf" ? "PDF" : "图片"}`;
 
-        console.log(`准备OCR记录数据: 用户ID=${userId}, 文件名=${originalFilename}, 文件类型=${fileType}, 页数=${filePageCount}`);
+        console.log(
+          `准备OCR记录数据: 用户ID=${userId}, 文件名=${originalFilename}, 文件类型=${fileType}, 页数=${filePageCount}`
+        );
 
         // 确保用户ID是字符串类型
         const userIdStr = userId.toString();
-        
+
         const recordData = {
-          userId: userIdStr,  // 使用字符串类型的用户ID
+          userId: userIdStr, // 使用字符串类型的用户ID
           filename: originalFilename,
           fileType,
           pageCount: filePageCount,
@@ -283,18 +263,22 @@ export const processFile = async (req, res) => {
 
         console.log(`调用ocrRecordService.createOcrRecord创建OCR记录...`);
         console.log(`完整的记录数据:`, JSON.stringify(recordData));
-        
+
         try {
           const newRecord = await ocrRecordService.createOcrRecord(recordData);
-          console.log(`OCR记录创建成功: ID=${newRecord._id || newRecord.id}, 用户ID=${userIdStr}, 文件类型=${fileType}, 页数=${filePageCount}`);
+          console.log(
+            `OCR记录创建成功: ID=${
+              newRecord._id || newRecord.id
+            }, 用户ID=${userIdStr}, 文件类型=${fileType}, 页数=${filePageCount}`
+          );
         } catch (dbError) {
           console.error(`数据库操作失败: ${dbError.message}`);
           console.error(`数据库错误详情:`, dbError);
-          
+
           // 尝试直接使用MongoDB原生操作插入记录
           try {
             const db = mongoose.connection.db;
-            const collection = db.collection('ocrrecords');
+            const collection = db.collection("ocrrecords");
             const insertResult = await collection.insertOne(recordData);
             console.log(`使用原生操作插入成功: ${insertResult.insertedId}`);
           } catch (nativeError) {
@@ -302,7 +286,9 @@ export const processFile = async (req, res) => {
           }
         }
       } catch (recordError) {
-        console.error(`创建OCR记录失败 (用户ID: ${userId}): 错误类型: ${recordError.name}, 错误消息: ${recordError.message}`);
+        console.error(
+          `创建OCR记录失败 (用户ID: ${userId}): 错误类型: ${recordError.name}, 错误消息: ${recordError.message}`
+        );
         console.error(`错误详情:`, recordError);
         // 不中断主流程，继续返回OCR结果
       }
@@ -328,13 +314,7 @@ export const processFile = async (req, res) => {
 // 处理Base64编码的图像
 export const processBase64Image = async (req, res) => {
   try {
-    const {
-      image,
-      apiKey,
-      languageHints = [],
-      recognitionDirection = "horizontal",
-      recognitionMode = "text",
-    } = req.body;
+    const { image, apiKey, languageHints = [], recognitionMode = "text" } = req.body;
 
     if (!image) {
       return res.status(400).json({
@@ -353,13 +333,7 @@ export const processBase64Image = async (req, res) => {
     // 移除可能存在的base64前缀
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
 
-    const result = await ocrService.performOcr(
-      base64Data,
-      apiKey,
-      languageHints,
-      recognitionDirection,
-      recognitionMode
-    );
+    const result = await ocrService.performOcr(base64Data, apiKey, languageHints, recognitionMode);
 
     res.json({
       success: true,
@@ -385,13 +359,7 @@ export const processPdf = async (req, res) => {
       });
     }
 
-    const {
-      apiKey,
-      languageHints = [],
-      pageNumber = 1,
-      recognitionDirection = "horizontal",
-      recognitionMode = "text",
-    } = req.body;
+    const { apiKey, languageHints = [], pageNumber = 1, recognitionMode = "text" } = req.body;
 
     if (!apiKey) {
       return res.status(400).json({
@@ -408,7 +376,6 @@ export const processPdf = async (req, res) => {
       apiKey,
       languageHints,
       parseInt(pageNumber, 10),
-      recognitionDirection,
       recognitionMode
     );
 

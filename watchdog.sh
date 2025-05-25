@@ -17,10 +17,10 @@ NC='\033[0m' # 无颜色
 
 # 获取当前目录的绝对路径
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_FILE="$APP_DIR/logs/watchdog.log"
+LOG_FILE="$APP_DIR/logs/system/watchdog.log"
 
 # 创建日志目录
-mkdir -p "$APP_DIR/logs"
+mkdir -p "$APP_DIR/logs/system"
 
 # 日志函数
 log() {

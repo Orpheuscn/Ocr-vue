@@ -205,21 +205,10 @@ class PythonOcrQueueProcessor {
 
       if (apiKey && apiKey.trim() !== "") {
         // 使用完整版Google Cloud Vision API
-        ocrResult = await performOcr(
-          imageData,
-          apiKey,
-          options.languageHints || ["zh-CN", "en"],
-          options.recognitionDirection || "horizontal",
-          options.recognitionMode || "text"
-        );
+        ocrResult = await performOcr(imageData, apiKey);
       } else {
         // 使用简化版OCR
-        ocrResult = await performOcrSimple(
-          imageData,
-          options.languageHints || ["zh-CN", "en"],
-          options.recognitionDirection || "horizontal",
-          options.recognitionMode || "text"
-        );
+        ocrResult = await performOcrSimple(imageData);
       }
 
       return {
@@ -228,10 +217,8 @@ class PythonOcrQueueProcessor {
         success: true,
         text: ocrResult.originalFullText || "",
         detectedLanguage: ocrResult.detectedLanguageCode || "und",
-        detectedLanguageName: ocrResult.detectedLanguageName || "未知",
+        detectedLanguageName: ocrResult.detectedLanguageName || "Unknown",
         confidence: ocrResult.confidence || 0.95,
-        direction: ocrResult.direction || options.recognitionDirection,
-        mode: ocrResult.mode || options.recognitionMode,
         rectangleInfo,
       };
     } catch (error) {

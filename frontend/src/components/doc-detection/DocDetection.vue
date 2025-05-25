@@ -1,13 +1,12 @@
 <template>
   <div class="min-h-screen bg-base-200 flex flex-col">
+    <TheHeader />
+
     <!-- 内容容器 -->
     <div class="container mx-auto px-4 py-6 w-full max-w-full">
-      <!-- 标题部分和主题切换 -->
-      <div class="flex justify-between items-center mb-6">
+      <!-- 标题部分 -->
+      <div class="mb-6">
         <h1 class="text-3xl font-bold text-accent-focus dark:text-white">文档解析</h1>
-        <div class="tooltip" data-tip="切换主题">
-          <ThemeToggle />
-        </div>
       </div>
 
       <div class="flex flex-col lg:flex-row gap-4">
@@ -191,7 +190,7 @@ import { ref, onMounted, nextTick } from 'vue'
 import RectangleDrawingTool from './RectangleDrawingTool.vue'
 import RectangleCard from './RectangleCard.vue'
 import ResultDialog from './ResultDialog.vue'
-import ThemeToggle from '../common/ThemeToggle.vue'
+import TheHeader from '../common/TheHeader.vue'
 // 引入API服务
 import * as docDetectService from '@/services/docDetectService'
 
@@ -352,15 +351,35 @@ const refreshPage = () => {
 // 全局OCR提取
 const extractAllText = async () => {
   try {
-    // 使用坐标管理服务准备提取数据
-    const extractData = docDetectService.prepareSubmitData()
-
     // 防止重复提取
     if (extractingAllText.value) return
     extractingAllText.value = true
 
-    // 为所有有效矩形设置ocr处理状态
+    // 获取当前有效的矩形（考虑筛选状态）
     const activeRects = docDetectService.getActiveRectangles()
+    console.log('批量OCR - 有效矩形数量:', activeRects.length)
+    console.log('批量OCR - 有效矩形数据:', activeRects)
+
+    if (activeRects.length === 0) {
+      extractingAllText.value = false
+      alert('没有可处理的矩形')
+      return
+    }
+
+    // 准备提取数据 - 使用与单个OCR相同的格式
+    const extractData = {
+      image_id: currentImageId.value,
+      rectangles: activeRects.map((rect) => ({
+        id: rect.id,
+        class: rect.class || 'unknown',
+        confidence: rect.confidence || 1.0,
+        coords: rect.coords,
+      })),
+    }
+
+    console.log('批量OCR - 提取数据:', extractData)
+
+    // 为所有有效矩形设置ocr处理状态
     activeRects.forEach((activeRect) => {
       const rect = rectangles.value.find((r) => r.id === activeRect.id)
       if (rect) {
@@ -379,9 +398,12 @@ const extractAllText = async () => {
 
     extractingAllText.value = false
 
+    console.log('批量OCR - 返回结果:', data)
+
     if (data.success) {
       // 处理OCR结果
       if (data.results && Array.isArray(data.results)) {
+        console.log('批量OCR - 处理结果数量:', data.results.length)
         // 更新每个矩形的OCR结果
         data.results.forEach((result) => {
           const rect = rectangles.value.find((r) => r.id === result.id)
@@ -395,6 +417,7 @@ const extractAllText = async () => {
               // 对于其他类型，设置OCR结果
               rect.ocrText = result.text || '无法识别文本'
             }
+            console.log(`批量OCR - 更新矩形 ${rect.id} 的文本:`, rect.ocrText)
           }
         })
       }
@@ -411,7 +434,7 @@ const extractAllText = async () => {
     rectangles.value.forEach((rect) => {
       rect.ocrProcessing = false
     })
-    console.error('提取错误:', error)
+    console.error('批量OCR提取错误:', error)
     alert(`错误: ${error.message}`)
   }
 }

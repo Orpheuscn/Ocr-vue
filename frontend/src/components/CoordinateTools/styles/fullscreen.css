@@ -1,0 +1,17 @@
+/* 确保坐标视图在全屏模式下填满整个屏幕 */
+:deep(.fullscreen) {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+:deep(.fullscreen) .card-body {
+  height: calc(100vh - 60px); /* 减去标题栏高度 */
+}
+
+:deep(.fullscreen) .coordinate-system-wrapper {
+  height: calc(100vh - 80px); /* 适应全屏模式 */
+}

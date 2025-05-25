@@ -42,9 +42,6 @@ const tableData = ref({
   rows: [],
 })
 
-// 表格样式
-const tableClasses = ''
-
 // 监听表格设置变化
 watch(() => store.tableSettings, processTableData, { deep: true })
 
@@ -283,7 +280,7 @@ function processTwoColumnTable(symbols) {
   console.log(`按Y坐标分组后识别到${rows.length}行`)
 
   if (rows.length === 0) {
-    tableData.value = { headers: [], rows: [], rtlMode: false, tableClasses: '' }
+    tableData.value = { headers: [], rows: [] }
     return
   }
 
@@ -438,7 +435,7 @@ function processTwoColumnTable(symbols) {
 
   // 处理表头
   if (tableRows.length === 0) {
-    tableData.value = { headers: [], rows: [], rtlMode: false, tableClasses: '' }
+    tableData.value = { headers: [], rows: [] }
     return
   }
 
@@ -454,16 +451,12 @@ function processTwoColumnTable(symbols) {
     tableData.value = {
       headers: headers,
       rows: tableRows.slice(1),
-      rtlMode: false,
-      tableClasses,
     }
   } else {
     // 所有行都是数据，用通用表头
     tableData.value = {
       headers: headers,
       rows: tableRows,
-      rtlMode: false,
-      tableClasses,
     }
   }
 }
@@ -1102,7 +1095,6 @@ function getMarkdownTable() {
 function getTableData() {
   return {
     ...tableData.value,
-    isRtl: false,
   }
 }
 
@@ -1133,100 +1125,5 @@ function estimateTableColumns(symbols) {
 </script>
 
 <style scoped>
-/* 表格容器样式 */
-.text-table-container {
-  width: 100%;
-  overflow-x: auto;
-  padding: 8px;
-  margin-bottom: 16px;
-  background-color: var(--b1, #ffffff);
-}
-
-:root[data-theme='dark'] .text-table-container {
-  background-color: var(--b1, #1e1e1e);
-}
-
-/* 表格标题样式 */
-.text-table-container .table-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-/* 表格标题样式 */
-.text-table-container .table-info {
-  color: var(--bc, #333333);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-:root[data-theme='dark'] .text-table-container .table-info {
-  color: var(--bc, #dddddd);
-}
-
-/* 表格主体样式 */
-.text-table-container .notes-style-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-  background-color: var(--b1, #ffffff);
-  border: 1px solid #555555;
-  color: var(--bc, #333333);
-}
-
-:root[data-theme='dark'] .text-table-container .notes-style-table {
-  background-color: var(--b1, #1e1e1e);
-  color: var(--bc, #dddddd);
-}
-
-/* 表头样式 */
-.text-table-container .notes-style-table thead th {
-  background-color: var(--b2, #f2f2f2);
-  color: var(--bc, #333333);
-  font-weight: 600;
-  padding: 10px;
-  text-align: left;
-  border: 1px solid #555555;
-}
-
-:root[data-theme='dark'] .text-table-container .notes-style-table thead th {
-  background-color: var(--b2, #2a2a2a);
-  color: var(--bc, #dddddd);
-}
-
-/* 单元格样式 */
-.text-table-container .notes-style-table tbody td {
-  padding: 8px 10px;
-  text-align: left;
-  border: 1px solid #555555;
-  background-color: var(--b1, #ffffff);
-  color: var(--bc, #333333);
-}
-
-:root[data-theme='dark'] .text-table-container .notes-style-table tbody td {
-  background-color: var(--b1, #1e1e1e);
-  color: var(--bc, #dddddd);
-}
-
-/* 悬停效果 - 亮色模式 */
-.text-table-container .notes-style-table tbody tr:hover td {
-  background-color: #e0e0e0;
-  transition: all 0.2s ease;
-}
-
-/* 暗色模式样式覆盖 */
-:root[data-theme='dark'] .text-table-container .notes-style-table,
-:root[data-theme='dark'] .text-table-container .notes-style-table thead th,
-:root[data-theme='dark'] .text-table-container .notes-style-table tbody td {
-  border-color: #aaaaaa;
-}
-
-/* 悬停效果 - 暗色模式 */
-:root[data-theme='dark'] .text-table-container .notes-style-table tbody tr:hover td {
-  background-color: #333333;
-}
+@import './styles/text-table-shared.css';
 </style>

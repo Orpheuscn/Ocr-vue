@@ -1,39 +1,18 @@
 <template>
   <div>
     <!-- 悬浮按钮 -->
-    <div
-      class="fixed left-4 bottom-24 z-40"
-      v-if="store.hasOcrResult || store.currentFiles.length > 0"
+    <FloatingButton
+      type="warning"
+      position="left-bottom"
+      :offset="{ x: 4, y: 24 }"
+      :visible="store.hasOcrResult || store.currentFiles.length > 0"
+      :tooltip="i18n.t('addMaskingArea')"
+      @click="openMaskingModal"
     >
-      <button
-        class="btn btn-circle btn-warning shadow-lg hover-effect masking-btn"
-        @click="openMaskingModal"
-        :title="i18n.t('addMaskingArea')"
-      >
-        <svg
-          viewBox="0 0 282 282"
-          version="1.1"
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6"
-          stroke="currentColor"
-        >
-          <path
-            fill="currentColor"
-            stroke="currentColor"
-            stroke-width="1"
-            opacity="0.9882352941176471"
-            d="M 231.5 10 Q 255.7 10.3 265 25.5 Q 272.3 34.2 272 50.5 L 269 61.5 L 265 68.5 L 146.5 187 L 104.5 198 L 92.5 200 Q 86.8 198.8 84 194.5 L 82 186.5 L 95 135.5 L 213.5 17 L 220.5 13 L 231.5 10 Z M 232 34 L 228 36 L 116 148 L 111 167 L 112 172 L 135 166 L 246 55 L 248 51 Q 249 43 246 40 L 239 34 L 232 34 Z "
-          />
-          <path
-            fill="currentColor"
-            stroke="currentColor"
-            stroke-width="1"
-            opacity="0.9882352941176471"
-            d="M 43.5 35 L 131.5 35 Q 137.6 36.4 140 41.5 L 141 49.5 Q 139.6 55.6 134.5 58 L 131.5 59 L 43.5 59 L 38 62.5 L 35 68.5 L 35 236.5 Q 36.3 242.3 40.5 245 L 45.5 247 L 213.5 247 L 220 244 L 223 238.5 L 223 150.5 Q 224.4 144.4 229.5 142 L 237.5 141 Q 243.6 142.4 246 147.5 L 247 150.5 L 247 238.5 Q 244.4 254.9 233.5 263 L 218.5 270 L 40.5 270 Q 25.4 266.6 18 255.5 L 12 241.5 L 12 63.5 Q 15.4 50.4 24.5 43 L 32.5 38 L 43.5 35 Z "
-          />
-        </svg>
-      </button>
-    </div>
+      <template #icon>
+        <FloatingButtonIcons type="masking" />
+      </template>
+    </FloatingButton>
 
     <!-- 遮挡工具浮窗 -->
     <div v-if="isModalOpen" class="masking-modal">
@@ -105,6 +84,8 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useOcrStore } from '@/stores/ocrStore'
 import { useI18nStore } from '@/stores/i18nStore'
+import FloatingButton from '@/components/UI/FloatingButton.vue'
+import FloatingButtonIcons from '@/components/UI/FloatingButtonIcons.vue'
 // 引入fabric.js (确保它在index.html中已全局引入)
 
 // 状态管理
@@ -816,27 +797,7 @@ onUnmounted(() => {
   cursor: crosshair; /* 添加十字光标 */
 }
 
-.hover-effect {
-  transition: all 0.3s ease;
-}
-
-/* 控制初始状态为黑色 */
-.masking-btn {
-  color: black;
-}
-
-/* 悬停时为白色 */
-.masking-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
-  background-color: #f59e0b; /* 悬停时加深黄色 */
-  color: white;
-}
-
-.hover-effect:active {
-  transform: translateY(-1px);
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-}
+/* 原有的浮动按钮样式已移动到 UI/FloatingButton.vue 组件中 */
 
 /* 坐标指示器 */
 .crosshair-h {

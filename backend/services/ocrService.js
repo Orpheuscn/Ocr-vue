@@ -16,12 +16,7 @@ const require = createRequire(import.meta.url);
 const API_URL = "https://vision.googleapis.com/v1/images:annotate";
 
 // 简化版OCR识别函数 - 无需API密钥
-export async function performOcrSimple(
-  base64Image,
-  languageHints = [],
-  direction = "horizontal",
-  mode = "text"
-) {
+export async function performOcrSimple(base64Image, languageHints = [], mode = "text") {
   if (!base64Image) throw new Error("Base64图像数据缺失");
 
   try {
@@ -38,7 +33,6 @@ export async function performOcrSimple(
       originalFullText,
       detectedLanguageCode,
       detectedLanguageName,
-      direction,
       mode,
     };
   } catch (error) {
@@ -48,18 +42,12 @@ export async function performOcrSimple(
 }
 
 // 执行OCR识别
-export async function performOcr(
-  base64Image,
-  apiKey,
-  languageHints = [],
-  direction = "horizontal",
-  mode = "text"
-) {
+export async function performOcr(base64Image, apiKey, languageHints = [], mode = "text") {
   if (!apiKey) throw new Error("API Key is missing");
   if (!base64Image) throw new Error("Base64 image data is missing");
 
   try {
-    console.log(`开始OCR识别请求 - 方向: ${direction}, 模式: ${mode}`);
+    console.log(`开始OCR识别请求 - 模式: ${mode}`);
     console.log(`语言提示: ${languageHints.length > 0 ? languageHints.join(", ") : "无"}`);
     console.log(`API密钥前缀: ${apiKey.substring(0, 8)}...`);
 
@@ -118,8 +106,8 @@ export async function performOcr(
     }
 
     console.log("API响应成功，处理OCR结果...");
-    // 处理OCR结果和方向设置
-    const result = processOcrResult(data.responses[0], direction, mode);
+    // 处理OCR结果
+    const result = processOcrResult(data.responses[0], mode);
     console.log("OCR结果处理完成");
 
     return result;
@@ -131,7 +119,7 @@ export async function performOcr(
 }
 
 // 处理OCR结果
-function processOcrResult(ocrResult, direction, mode) {
+function processOcrResult(ocrResult, mode) {
   // 提取和处理关键数据
   const fullTextAnnotation = ocrResult.fullTextAnnotation || null;
   const textAnnotations = ocrResult.textAnnotations || [];
@@ -143,8 +131,8 @@ function processOcrResult(ocrResult, direction, mode) {
   // 提取全文
   const originalFullText = fullTextAnnotation?.text || "";
 
-  // 处理OCR结果，提取符号数据，并应用方向和模式设置
-  const symbolsData = extractSymbolsData(ocrResult, direction, mode);
+  // 处理OCR结果，提取符号数据，并应用模式设置
+  const symbolsData = extractSymbolsData(ocrResult, mode);
 
   return {
     ocrRawResult: ocrResult,
@@ -153,13 +141,12 @@ function processOcrResult(ocrResult, direction, mode) {
     detectedLanguageCode,
     detectedLanguageName,
     symbolsData,
-    direction,
     mode,
   };
 }
 
 // 从OCR结果中提取符号数据
-function extractSymbolsData(ocrResult, direction, mode) {
+function extractSymbolsData(ocrResult, mode) {
   // 如果没有全文注释，则返回空数组
   if (!ocrResult.fullTextAnnotation) {
     return [];
@@ -229,7 +216,6 @@ export async function processPdf(
   apiKey,
   languageHints = [],
   pageNumber = 1,
-  direction = "horizontal",
   mode = "text"
 ) {
   try {
@@ -446,7 +432,7 @@ export function getLanguages() {
       if (code !== "und" && !code.includes("-")) {
         result.push({
           code,
-          name: names["zh"] || names["en"] || code,
+          name: names["en"] || code, // 移除硬编码的"zh"，只使用"en"作为后备
         });
       }
     }
@@ -476,15 +462,13 @@ export function getLanguageName(code) {
     const languageData = JSON.parse(fs.readFileSync(langFilePath, "utf8"));
 
     if (languageData[code]) {
-      return languageData[code]["zh"] || languageData[code]["en"] || code;
+      return languageData[code]["en"] || code; // 移除硬编码的"zh"
     }
 
     const baseCode = code?.split("-")[0];
-    return languageData[baseCode]
-      ? languageData[baseCode]["zh"] || languageData[baseCode]["en"]
-      : code || "未知";
+    return languageData[baseCode] ? languageData[baseCode]["en"] : code || "Unknown";
   } catch (error) {
     console.error("获取语言名称错误:", error);
-    return code || "未知";
+    return code || "Unknown"; // 移除硬编码的中文
   }
 }

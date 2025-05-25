@@ -1,0 +1,63 @@
+/* 基础容器样式 */
+.coordinate-view-container {
+  background-color: var(--b1, white);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-top: 1.5rem;
+}
+
+.coordinate-view-placeholder {
+  background-color: var(--b1, white);
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-top: 1.5rem;
+  text-align: center;
+  color: var(--bc, #a0aec0);
+}
+
+.section-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.coordinate-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+}
+
+.coordinate-controls span {
+  margin-left: 5px;
+}
+
+.coordinate-controls select {
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: white;
+  font-size: 0.85rem;
+}
+
+/* 原有的浮动按钮相关样式已移动到 UI/FloatingButton.vue 组件中统一管理 */
+
+/* 调试信息样式 */
+.debug-info {
+  font-size: var(--debug-text-size, 0.75rem);
+  background-color: var(--debug-bg-color, rgba(200, 200, 200, 0.7));
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  z-index: 10;
+}

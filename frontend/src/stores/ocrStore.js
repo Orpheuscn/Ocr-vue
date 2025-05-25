@@ -3,6 +3,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 // 确保正确导入你的 API 服务文件路径
 import { processSimple } from '@/services/apiClient'
+// 导入OCR API服务 - 改为静态导入
+import { processWithServerApi } from '@/services/ocrApiService'
 // 导入PDF适配器
 import { renderPdfPage, getPdfPageCount } from '@/utils/pdfAdapter'
 // 导入i18n存储
@@ -602,8 +604,7 @@ export const useOcrStore = defineStore('ocr', () => {
       const languageHints = selectedLanguages.value.length > 0 ? selectedLanguages.value : []
       console.log('语言提示:', languageHints)
 
-      // 导入OCR API服务
-      const { processWithServerApi } = await import('@/services/ocrApiService')
+      // OCR API服务已在文件顶部静态导入
 
       // 使用服务器API处理OCR
       let result

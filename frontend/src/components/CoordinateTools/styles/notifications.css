@@ -1,0 +1,103 @@
+/* 全局通知样式 */
+.global-notification-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  pointer-events: none;
+  animation: fadeInOut 2s ease-in-out;
+}
+
+.global-notification-toast .alert {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: var(--notification-bg-color, var(--su, #36d399));
+  color: var(--notification-text-color, var(--suc, white));
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  font-weight: 500;
+}
+
+/* 跟随鼠标的通知样式 */
+.mouse-follow-toast {
+  position: absolute;
+  z-index: 50;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  margin-top: -10px;
+  animation: mouseFollowFadeInOut var(--animation-time, 1s) ease-in-out;
+}
+
+.mouse-follow-toast .alert {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--notification-bg-color, rgba(54, 211, 153, 0.8));
+  color: var(--notification-text-color, var(--suc, white));
+  white-space: nowrap;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+/* 全局 Tooltip 样式 */
+body .coordinate-tooltip {
+  position: fixed;
+  background-color: var(--n, rgba(0, 0, 0, 0.8));
+  color: var(--nc, white);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: pre-wrap;
+  z-index: 1001;
+  pointer-events: none;
+  display: none;
+  line-height: 1.4;
+  max-width: 300px;
+}
+
+/* 全局通知动画 */
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -40%);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+  85% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -60%);
+  }
+}
+
+/* 鼠标跟随通知动画 */
+@keyframes mouseFollowFadeInOut {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -80%);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -80%);
+  }
+}

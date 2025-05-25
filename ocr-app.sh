@@ -28,16 +28,20 @@ NC='\033[0m' # 无颜色
 # 获取当前目录的绝对路径
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="$APP_DIR/logs"
-WATCHDOG_LOG="$LOG_DIR/watchdog.log"
-PID_FILE="$LOG_DIR/app.pid"
-WATCHDOG_PID_FILE="$LOG_DIR/watchdog.pid"
+WATCHDOG_LOG="$LOG_DIR/system/watchdog.log"
+PID_FILE="$LOG_DIR/system/app.pid"
+WATCHDOG_PID_FILE="$LOG_DIR/system/watchdog.pid"
 NGINX_CONF="$APP_DIR/nginx/nginx.conf"
 
 # 创建日志目录
-mkdir -p "$LOG_DIR"
+mkdir -p "$LOG_DIR/system"
+mkdir -p "$LOG_DIR/backend"
+mkdir -p "$LOG_DIR/python-service"
+mkdir -p "$LOG_DIR/nginx"
+mkdir -p "$LOG_DIR/mongodb"
 
 # 安全配置
-SECURITY_LOG="$LOG_DIR/security.log"
+SECURITY_LOG="$LOG_DIR/system/security.log"
 UPLOADS_DIR="$APP_DIR/uploads"
 TEMP_DIR="$APP_DIR/temp"
 PYCACHE_DIRS="$APP_DIR/python-service/__pycache__ $APP_DIR/python-service/*/__pycache__"
@@ -46,8 +50,8 @@ CLEANUP_DAYS=7  # 清理超过7天的文件
 # MongoDB配置
 MONGODB_DIR="$APP_DIR/database/mongodb"
 MONGODB_DATA="$MONGODB_DIR/data"
-MONGODB_LOG="$LOG_DIR/mongodb.log"
-MONGODB_PID_FILE="$LOG_DIR/mongodb.pid"
+MONGODB_LOG="$LOG_DIR/mongodb/mongo.log"
+MONGODB_PID_FILE="$LOG_DIR/mongodb/mongodb.pid"
 MONGODB_PORT=27017
 MONGODB_CONFIG="$MONGODB_DIR/mongod.conf"
 
@@ -56,7 +60,7 @@ PYTHON_SERVICE_DIR="$APP_DIR/python-service"
 PYTHON_VENV="$PYTHON_SERVICE_DIR/venv"
 PYTHON_LOG="$LOG_DIR/python-service.log"
 PYTHON_PID_FILE="$LOG_DIR/python-service.pid"
-PYTHON_PORT=5000
+PYTHON_PORT=5001
 
 # 环境变量配置文件
 ENV_FILE="$APP_DIR/backend/.env.local"
@@ -545,7 +549,7 @@ stop_services() {
     else
       # 正常方式停止Nginx
       echo -e "${BLUE}尝试使用配置文件停止Nginx: $NGINX_CONF${NC}"
-      sudo nginx -s stop -c "$NGINX_CONF" 2>/dev/null
+      sudo nginx -p "$APP_DIR" -s stop -c "$NGINX_CONF" 2>/dev/null
     fi
 
     # 等待Nginx停止
@@ -624,7 +628,7 @@ start_nginx() {
 
   # 检查Nginx配置是否正确
   echo -e "${BLUE}检查Nginx配置...${NC}"
-  sudo nginx -t -c "$NGINX_CONF"
+  sudo nginx -p "$APP_DIR" -t -c "$NGINX_CONF"
   if [ $? -ne 0 ]; then
     echo -e "${RED}错误: Nginx配置文件有误${NC}"
     return 1
@@ -639,7 +643,7 @@ start_nginx() {
 
   # 启动Nginx
   echo -e "${BLUE}正在启动Nginx...${NC}"
-  sudo nginx -c "$NGINX_CONF"
+  sudo nginx -p "$APP_DIR" -c "$NGINX_CONF"
   if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Nginx服务已启动${NC}"
 
@@ -1513,7 +1517,7 @@ schedule_cleanup() {
   fi
 
   # 添加新的清理任务（每天凌晨3点执行）
-  echo "0 3 * * * $CLEANUP_SCRIPT --max-age=7 >> $LOG_DIR/cleanup.log 2>&1" >> "$TEMP_CRON"
+  echo "0 3 * * * $CLEANUP_SCRIPT --max-age=7 >> $LOG_DIR/system/cleanup.log 2>&1" >> "$TEMP_CRON"
 
   # 安装新的crontab
   crontab "$TEMP_CRON"
@@ -1521,7 +1525,7 @@ schedule_cleanup() {
   if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ 定时清理任务已设置成功${NC}"
     echo -e "${BLUE}清理任务将在每天凌晨3点执行${NC}"
-    echo -e "${BLUE}清理日志将写入: $LOG_DIR/cleanup.log${NC}"
+    echo -e "${BLUE}清理日志将写入: $LOG_DIR/system/cleanup.log${NC}"
   else
     echo -e "${RED}✗ 定时清理任务设置失败${NC}"
     return 1

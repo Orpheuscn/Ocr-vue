@@ -446,7 +446,6 @@ const formatTextAsVerticalParagraph = () => {
   )
 }
 
-// 水平段落模式的格式化函数 - 复制自TextHorizontalParagraph组件的逻辑
 // 水平段落模式的格式化函数 - 使用工具函数
 const formatTextAsHorizontalParagraph = () => {
   // 使用工具函数处理水平段落文本

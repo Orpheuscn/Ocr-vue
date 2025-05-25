@@ -30,9 +30,9 @@ RABBITMQ_CONFIG = {
     'vhost': os.getenv('RABBITMQ_VHOST', '/'),
 }
 
-# 日志配置
+# 日志配置 - 统一到根目录的logs/python-service文件夹
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
-LOG_FILE = BASE_DIR / 'logs' / 'app.log'
+LOG_FILE = BASE_DIR.parent / 'logs' / 'python-service' / 'app.log'
 
 # 确保日志目录存在
-LOG_FILE.parent.mkdir(exist_ok=True)
+LOG_FILE.parent.mkdir(parents=True, exist_ok=True)

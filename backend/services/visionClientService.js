@@ -1,6 +1,7 @@
 // backend/services/visionClientService.js
 import { Buffer } from "buffer";
 import fetchWithProxy from "../utils/fetchHelper.js";
+import { getLanguageName as getLanguageNameFromService } from "./languageService.js";
 
 // Google Cloud Vision API URL
 const API_URL = "https://vision.googleapis.com/v1/images:annotate";
@@ -200,7 +201,7 @@ export async function performOcr(base64Image, languageHints = [], apiKey) {
     return {
       originalFullText: fullTextAnnotation.text || "",
       detectedLanguageCode: detectedLanguageCode,
-      detectedLanguageName: getLanguageName(detectedLanguageCode),
+      detectedLanguageName: getLanguageNameFromService(detectedLanguageCode),
       textAnnotations: textAnnotations,
       fullTextAnnotation: fullTextAnnotation,
     };
@@ -208,29 +209,4 @@ export async function performOcr(base64Image, languageHints = [], apiKey) {
     console.error("OCR识别错误:", error);
     throw error;
   }
-}
-
-/**
- * 获取语言名称
- * @param {string} languageCode - 语言代码
- * @returns {string} - 语言名称
- */
-function getLanguageName(languageCode) {
-  const languageMap = {
-    zh: "中文",
-    "zh-CN": "简体中文",
-    "zh-TW": "繁体中文",
-    en: "英语",
-    ja: "日语",
-    ko: "韩语",
-    fr: "法语",
-    de: "德语",
-    es: "西班牙语",
-    ru: "俄语",
-    it: "意大利语",
-    pt: "葡萄牙语",
-    und: "未知语言",
-  };
-
-  return languageMap[languageCode] || languageCode;
 }

@@ -34,9 +34,6 @@ export interface OcrTaskRequest {
   imageData: string;
   originalFilename?: string;
   options: {
-    languageHints: string[];
-    recognitionDirection: "horizontal" | "vertical";
-    recognitionMode: "text" | "table";
     imageFormat?: string;
     dpi?: number;
   };
@@ -300,10 +297,7 @@ export class OcrQueueService extends BaseQueueService {
       taskId: message.taskId,
       userId: message.userId,
       imageData: message.imageData,
-      language: message.options.languageHints?.[0] || "zh-CN",
       options: {
-        detectOrientation: true,
-        preprocessImage: true,
         outputFormat: "text" as const,
       },
     };
@@ -326,9 +320,6 @@ export class OcrQueueService extends BaseQueueService {
     }
     if (!request.options) {
       throw new Error("options is required");
-    }
-    if (!Array.isArray(request.options.languageHints)) {
-      throw new Error("languageHints must be an array");
     }
   }
 

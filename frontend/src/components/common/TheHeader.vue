@@ -14,7 +14,7 @@
           >图像识别</router-link
         >
         <router-link :to="{ name: 'PublishedResults' }" class="btn btn-ghost btn-sm"
-          >公开OCR</router-link
+          >公开内容</router-link
         >
       </div>
 
@@ -43,7 +43,7 @@
           <li><router-link :to="{ name: 'Home' }">主页</router-link></li>
           <li><router-link :to="{ name: 'DocDetection' }">文档解析</router-link></li>
           <li><router-link :to="{ name: 'ImageRecognition' }">图像识别</router-link></li>
-          <li><router-link :to="{ name: 'PublishedResults' }">公开OCR</router-link></li>
+          <li><router-link :to="{ name: 'PublishedResults' }">公开内容</router-link></li>
         </ul>
       </div>
 

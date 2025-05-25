@@ -193,31 +193,49 @@ class RabbitMQClient:
             logger.error(f"断开RabbitMQ连接时出错: {str(e)}")
 
     def publish_message(self, exchange: str, routing_key: str, message: Dict[str, Any]) -> bool:
-        """发布消息"""
-        try:
-            if not self.is_connected:
-                if not self.connect():
-                    return False
+        """发布消息 - 带重连机制"""
+        max_retries = 3
+        retry_count = 0
 
-            message_body = json.dumps(message, ensure_ascii=False, default=str)
+        while retry_count < max_retries:
+            try:
+                # 检查连接状态，如果未连接则尝试连接
+                if not self.is_connected or not self.is_healthy():
+                    logger.info(f"连接状态异常，尝试重新连接 (第{retry_count + 1}次)")
+                    self.is_connected = False
+                    if not self.connect():
+                        retry_count += 1
+                        if retry_count < max_retries:
+                            time.sleep(2)  # 等待2秒后重试
+                        continue
 
-            self.channel.basic_publish(
-                exchange=exchange,
-                routing_key=routing_key,
-                body=message_body,
-                properties=pika.BasicProperties(
-                    delivery_mode=2,  # 持久化消息
-                    timestamp=int(time.time())
+                message_body = json.dumps(message, ensure_ascii=False, default=str)
+
+                self.channel.basic_publish(
+                    exchange=exchange,
+                    routing_key=routing_key,
+                    body=message_body,
+                    properties=pika.BasicProperties(
+                        delivery_mode=2,  # 持久化消息
+                        timestamp=int(time.time())
+                    )
                 )
-            )
 
-            logger.debug(f"消息发布成功: {exchange}/{routing_key}")
-            return True
+                logger.debug(f"消息发布成功: {exchange}/{routing_key}")
+                return True
 
-        except Exception as e:
-            logger.error(f"发布消息失败: {str(e)}")
-            self.is_connected = False
-            return False
+            except Exception as e:
+                logger.error(f"发布消息失败 (第{retry_count + 1}次): {str(e)}")
+                self.is_connected = False
+                retry_count += 1
+
+                if retry_count < max_retries:
+                    logger.info(f"等待2秒后重试...")
+                    time.sleep(2)
+                else:
+                    logger.error(f"发布消息失败，已达到最大重试次数 ({max_retries})")
+
+        return False
 
     def consume_queue(self, queue_name: str, callback: Callable, auto_ack: bool = False):
         """消费队列消息"""

@@ -75,8 +75,6 @@ export async function processOcrAsync(req: Request, res: Response): Promise<void
       imageId,
       imageData,
       options: {
-        languageHints: options?.languageHints || ["zh", "en"],
-        recognitionDirection: options?.recognitionDirection || "horizontal",
         recognitionMode: options?.recognitionMode || "text",
         imageFormat: options?.imageFormat,
         dpi: options?.dpi,
@@ -137,7 +135,6 @@ export async function processBatchOcr(req: Request, res: Response): Promise<void
       imageId: uuidv4(),
       imageData,
       options: {
-        languageHints: options?.languageHints || ["zh", "en"],
         recognitionDirection: options?.recognitionDirection || "horizontal",
         recognitionMode: options?.recognitionMode || "text",
       },
@@ -331,9 +328,7 @@ export async function processOcrSync(req: Request, res: Response): Promise<void>
       taskId: uuidv4(),
       userId,
       imageData,
-      language: options?.languageHints?.[0] || "zh-CN",
       options: {
-        detectOrientation: true,
         preprocessImage: true,
         outputFormat: "text" as const,
       },
