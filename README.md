@@ -16,6 +16,7 @@
 ## 🏗️ 技术架构
 
 ### 前端技术栈
+
 - **Vue.js 3** - 现代化前端框架
 - **Vite** - 快速构建工具
 - **Tailwind CSS** - 实用优先的 CSS 框架
@@ -24,6 +25,7 @@
 - **Vue Router** - 路由管理
 
 ### 后端技术栈
+
 - **Node.js** - JavaScript 运行时
 - **Express.js** - Web 应用框架
 - **MongoDB Atlas** - 云数据库
@@ -32,27 +34,37 @@
 - **Winston** - 日志管理
 
 ### 部署架构
+
 - **Google Cloud Run** - 容器化部署
 - **Google Cloud Load Balancing** - 负载均衡
 - **Google Cloud DNS** - 域名解析
 - **GitHub Actions** - CI/CD 自动化
+
+## 🌐 在线访问
+
+- **生产环境**: https://textistext.com
+- **API 健康检查**: https://textistext.com/api/health
+- **部署状态**: ✅ 已通过 GitHub Actions 自动部署
 
 ## 🚀 快速部署
 
 ### 一键部署到 Google Cloud
 
 1. **准备工作**
+
    - Google Cloud Platform 账户
    - MongoDB Atlas 账户
    - 域名 (textistext.com)
    - Google Cloud CLI
 
 2. **运行部署脚本**
+
    ```bash
    ./deploy.sh
    ```
 
 3. **按提示输入**
+
    - MongoDB Atlas 连接字符串
    - Google Vision API 密钥
 
@@ -76,23 +88,26 @@
 ### 安装和运行
 
 1. **克隆仓库**
+
    ```bash
    git clone https://github.com/your-username/ocr-vue-app.git
    cd ocr-vue-app
    ```
 
 2. **安装依赖**
+
    ```bash
    # 安装前端依赖
    cd frontend
    npm install
-   
+
    # 安装后端依赖
    cd ../backend
    npm install
    ```
 
 3. **配置环境变量**
+
    ```bash
    cd backend
    cp .env.production.template .env.local
@@ -100,11 +115,12 @@
    ```
 
 4. **启动开发服务器**
+
    ```bash
    # 启动后端 (端口 3000)
    cd backend
    npm run dev
-   
+
    # 启动前端 (端口 8082)
    cd ../frontend
    npm run dev
@@ -168,6 +184,7 @@ CORS_ORIGINS=https://textistext.com
 ### GitHub Actions 自动部署
 
 1. **设置 GitHub Secrets**
+
    - `GCP_SA_KEY`: Google Cloud 服务账户密钥
 
 2. **推送代码触发部署**
