@@ -1,5 +1,6 @@
 import * as userService from "../services/userService.js";
 import * as ocrRecordService from "../services/ocrRecordService.js";
+import { getLanguageName } from "../services/languageService.js";
 import passport from "passport";
 import { generateAccessToken, generateRefreshToken } from "../middleware/authMiddleware.js";
 import config from "../utils/envConfig.js";
@@ -199,6 +200,31 @@ export const getUserProfile = async (req, res) => {
     // 获取用户OCR统计摘要
     const ocrSummary = await ocrRecordService.getUserOcrSummary(userId);
 
+    // 获取用户使用过的语言统计，生成语言标签
+    let languageTags = [];
+    try {
+      const languageStats = await ocrRecordService.getUserLanguageStats(userId);
+
+      // 将语言代码转换为中文名称作为标签
+      languageTags = await Promise.all(
+        languageStats.map(async (stat) => {
+          try {
+            const languageName = getLanguageName(stat._id, "zh");
+            return languageName;
+          } catch (error) {
+            console.warn(`获取语言名称失败: ${stat._id}`, error);
+            return stat._id; // 如果获取失败，使用语言代码
+          }
+        })
+      );
+
+      // 过滤掉重复和无效的标签
+      languageTags = [...new Set(languageTags)].filter((tag) => tag && tag.trim() !== "");
+    } catch (error) {
+      console.warn("获取用户语言统计失败:", error);
+      languageTags = [];
+    }
+
     // 返回用户信息
     res.status(200).json({
       success: true,
@@ -207,7 +233,7 @@ export const getUserProfile = async (req, res) => {
         username: user.username,
         email: user.email,
         isAdmin: user.isAdmin || false,
-        tags: user.tags || [],
+        tags: languageTags, // 使用自动生成的语言标签替代用户手动设置的标签
         ocrStats: user.ocrStats,
         ocrSummary,
         createdAt: user.createdAt,

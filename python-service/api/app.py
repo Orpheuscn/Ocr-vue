@@ -82,8 +82,8 @@ def create_app(config: Optional[dict] = None) -> Flask:
     if config:
         app.config.update(config)
 
-    # 确保所有目录存在
-    Path(app.config['UPLOAD_FOLDER']).mkdir(parents=True, exist_ok=True)
+    # 确保必要的目录存在（uploads目录在实际使用时按需创建）
+    # Path(app.config['UPLOAD_FOLDER']).mkdir(parents=True, exist_ok=True)  # 按需创建
     # 不再创建results文件夹，使用temp文件夹代替
     # Path(app.config['RESULTS_FOLDER']).mkdir(parents=True, exist_ok=True)
     Path(app.config['CROPS_FOLDER']).mkdir(parents=True, exist_ok=True)

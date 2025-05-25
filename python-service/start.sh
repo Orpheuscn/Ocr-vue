@@ -16,18 +16,17 @@ NC='\033[0m' # 无颜色
 # 创建必要的目录
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="../logs/python-service"
-UPLOADS_DIR="./uploads"
 TEMP_DIR="./temp"
 SECURITY_LOG="../logs/system/python_security.log"
 
 mkdir -p $LOG_DIR
-mkdir -p $UPLOADS_DIR
 mkdir -p $TEMP_DIR
 
 # 设置安全的目录权限
-chmod 755 $UPLOADS_DIR
 chmod 755 $LOG_DIR
 chmod 755 $TEMP_DIR
+
+# 注意：uploads目录将在实际使用时按需创建
 
 # 检查虚拟环境是否存在
 if [ ! -d "venv" ]; then

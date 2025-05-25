@@ -58,8 +58,8 @@ MONGODB_CONFIG="$MONGODB_DIR/mongod.conf"
 # Python服务配置
 PYTHON_SERVICE_DIR="$APP_DIR/python-service"
 PYTHON_VENV="$PYTHON_SERVICE_DIR/venv"
-PYTHON_LOG="$LOG_DIR/python-service.log"
-PYTHON_PID_FILE="$LOG_DIR/python-service.pid"
+PYTHON_LOG="$LOG_DIR/python-service/python-service.log"
+PYTHON_PID_FILE="$LOG_DIR/python-service/python-service.pid"
 PYTHON_PORT=5001
 
 # 环境变量配置文件
@@ -102,7 +102,7 @@ security_check() {
   # 检查文件权限
   echo -e "${BLUE}检查文件权限...${NC}" | tee -a "$SECURITY_LOG"
 
-  # 检查上传目录权限
+  # 检查上传目录权限（如果存在）
   if [ -d "$UPLOADS_DIR" ]; then
     # 使用兼容macOS和Linux的方式检查权限
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -121,9 +121,7 @@ security_check() {
       echo -e "${GREEN}✓ 上传目录权限正确${NC}" | tee -a "$SECURITY_LOG"
     fi
   else
-    echo -e "${YELLOW}上传目录不存在，将创建...${NC}" | tee -a "$SECURITY_LOG"
-    mkdir -p "$UPLOADS_DIR"
-    chmod 755 "$UPLOADS_DIR"
+    echo -e "${BLUE}✓ 根目录uploads文件夹不存在（正常，按需创建）${NC}" | tee -a "$SECURITY_LOG"
   fi
 
   # 检查日志目录权限
@@ -1046,8 +1044,7 @@ start_python_service() {
   # 准备启动Python服务
   cd "$PYTHON_SERVICE_DIR"
 
-  # 确保upload目录存在
-  mkdir -p "$PYTHON_SERVICE_DIR/uploads/results"
+  # 注意：uploads目录将在Python服务启动时按需创建
 
   echo -e "${BLUE}检查start.sh脚本...${NC}"
 
@@ -1339,7 +1336,7 @@ start_services() {
   fi
 
   # 启动后端服务
-  LOG_FILE="$LOG_DIR/backend-$(date '+%Y%m%d-%H%M%S').log"
+  LOG_FILE="$LOG_DIR/backend/backend-$(date '+%Y%m%d-%H%M%S').log"
   npm run dev > "$LOG_FILE" 2>&1 &
   BACKEND_PID=$!
   echo -e "${GREEN}后端服务已启动 (PID: $BACKEND_PID)${NC}"

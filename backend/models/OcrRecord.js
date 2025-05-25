@@ -29,7 +29,7 @@ import mongoose from "mongoose";
  *           description: 文件页数
  *         recognitionMode:
  *           type: string
- *           enum: [text, table, mixed]
+ *           enum: [text, table, mixed, image_recognition]
  *           description: OCR 识别模式
  *         language:
  *           type: string
@@ -94,7 +94,7 @@ const ocrRecordSchema = new mongoose.Schema(
       type: String,
       required: true,
       default: "text",
-      enum: ["text", "table", "mixed"],
+      enum: ["text", "table", "mixed", "image_recognition"],
     },
     language: {
       type: String,

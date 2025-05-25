@@ -6,6 +6,7 @@ import { dirname } from "path";
 import { v4 as uuidv4 } from "uuid";
 import * as recognitionService from "../services/recognitionService.js";
 import * as visionClientService from "../services/visionClientService.js";
+import * as ocrRecordService from "../services/ocrRecordService.js";
 
 // 获取当前文件的目录路径
 const __filename = fileURLToPath(import.meta.url);
@@ -14,10 +15,7 @@ const __dirname = dirname(__filename);
 // 定义上传目录
 const UPLOAD_DIR = path.join(__dirname, "../uploads/recognition");
 
-// 确保上传目录存在
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
+// 注意：上传目录将在实际需要时按需创建
 
 /**
  * 上传图像文件
@@ -56,6 +54,11 @@ export const uploadImage = async (req, res) => {
     const fileExtension = req.file.originalname.split(".").pop() || "jpg";
     const fileName = `${imageId}.${fileExtension}`;
     const filePath = path.join(UPLOAD_DIR, fileName);
+
+    // 确保上传目录存在（按需创建）
+    if (!fs.existsSync(UPLOAD_DIR)) {
+      fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    }
 
     // 保存文件
     fs.writeFileSync(filePath, req.file.buffer);
@@ -105,6 +108,15 @@ export const processImage = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "请提供图像ID",
+      });
+    }
+
+    // 检查上传目录是否存在
+    if (!fs.existsSync(UPLOAD_DIR)) {
+      console.error("图像识别失败：上传目录不存在", { image_id });
+      return res.status(404).json({
+        success: false,
+        message: "上传目录不存在",
       });
     }
 
@@ -179,6 +191,15 @@ export const getImage = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "请提供图像ID",
+      });
+    }
+
+    // 检查上传目录是否存在
+    if (!fs.existsSync(UPLOAD_DIR)) {
+      console.error("获取图像失败：上传目录不存在", { image_id });
+      return res.status(404).json({
+        success: false,
+        message: "上传目录不存在",
       });
     }
 
@@ -259,6 +280,34 @@ export const processBase64Image = async (req, res) => {
         processingTime: `${processingTime.toFixed(2)}秒`,
         resultsCount: result.labels.length + result.objects.length,
       });
+
+      // 如果用户已登录，记录图像识别到数据库
+      if (req.user && req.user.id) {
+        try {
+          console.log(`尝试为用户 ${req.user.id} 创建图像识别记录`);
+
+          // 准备记录数据
+          const recordData = {
+            userId: req.user.id,
+            filename: "图像识别", // 图像识别没有具体文件名
+            fileType: "image",
+            pageCount: 1,
+            recognitionMode: "image_recognition", // 区别于OCR的识别模式
+            language: "auto", // 图像识别不涉及语言
+            processingTime: processingTime * 1000, // 转换为毫秒
+            textLength: 0, // 图像识别不产生文本
+            status: "success",
+            extractedText: "", // 图像识别不产生文本
+          };
+
+          // 创建记录
+          await ocrRecordService.createOcrRecord(recordData);
+          console.log(`成功为用户 ${req.user.id} 创建了图像识别记录`);
+        } catch (recordError) {
+          console.error("创建图像识别记录失败:", recordError);
+          // 不影响主要的识别响应，只记录错误
+        }
+      }
 
       // 返回成功响应
       return res.status(200).json({

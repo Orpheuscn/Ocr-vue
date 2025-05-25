@@ -3,6 +3,7 @@ import express from "express";
 import * as recognitionController from "../controllers/recognitionController.js";
 import multer from "multer";
 import { csrfProtection } from "../middleware/csrfMiddleware.js";
+import { authenticateJwt } from "../middleware/authMiddleware.js";
 
 // 配置multer用于文件上传处理
 const storage = multer.memoryStorage();
@@ -209,7 +210,7 @@ router.get("/images/:image_id", recognitionController.getImage);
  *       500:
  *         description: 服务器错误
  */
-router.post("/processBase64", recognitionController.processBase64Image);
+router.post("/processBase64", authenticateJwt, recognitionController.processBase64Image);
 
 /**
  * @swagger

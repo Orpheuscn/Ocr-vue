@@ -44,48 +44,7 @@
                   />
                 </div>
 
-                <div class="form-control">
-                  <div class="label">
-                    <span class="label-text">兴趣标签</span>
-                  </div>
-                  <div class="flex flex-wrap gap-2">
-                    <div
-                      v-for="(tag, index) in formData.tags"
-                      :key="index"
-                      class="badge badge-accent badge-lg gap-1"
-                    >
-                      {{ tag }}
-                      <button type="button" @click="removeTag(index)" class="btn btn-xs btn-circle">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke-width="1.5"
-                          stroke="currentColor"
-                          class="w-4 h-4"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                    <div class="join">
-                      <input
-                        type="text"
-                        v-model="newTag"
-                        class="input input-bordered input-sm join-item"
-                        placeholder="添加新标签"
-                        @keydown.enter.prevent="addTag"
-                      />
-                      <button type="button" @click="addTag" class="btn btn-sm btn-accent join-item">
-                        添加
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <!-- 移除兴趣标签编辑功能，标签现在自动生成 -->
 
                 <div class="flex justify-end gap-2 mt-4">
                   <button type="button" @click="cancelEdit" class="btn">取消</button>
@@ -113,23 +72,24 @@
 
                 <div class="flex flex-col justify-between">
                   <div>
-                    <h4 class="font-semibold mb-2">兴趣标签</h4>
-                    <div class="flex flex-wrap gap-2">
-                      <span
-                        v-for="(tag, index) in userData.tags"
-                        :key="index"
-                        class="badge badge-accent"
-                        >{{ tag }}</span
-                      >
-                      <span
-                        v-if="!userData.tags || userData.tags.length === 0"
-                        class="text-base-content/50"
-                        >暂无标签</span
-                      >
-                    </div>
+                    <!-- 空白区域，保持布局平衡 -->
                   </div>
 
-                  <div class="flex justify-end mt-4">
+                  <div class="flex justify-end gap-2 mt-4">
+                    <div class="dropdown dropdown-start">
+                      <div tabindex="0" role="button" class="btn btn-accent">语言偏好</div>
+                      <ul
+                        tabindex="0"
+                        class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow-sm"
+                      >
+                        <li v-for="(tag, index) in userData.tags" :key="index">
+                          <a>{{ tag }}</a>
+                        </li>
+                        <li v-if="!userData.tags || userData.tags.length === 0">
+                          <a class="text-base-content/50">暂无识别记录</a>
+                        </li>
+                      </ul>
+                    </div>
                     <button @click="startEdit" class="btn btn-accent">编辑资料</button>
                   </div>
                 </div>
@@ -281,9 +241,7 @@ export default {
     const formData = ref({
       username: '',
       email: '',
-      tags: [],
     })
-    const newTag = ref('')
     const isEditing = ref(false)
     const loading = ref(true)
     const error = ref('')
@@ -367,7 +325,6 @@ export default {
       formData.value = {
         username: userData.value.username,
         email: userData.value.email,
-        tags: [...userData.value.tags],
       }
       isEditing.value = true
     }
@@ -375,19 +332,6 @@ export default {
     // 取消编辑
     const cancelEdit = () => {
       isEditing.value = false
-    }
-
-    // 添加标签
-    const addTag = () => {
-      if (newTag.value.trim() && !formData.value.tags.includes(newTag.value.trim())) {
-        formData.value.tags.push(newTag.value.trim())
-        newTag.value = ''
-      }
-    }
-
-    // 删除标签
-    const removeTag = (index) => {
-      formData.value.tags.splice(index, 1)
     }
 
     // 更新用户资料
@@ -407,14 +351,12 @@ export default {
         // 更新用户资料，但不发送邮箱字段
         await updateUserProfile(userId, {
           username: formData.value.username,
-          tags: formData.value.tags,
         })
 
         // 更新本地用户数据
         userData.value = {
           ...userData.value,
           username: formData.value.username,
-          tags: formData.value.tags,
         }
 
         isEditing.value = false
@@ -499,15 +441,12 @@ export default {
     return {
       userData,
       formData,
-      newTag,
       isEditing,
       loading,
       error,
       userInitials,
       startEdit,
       cancelEdit,
-      addTag,
-      removeTag,
       handleUpdateProfile,
       formatDate,
       confirmLogout,

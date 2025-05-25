@@ -17,8 +17,8 @@ CROPS_FOLDER = BASE_DIR / 'crops'
 TEMP_FOLDER = BASE_DIR / 'temp'
 DOWNLOADS_FOLDER = BASE_DIR / 'downloads'
 
-# 确保目录存在
-for folder in [UPLOADS_FOLDER, CROPS_FOLDER, TEMP_FOLDER, DOWNLOADS_FOLDER]:
+# 确保必要的目录存在（uploads目录按需创建）
+for folder in [CROPS_FOLDER, TEMP_FOLDER, DOWNLOADS_FOLDER]:
     folder.mkdir(exist_ok=True)
 
 # RabbitMQ配置

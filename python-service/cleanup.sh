@@ -20,15 +20,15 @@ LOG_FILE="$LOG_DIR/system/cleanup.log"
 SECURITY_LOG="$LOG_DIR/system/python_security.log"
 PYCACHE_DIRS="$SCRIPT_DIR/__pycache__ $SCRIPT_DIR/*/__pycache__"
 
-# 确保日志目录存在
+# 确保必要的目录存在
 mkdir -p "$LOG_DIR"
-mkdir -p "$UPLOADS_DIR"
 mkdir -p "$TEMP_DIR"
 
 # 设置安全的目录权限
-chmod 755 "$UPLOADS_DIR"
 chmod 755 "$LOG_DIR"
 chmod 755 "$TEMP_DIR"
+
+# 注意：uploads目录将在实际使用时按需创建
 
 # 设置默认参数
 MAX_AGE=7  # 默认保留7天
