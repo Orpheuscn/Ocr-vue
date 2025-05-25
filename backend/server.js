@@ -242,7 +242,7 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 app.listen(PORT, async () => {
-  logger.info(`服务器运行在 http://localhost:${PORT}`);
+  logger.info(`服务器运行在 http://localhost:${PORT}`, { version: "1.0.1" });
 
   if (config.swaggerEnabled) {
     logger.info(`API 文档可在 http://localhost:${PORT}/api-docs 访问`);
