@@ -54,6 +54,9 @@ database/mongodb/mongod.conf
 database/mongodb/*.lock
 database/mongodb/README.md
 
+# 数据库配置文件（包含敏感信息）
+database/README.md
+
 # SSL证书
 ssl/*.pem
 ssl/*.key
