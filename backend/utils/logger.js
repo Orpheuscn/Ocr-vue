@@ -10,12 +10,20 @@ import config from "./envConfig.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// 日志目录 - 统一到根目录的logs/backend文件夹
-const LOG_DIR = path.join(__dirname, "../../logs/backend");
+// 日志目录 - 在Cloud Run中使用应用目录下的logs文件夹
+const LOG_DIR =
+  process.env.NODE_ENV === "production"
+    ? path.join("/app", "logs")
+    : path.join(__dirname, "../../logs/backend");
 
 // 确保日志目录存在
-if (!fs.existsSync(LOG_DIR)) {
-  fs.mkdirSync(LOG_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(LOG_DIR)) {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+  }
+} catch (error) {
+  // 在Cloud Run中如果无法创建日志目录，使用临时目录
+  console.warn("无法创建日志目录，将使用控制台输出:", error.message);
 }
 
 // 敏感字段列表，这些字段的值将被屏蔽
@@ -129,52 +137,58 @@ const consoleFormat = winston.format.combine(
 
 // 创建日志记录器
 const createLogger = (category) => {
+  const transports = [];
+
+  // 尝试添加文件传输器
+  try {
+    if (fs.existsSync(LOG_DIR)) {
+      transports.push(
+        // 写入所有日志到combined.log
+        new winston.transports.File({
+          filename: path.join(LOG_DIR, "combined.log"),
+          maxsize: 5242880, // 5MB
+          maxFiles: 5,
+        }),
+        // 写入错误日志到error.log
+        new winston.transports.File({
+          filename: path.join(LOG_DIR, "error.log"),
+          level: "error",
+          maxsize: 5242880, // 5MB
+          maxFiles: 5,
+        }),
+        // 写入特定类别的日志到category.log
+        new winston.transports.File({
+          filename: path.join(LOG_DIR, `${category}.log`),
+          maxsize: 5242880, // 5MB
+          maxFiles: 3,
+        })
+      );
+    }
+  } catch (error) {
+    console.warn("无法设置文件日志传输器，将仅使用控制台输出:", error.message);
+  }
+
+  // 总是添加控制台传输器
+  transports.push(
+    new winston.transports.Console({
+      format: consoleFormat,
+    })
+  );
+
   return winston.createLogger({
     level: config.logLevel || "info",
     format: logFormat,
     defaultMeta: { service: "ocr-app", category },
-    transports: [
-      // 写入所有日志到combined.log
-      new winston.transports.File({
-        filename: path.join(LOG_DIR, "combined.log"),
-        maxsize: 5242880, // 5MB
-        maxFiles: 5,
-      }),
-      // 写入错误日志到error.log
-      new winston.transports.File({
-        filename: path.join(LOG_DIR, "error.log"),
-        level: "error",
-        maxsize: 5242880, // 5MB
-        maxFiles: 5,
-      }),
-      // 写入特定类别的日志到category.log
-      new winston.transports.File({
-        filename: path.join(LOG_DIR, `${category}.log`),
-        maxsize: 5242880, // 5MB
-        maxFiles: 3,
-      }),
-      // 开发环境下输出到控制台
-      ...(process.env.NODE_ENV !== "production"
-        ? [
-            new winston.transports.Console({
-              format: consoleFormat,
-            }),
-          ]
-        : []),
-    ],
-    // 处理未捕获的异常和拒绝
+    transports,
+    // 处理未捕获的异常和拒绝 - 在生产环境中使用控制台
     exceptionHandlers: [
-      new winston.transports.File({
-        filename: path.join(LOG_DIR, "exceptions.log"),
-        maxsize: 5242880, // 5MB
-        maxFiles: 3,
+      new winston.transports.Console({
+        format: consoleFormat,
       }),
     ],
     rejectionHandlers: [
-      new winston.transports.File({
-        filename: path.join(LOG_DIR, "rejections.log"),
-        maxsize: 5242880, // 5MB
-        maxFiles: 3,
+      new winston.transports.Console({
+        format: consoleFormat,
       }),
     ],
   });

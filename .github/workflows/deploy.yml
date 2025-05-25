@@ -1,0 +1,122 @@
+name: Deploy to Google Cloud Run
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: textistext-ocr
+  REGION: us-central1
+  FRONTEND_SERVICE: textistext-frontend
+  BACKEND_SERVICE: textistext-backend
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Deploy Backend to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.BACKEND_SERVICE }} \
+            --source=./backend \
+            --region=${{ env.REGION }} \
+            --allow-unauthenticated \
+            --memory=1Gi \
+            --cpu=1 \
+            --max-instances=10 \
+            --port=3000 \
+            --timeout=300 \
+            --set-env-vars="NODE_ENV=production,MONGODB_URI=${{ secrets.MONGODB_URI }},MONGODB_DB_NAME=${{ secrets.MONGODB_DB_NAME }},JWT_SECRET=${{ secrets.JWT_SECRET }},GOOGLE_VISION_API_KEY=${{ secrets.GOOGLE_VISION_API_KEY }},SESSION_SECRET=${{ secrets.SESSION_SECRET }},CSRF_SECRET=${{ secrets.CSRF_SECRET }}"
+
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Setup Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Deploy Frontend to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
+            --source=./frontend \
+            --region=${{ env.REGION }} \
+            --allow-unauthenticated \
+            --memory=512Mi \
+            --cpu=1 \
+            --max-instances=10
+
+  verify-deployment:
+    name: Verify Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Verify deployment
+        run: |
+          echo "Verifying deployment..."
+
+          # 等待服务就绪
+          sleep 30
+
+          # 测试前端
+          echo "Testing frontend..."
+          curl -I https://textistext.com || echo "Frontend test failed"
+
+          # 测试后端API
+          echo "Testing backend API..."
+          curl -I https://textistext.com/api/health || echo "Backend API test failed"
+
+          # 获取健康检查详情
+          echo "Backend health check:"
+          curl -s https://textistext.com/api/health || echo "Health check failed"
+
+          echo "Deployment verification completed"
