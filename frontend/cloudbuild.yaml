@@ -1,0 +1,5 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-f', 'Dockerfile.simple', '-t', 'gcr.io/textistext-ocr/textistext-frontend-simple:latest', '.']
+images:
+- 'gcr.io/textistext-ocr/textistext-frontend-simple:latest'

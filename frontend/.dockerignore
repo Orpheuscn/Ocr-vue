@@ -1,0 +1,22 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+README.md
+.env
+.env.local
+.env.production
+.env.test
+.nyc_output
+coverage
+.DS_Store
+*.log
+# src目录需要用于构建，不能排除
+.eslintrc.js
+.prettierrc
+test
+tests
+*.test.js
+*.spec.js
+# vite.config.js需要用于构建，不能排除
+jsconfig.json
