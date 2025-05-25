@@ -34,8 +34,6 @@ logger = logging.getLogger(__name__)
 def cleanup_resources():
     """清理应用资源"""
     try:
-        from services.ocr_service import cleanup_rabbitmq_ocr_service
-        cleanup_rabbitmq_ocr_service()
         logger.info("应用资源清理完成")
     except Exception as e:
         logger.error(f"清理应用资源时出错: {e}")

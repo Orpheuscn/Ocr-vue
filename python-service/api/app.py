@@ -29,7 +29,6 @@ limiter = Limiter(
 from api.routes.ocr_routes import ocr_bp
 from api.routes.upload_routes import upload_bp
 from api.routes.image_proxy_routes import image_proxy_bp
-from api.routes.queue_routes import queue_bp
 from utils.log_client import info, error
 
 def create_app(config: Optional[dict] = None) -> Flask:
@@ -45,9 +44,9 @@ def create_app(config: Optional[dict] = None) -> Flask:
     # 创建Flask应用
     app = Flask(__name__)
 
-    # 配置CORS - 限制跨域请求
-    # 从环境变量获取允许的域名，默认只允许本地域名
-    allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:8080,http://127.0.0.1:8080,https://localhost:8443').split(',')
+    # 配置CORS - 支持Google Cloud Load Balancing
+    # 从环境变量获取允许的域名，默认允许本地和生产域名
+    allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:8080,http://127.0.0.1:8080,https://localhost:8443,https://textistext.com,https://textistext-frontend-82114549685.us-central1.run.app').split(',')
     CORS(app, resources={r"/*": {"origins": allowed_origins}}, supports_credentials=True)
 
     # 配置速率限制器
@@ -107,7 +106,6 @@ def create_app(config: Optional[dict] = None) -> Flask:
     app.register_blueprint(ocr_bp)
     app.register_blueprint(upload_bp)
     app.register_blueprint(image_proxy_bp)
-    app.register_blueprint(queue_bp, url_prefix='/queue')
 
     # 健康检查端点
     @app.route('/health')
