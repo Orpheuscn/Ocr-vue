@@ -116,7 +116,8 @@ export default {
     async checkOAuthAvailability() {
       try {
         // 检查后端是否启用了OAuth
-        const response = await fetch('/api/auth/google', {
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
+        const response = await fetch(`${apiBaseUrl}/api/auth/google`, {
           method: 'HEAD',
         })
 
@@ -154,7 +155,8 @@ export default {
 
       try {
         // 重定向到Google OAuth
-        window.location.href = '/api/auth/google'
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
+        window.location.href = `${apiBaseUrl}/api/auth/google`
       } catch (error) {
         console.error('Google登录错误:', error)
         this.errorMessage = 'Google登录失败，请稍后再试'
