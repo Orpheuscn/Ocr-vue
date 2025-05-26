@@ -3,11 +3,15 @@ import { validateRouteAccess } from '@/services/routeSecurityService'
 import HomePage from '@/views/HomePage.vue'
 import LoginPage from '@/views/LoginPage.vue'
 import RegisterPage from '@/views/RegisterPage.vue'
+import EmailVerificationPage from '@/views/EmailVerificationPage.vue'
+import PasswordResetPage from '@/views/PasswordResetPage.vue'
 import SavedResultsPage from '@/views/SavedResultsPage.vue'
 import PublishedResultsPage from '@/views/PublishedResultsPage.vue'
 import ContentReviewPage from '@/views/admin/ContentReviewPage.vue'
 import DocDetection from '@/components/doc-detection/DocDetection.vue'
 import ImageRecognitionTool from '@/components/recognition/ImageRecognitionTool.vue'
+import PrivacyPage from '@/views/PrivacyPage.vue'
+import TermsPage from '@/views/TermsPage.vue'
 
 const routes = [
   {
@@ -28,6 +32,20 @@ const routes = [
     path: '/register',
     name: 'Register',
     component: RegisterPage,
+    meta: { guestOnly: true },
+  },
+  // 邮箱验证页面
+  {
+    path: '/verify-email',
+    name: 'EmailVerification',
+    component: EmailVerificationPage,
+    meta: { guestOnly: true },
+  },
+  // 密码重置页面
+  {
+    path: '/reset-password',
+    name: 'PasswordReset',
+    component: PasswordResetPage,
     meta: { guestOnly: true },
   },
   // 管理功能已移除，改为使用后端API进行管理
@@ -74,6 +92,20 @@ const routes = [
     name: 'ContentReview',
     component: ContentReviewPage,
     meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  // 隐私政策页面
+  {
+    path: '/privacy',
+    name: 'Privacy',
+    component: PrivacyPage,
+    // 无需登录即可访问
+  },
+  // 服务条款页面
+  {
+    path: '/terms',
+    name: 'Terms',
+    component: TermsPage,
+    // 无需登录即可访问
   },
   {
     path: '/:pathMatch(.*)*',

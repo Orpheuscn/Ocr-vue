@@ -1,0 +1,39 @@
+{
+  "watch": [
+    "server.js",
+    "start.js",
+    "routes/",
+    "controllers/",
+    "middleware/",
+    "models/",
+    "utils/",
+    "db/"
+  ],
+  "ignore": [
+    "node_modules/",
+    "logs/",
+    "*.log",
+    ".git/",
+    "test/",
+    "docs/",
+    "*.md",
+    ".env*",
+    "ecosystem.config.js"
+  ],
+  "ext": "js,json",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "restartable": "rs",
+  "delay": 1000,
+  "verbose": true,
+  "execMap": {
+    "js": "node --experimental-modules"
+  },
+  "events": {
+    "restart": "echo '🔄 nodemon 重启服务器...'",
+    "crash": "echo '💥 服务器崩溃，nodemon 将重启...'",
+    "start": "echo '🚀 nodemon 启动服务器...'",
+    "quit": "echo '👋 nodemon 退出'"
+  }
+}

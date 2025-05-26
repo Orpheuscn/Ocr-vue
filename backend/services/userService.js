@@ -1,20 +1,65 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+import emailService from "./emailService.js";
+import passwordValidationService from "./passwordValidationService.js";
+import config from "../utils/envConfig.js";
 
 // 创建新用户
 export const createUser = async (userData) => {
   try {
-    // 加密密码
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(userData.password, salt);
+    // 验证邮箱格式
+    const emailValidation = passwordValidationService.validateEmail(userData.email);
+    if (!emailValidation.isValid) {
+      throw new Error(emailValidation.errors.join(", "));
+    }
 
-    // 使用Mongoose创建用户
-    const newUser = await User.create({
+    // 验证密码强度（如果不是OAuth用户）
+    if (!userData.isOAuthUser && userData.password) {
+      const passwordValidation = passwordValidationService.validatePassword(userData.password);
+      if (!passwordValidation.isValid) {
+        throw new Error(passwordValidation.errors.join(", "));
+      }
+    }
+
+    // 生成邮箱验证令牌
+    const emailVerificationToken = emailService.generateVerificationToken();
+    const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24小时后过期
+
+    // 准备用户数据
+    const newUserData = {
       username: userData.username,
       email: userData.email,
-      password: hashedPassword,
       tags: userData.tags || [],
-    });
+      emailVerificationToken,
+      emailVerificationExpires,
+      emailVerified: userData.isOAuthUser || config.enableEmailVerification !== "true", // OAuth用户或开发环境直接验证
+      isOAuthUser: userData.isOAuthUser || false,
+      googleId: userData.googleId,
+      appleId: userData.appleId,
+      avatar: userData.avatar,
+    };
+
+    // 如果有密码，则加密
+    if (userData.password) {
+      const salt = await bcrypt.genSalt(10);
+      newUserData.password = await bcrypt.hash(userData.password, salt);
+    }
+
+    // 使用Mongoose创建用户
+    const newUser = await User.create(newUserData);
+
+    // 发送验证邮件（如果启用且不是OAuth用户）
+    if (!userData.isOAuthUser && config.enableEmailVerification === "true") {
+      try {
+        await emailService.sendVerificationEmail(
+          userData.email,
+          userData.username,
+          emailVerificationToken
+        );
+      } catch (emailError) {
+        console.warn("发送验证邮件失败，但用户创建成功", emailError);
+      }
+    }
 
     // 返回用户信息
     return newUser;
@@ -189,6 +234,128 @@ export const incrementTokenVersion = async (userId) => {
 
     // 增加令牌版本
     user.tokenVersion = (user.tokenVersion || 0) + 1;
+
+    await user.save();
+    return user;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// 验证邮箱
+export const verifyEmail = async (email, token) => {
+  try {
+    const user = await User.findOne({
+      email: email,
+      emailVerificationToken: token,
+      emailVerificationExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      throw new Error("验证链接无效或已过期");
+    }
+
+    // 更新用户邮箱验证状态
+    user.emailVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+
+    await user.save();
+    return user;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// 重新发送验证邮件
+export const resendVerificationEmail = async (email) => {
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      throw new Error("用户不存在");
+    }
+
+    if (user.emailVerified) {
+      throw new Error("邮箱已经验证过了");
+    }
+
+    // 生成新的验证令牌
+    const emailVerificationToken = emailService.generateVerificationToken();
+    const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    user.emailVerificationToken = emailVerificationToken;
+    user.emailVerificationExpires = emailVerificationExpires;
+
+    await user.save();
+
+    // 发送验证邮件
+    await emailService.sendVerificationEmail(user.email, user.username, emailVerificationToken);
+
+    return { success: true, message: "验证邮件已重新发送" };
+  } catch (error) {
+    throw error;
+  }
+};
+
+// 请求密码重置
+export const requestPasswordReset = async (email) => {
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      // 为了安全，不透露用户是否存在
+      return { success: true, message: "如果邮箱存在，重置链接已发送" };
+    }
+
+    if (user.isOAuthUser) {
+      throw new Error("OAuth用户无法重置密码，请使用第三方登录");
+    }
+
+    // 生成密码重置令牌
+    const resetToken = emailService.generateVerificationToken();
+    const resetTokenExpires = new Date(Date.now() + 60 * 60 * 1000); // 1小时后过期
+
+    user.passwordResetToken = resetToken;
+    user.passwordResetExpires = resetTokenExpires;
+
+    await user.save();
+
+    // 发送密码重置邮件
+    await emailService.sendPasswordResetEmail(user.email, user.username, resetToken);
+
+    return { success: true, message: "密码重置链接已发送到您的邮箱" };
+  } catch (error) {
+    throw error;
+  }
+};
+
+// 重置密码
+export const resetPassword = async (email, token, newPassword) => {
+  try {
+    // 验证密码强度
+    const passwordValidation = passwordValidationService.validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
+      throw new Error(passwordValidation.errors.join(", "));
+    }
+
+    const user = await User.findOne({
+      email: email,
+      passwordResetToken: token,
+      passwordResetExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      throw new Error("重置链接无效或已过期");
+    }
+
+    // 加密新密码
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // 更新密码并清除重置令牌
+    user.password = hashedPassword;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    user.tokenVersion = (user.tokenVersion || 0) + 1; // 使所有现有令牌失效
 
     await user.save();
     return user;

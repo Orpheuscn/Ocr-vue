@@ -19,35 +19,6 @@ export function logRequest(req, res, next) {
   next();
 }
 
-// 记录请求结束时间和状态
-export function logResponse(req, res, next) {
-  const originalSend = res.send;
-
-  res.send = function (body) {
-    const responseTime = Date.now() - req.startTime;
-
-    // 添加到日志
-    apiLogs.unshift({
-      timestamp: new Date(),
-      method: req.method,
-      path: req.originalUrl,
-      status: res.statusCode,
-      responseTime,
-      ip: req.ip,
-    });
-
-    // 保持日志数量在限制之内
-    if (apiLogs.length > MAX_LOGS) {
-      apiLogs.pop();
-    }
-
-    // 调用原始的send方法
-    return originalSend.call(this, body);
-  };
-
-  next();
-}
-
 // 获取服务器状态
 export async function getServerStatus(req, res) {
   try {

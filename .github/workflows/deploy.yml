@@ -43,7 +43,7 @@ jobs:
             --max-instances=10 \
             --port=3000 \
             --timeout=300 \
-            --set-env-vars="NODE_ENV=production,MONGODB_URI=${{ secrets.MONGODB_URI }},MONGODB_DB_NAME=${{ secrets.MONGODB_DB_NAME }},JWT_SECRET=${{ secrets.JWT_SECRET }},GOOGLE_VISION_API_KEY=${{ secrets.GOOGLE_VISION_API_KEY }},SESSION_SECRET=${{ secrets.SESSION_SECRET }},CSRF_SECRET=${{ secrets.CSRF_SECRET }}"
+            --set-env-vars="NODE_ENV=production,MONGODB_URI=${{ secrets.MONGODB_URI }},MONGODB_DB_NAME=${{ secrets.MONGODB_DB_NAME }},JWT_SECRET=${{ secrets.JWT_SECRET }},GOOGLE_VISION_API_KEY=${{ secrets.GOOGLE_VISION_API_KEY }},SESSION_SECRET=${{ secrets.SESSION_SECRET }},CSRF_SECRET=${{ secrets.CSRF_SECRET }},ENABLE_OAUTH=${{ secrets.ENABLE_OAUTH }},GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }},ENABLE_EMAIL_VERIFICATION=${{ secrets.ENABLE_EMAIL_VERIFICATION }},SMTP_HOST=${{ secrets.SMTP_HOST }},SMTP_PORT=${{ secrets.SMTP_PORT }},SMTP_USER=${{ secrets.SMTP_USER }},SMTP_PASS=${{ secrets.SMTP_PASS }}"
 
   deploy-frontend:
     name: Deploy Frontend

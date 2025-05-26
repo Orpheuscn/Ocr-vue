@@ -111,6 +111,20 @@ export default {
   // API密钥
   googleVisionApiKey: process.env.GOOGLE_VISION_API_KEY,
 
+  // OAuth配置
+  enableOAuth: process.env.ENABLE_OAUTH || "false",
+  googleClientId: process.env.GOOGLE_CLIENT_ID,
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  appleClientId: process.env.APPLE_CLIENT_ID,
+  appleClientSecret: process.env.APPLE_CLIENT_SECRET,
+
+  // 邮箱验证配置
+  enableEmailVerification: process.env.ENABLE_EMAIL_VERIFICATION || "false",
+  smtpHost: process.env.SMTP_HOST,
+  smtpPort: parseInt(process.env.SMTP_PORT || "587"),
+  smtpUser: process.env.SMTP_USER,
+  smtpPass: process.env.SMTP_PASS,
+
   // Swagger配置
   swaggerEnabled: process.env.SWAGGER_ENABLED === "true" || env !== "production",
   swaggerUser: process.env.SWAGGER_USER,

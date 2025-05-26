@@ -1,0 +1,28 @@
+{
+  "name": "ocr-vue-app",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "一个基于 Vue.js 和 Node.js 的现代化 OCR（光学字符识别）应用程序，支持多语言文本识别和智能文档处理。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Orpheuscn/Ocr-vue.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Orpheuscn/Ocr-vue/issues"
+  },
+  "homepage": "https://github.com/Orpheuscn/Ocr-vue#readme",
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "node-fetch": "^3.3.2"
+  }
+}

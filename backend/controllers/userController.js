@@ -3,6 +3,7 @@ import * as ocrRecordService from "../services/ocrRecordService.js";
 import { getLanguageName } from "../services/languageService.js";
 import passport from "passport";
 import { generateAccessToken, generateRefreshToken } from "../middleware/authMiddleware.js";
+import passwordValidationService from "../services/passwordValidationService.js";
 import config from "../utils/envConfig.js";
 import { getLogger } from "../utils/logger.js";
 import {
@@ -72,29 +73,45 @@ export const register = async (req, res) => {
     // 创建新用户
     const newUser = await userService.createUser({ username, email, password });
 
-    // 生成令牌
-    const token = generateAccessToken(newUser);
-    const refreshToken = generateRefreshToken(newUser);
-
-    // 设置HttpOnly Cookie
-    setAccessTokenCookie(res, token);
-    setRefreshTokenCookie(res, refreshToken);
-
     logger.info("用户注册成功", { userId: newUser.id, email });
 
-    // 返回成功响应，同时在响应体中返回令牌（向后兼容）
-    res.status(201).json({
-      success: true,
-      message: "注册成功",
-      data: {
-        id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        isAdmin: newUser.isAdmin || false,
-        token,
-        refreshToken,
-      },
-    });
+    // 检查是否需要邮箱验证
+    if (config.enableEmailVerification === "true" && !newUser.emailVerified) {
+      // 生产环境需要邮箱验证，不自动登录
+      res.status(201).json({
+        success: true,
+        message: "注册成功！请检查您的邮箱并点击验证链接以激活账户。",
+        data: {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          emailVerified: false,
+          requiresEmailVerification: true,
+        },
+      });
+    } else {
+      // 开发环境或OAuth用户，直接登录
+      const token = generateAccessToken(newUser);
+      const refreshToken = generateRefreshToken(newUser);
+
+      // 设置HttpOnly Cookie
+      setAccessTokenCookie(res, token);
+      setRefreshTokenCookie(res, refreshToken);
+
+      res.status(201).json({
+        success: true,
+        message: "注册成功",
+        data: {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          isAdmin: newUser.isAdmin || false,
+          emailVerified: newUser.emailVerified,
+          token,
+          refreshToken,
+        },
+      });
+    }
   } catch (error) {
     logger.error("注册错误", { error });
     res.status(500).json({

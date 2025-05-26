@@ -80,7 +80,10 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: function () {
+        // OAuth用户不需要密码
+        return !this.isOAuthUser;
+      },
     },
     isAdmin: {
       type: Boolean,
@@ -116,6 +119,38 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "active",
     },
+    // OAuth相关字段
+    googleId: {
+      type: String,
+      sparse: true, // 允许多个null值
+    },
+    appleId: {
+      type: String,
+      sparse: true,
+    },
+    avatar: {
+      type: String, // 头像URL
+    },
+    isOAuthUser: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: {
+      type: String,
+    },
+    emailVerificationExpires: {
+      type: Date,
+    },
+    passwordResetToken: {
+      type: String,
+    },
+    passwordResetExpires: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
@@ -136,7 +171,7 @@ userSchema.pre("save", function (next) {
   if (!this._id) {
     this._id = new mongoose.Types.ObjectId().toString();
   }
-  
+
   // 如果迁移数据中有role字段但没有isAdmin字段，则根据role设置isAdmin
   if (this.role === "admin" && this.isAdmin === undefined) {
     this.isAdmin = true;

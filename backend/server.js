@@ -9,13 +9,14 @@ import { dirname, resolve } from "path";
 import ocrRoutes from "./routes/ocrRoutes.js";
 
 import userRoutes from "./routes/userRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import languageRoutes from "./routes/languageRoutes.js";
 import ocrRecordRoutes from "./routes/ocrRecordRoutes.js"; // 引入OCR记录路由
 import recognitionRoutes from "./routes/recognitionRoutes.js"; // 引入图像识别路由
 import savedOcrResultRoutes from "./routes/savedOcrResultRoutes.js"; // 引入保存的OCR结果路由
 import notificationRoutes from "./routes/notificationRoutes.js"; // 引入通知路由
-import { logRequest, logResponse } from "./controllers/adminController.js";
+// import { logRequest, logResponse } from "./controllers/adminController.js"; // 暂时注释掉进行调试
 import connectDB from "./db/config.js"; // 导入数据库连接函数
 import swaggerSetup from "./swagger.js"; // 导入 Swagger 设置
 import config from "./utils/envConfig.js"; // 导入统一的环境变量配置
@@ -109,15 +110,15 @@ const passport = initializePassport();
 app.use(passport.initialize());
 app.use(passport.session());
 
-// 添加CSRF令牌
-app.use(addCsrfToken);
+// 添加CSRF令牌 - 暂时注释掉进行调试
+// app.use(addCsrfToken);
 
-// 全局速率限制
-app.use(apiRateLimit);
+// 全局速率限制 - 暂时注释掉进行调试
+// app.use(apiRateLimit);
 
-// API请求日志中间件
-app.use(logRequest);
-app.use(logResponse);
+// API请求日志中间件 - 暂时注释掉进行调试
+// app.use(logRequest);
+// app.use(logResponse);
 
 // 设置 Swagger
 if (config.swaggerEnabled) {
@@ -131,10 +132,15 @@ app.get("/api/csrf-token", (req, res) => {
   res.json({ success: true, message: "CSRF令牌已在响应头中" });
 });
 
+// 简单测试路由
+app.get("/api/test", (req, res) => {
+  res.json({ success: true, message: "测试路由工作正常" });
+});
+
 // 路由
 app.use("/api/ocr", ocrRoutes); // 移除CSRF保护，因为OCR路由已在csrfMiddleware.js中豁免
-
 app.use("/api/users", userRoutes); // 用户路由中已添加CSRF保护
+app.use("/api/auth", authRoutes); // 认证路由（OAuth、邮箱验证等）
 app.use("/api/admin", csrfProtection, adminRoutes);
 app.use("/api/languages", languageRoutes);
 app.use("/api/ocr-records", csrfProtection, ocrRecordRoutes); // 添加OCR记录路由

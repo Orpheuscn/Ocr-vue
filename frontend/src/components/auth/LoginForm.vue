@@ -74,7 +74,7 @@
         </div>
 
         <div class="text-sm">
-          <a href="#" class="link link-accent">忘记密码?</a>
+          <router-link :to="{ name: 'PasswordReset' }" class="link link-accent">忘记密码?</router-link>
         </div>
       </div>
 
@@ -88,6 +88,9 @@
         </button>
       </div>
 
+      <!-- OAuth登录选项 -->
+      <OAuthButtons @oauth-success="handleOAuthSuccess" />
+
       <div class="text-center mt-4">
         <p class="text-sm text-base-content/70">
           还没有账号?
@@ -100,9 +103,13 @@
 
 <script>
 import { login } from '@/services/authService'
+import OAuthButtons from './OAuthButtons.vue'
 
 export default {
   name: 'LoginForm',
+  components: {
+    OAuthButtons
+  },
   data() {
     return {
       email: '',
@@ -154,6 +161,10 @@ export default {
         this.isLoading = false
       }
     },
+    handleOAuthSuccess() {
+      // OAuth登录成功，发出事件
+      this.$emit('oauth-success')
+    }
   },
 }
 </script>

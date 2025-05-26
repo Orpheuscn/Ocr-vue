@@ -6,6 +6,7 @@ import User from "../models/User.js";
 import * as userService from "../services/userService.js";
 import config from "../utils/envConfig.js";
 import { getAccessTokenFromRequest } from "./cookieMiddleware.js";
+import { initializeOAuth } from "./oauthConfig.js";
 
 // 本地策略配置
 const configureLocalStrategy = () => {
@@ -26,6 +27,16 @@ const configureLocalStrategy = () => {
           if (!user) {
             console.log("用户不存在", { email });
             return done(null, false, { message: "邮箱或密码不正确" });
+          }
+
+          // 检查邮箱是否已验证（生产环境）
+          if (
+            config.enableEmailVerification === "true" &&
+            !user.emailVerified &&
+            !user.isOAuthUser
+          ) {
+            console.log("邮箱未验证", { email });
+            return done(null, false, { message: "请先验证您的邮箱地址" });
           }
 
           console.log("用户存在，开始验证密码", {
@@ -113,6 +124,9 @@ passport.deserializeUser(async (id, done) => {
 export const initializePassport = () => {
   configureLocalStrategy();
   configureJwtStrategy();
+
+  // 初始化OAuth配置
+  initializeOAuth();
 
   return passport;
 };
