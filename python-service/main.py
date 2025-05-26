@@ -14,8 +14,16 @@ import logging
 from pathlib import Path
 from dotenv import load_dotenv
 
-# 加载环境变量文件
-load_dotenv()
+# 加载环境变量文件 - 开发环境专用，生产环境由Cloud Run管理
+# 开发环境使用.env.local，生产环境不需要启动脚本
+env_file = '.env.local'
+if os.path.exists(env_file):
+    load_dotenv(env_file)
+    print(f"已加载开发环境配置文件: {env_file}")
+else:
+    # 回退到默认的.env文件
+    load_dotenv()
+    print("使用默认环境变量配置")
 
 # 确保能够导入自定义模块
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))

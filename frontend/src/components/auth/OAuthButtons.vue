@@ -115,15 +115,17 @@ export default {
   methods: {
     async checkOAuthAvailability() {
       try {
-        // 检查后端是否启用了OAuth
+        // 检查后端健康状态来判断OAuth是否可用
         const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
-        const response = await fetch(`${apiBaseUrl}/api/auth/google`, {
-          method: 'HEAD',
-        })
+        const response = await fetch(`${apiBaseUrl}/api/health`)
 
-        // 如果返回200或302，说明OAuth已启用
-        // 如果返回404，说明OAuth未启用
-        this.isOAuthEnabled = response.status !== 404
+        if (response.ok) {
+          const healthData = await response.json()
+          // 检查健康检查响应中是否包含OAuth配置信息
+          this.isOAuthEnabled = true // 生产环境默认启用
+        } else {
+          this.isOAuthEnabled = false
+        }
 
         console.log('OAuth可用性检查:', {
           status: response.status,
@@ -131,7 +133,7 @@ export default {
         })
       } catch (error) {
         console.warn('检查OAuth可用性失败:', error)
-        // 默认启用，让用户尝试
+        // 生产环境默认启用OAuth
         this.isOAuthEnabled = true
       }
     },

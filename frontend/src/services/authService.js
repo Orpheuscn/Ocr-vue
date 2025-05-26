@@ -11,8 +11,9 @@ import {
 import { generateCsrfToken } from './routeSecurityService'
 import { useOcrStore } from '@/stores/ocrStore'
 
-// 使用相对路径，这样请求会通过Vite的代理转发
-const API_URL = '/api/users'
+// 使用环境变量配置API基础URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin
+const API_URL = `${API_BASE_URL}/api/users`
 
 /**
  * 统一处理认证错误
@@ -265,7 +266,7 @@ export const verifyAdminStatus = async () => {
     }
 
     // 向服务器发送验证请求
-    const response = await fetch('/api/users/verify-admin', {
+    const response = await fetch(`${API_URL}/verify-admin`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

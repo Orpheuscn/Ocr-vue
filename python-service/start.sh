@@ -44,15 +44,8 @@ echo -e "${GREEN}正在启动服务器...${NC}"
 # 跳过文件清理步骤
 echo -e "${GREEN}跳过文件清理步骤${NC}"
 
-# 加载环境变量文件（如果存在）
-ENV_FILE=".env"
-if [ ! -z "$NODE_ENV" ]; then
-    if [ "$NODE_ENV" = "production" ]; then
-        ENV_FILE=".env.production"
-    elif [ "$NODE_ENV" = "test" ]; then
-        ENV_FILE=".env.test"
-    fi
-fi
+# 加载开发环境配置文件
+ENV_FILE=".env.local"
 
 if [ -f "$ENV_FILE" ]; then
     echo -e "${BLUE}加载环境变量文件: $ENV_FILE...${NC}"

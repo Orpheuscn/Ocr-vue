@@ -34,9 +34,17 @@ def create_app(config: Optional[dict] = None) -> Flask:
     # 创建Flask应用
     app = Flask(__name__)
 
-    # 配置CORS - 支持Google Cloud Load Balancing
-    # 从环境变量获取允许的域名，默认允许本地和生产域名
-    allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:8080,http://127.0.0.1:8080,https://localhost:8443,https://textistext.com,https://textistext-frontend-82114549685.us-central1.run.app').split(',')
+    # 配置CORS - 根据环境变量动态配置
+    # 从环境变量获取允许的域名，根据开发/生产环境设置不同的默认值
+    node_env = os.environ.get('NODE_ENV', 'development')
+    if node_env == 'production':
+        default_origins = 'https://textistext.com,https://textistext-frontend-82114549685.us-central1.run.app,https://textistext-backend-cogbmejklq-uc.a.run.app'
+    else:
+        default_origins = 'http://localhost:8082,http://localhost:3000,http://127.0.0.1:8082,http://127.0.0.1:3000'
+
+    allowed_origins = os.environ.get('ALLOWED_ORIGINS', default_origins).split(',')
+    # 清理空白字符
+    allowed_origins = [origin.strip() for origin in allowed_origins if origin.strip()]
     CORS(app, resources={r"/*": {"origins": allowed_origins}}, supports_credentials=True)
 
     # 加载默认配置

@@ -22,9 +22,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger('ocr_service')
 
-# Node.js后端API配置
-NODE_API_BASE_URL = os.getenv('NODE_API_BASE_URL', 'http://localhost:3000')
-NODE_OCR_ENDPOINT = f"{NODE_API_BASE_URL}/api/ocr/process"
+# Node.js后端API配置 - 根据环境动态配置
+def get_node_api_config():
+    """获取Node.js API配置"""
+    node_env = os.getenv('NODE_ENV', 'development')
+    if node_env == 'production':
+        # 生产环境通过Load Balancing连接
+        base_url = os.getenv('NODE_API_BASE_URL', 'https://textistext.com')
+    else:
+        # 开发环境直接连接本地Node.js后端
+        base_url = os.getenv('NODE_API_BASE_URL', 'http://localhost:3000')
+
+    return {
+        'base_url': base_url,
+        'ocr_endpoint': f"{base_url}/api/ocr/process"
+    }
+
+# 获取API配置
+api_config = get_node_api_config()
+NODE_API_BASE_URL = api_config['base_url']
+NODE_OCR_ENDPOINT = api_config['ocr_endpoint']
 
 
 def call_node_ocr_api(image_id: str, rectangles: List[Dict[str, Any]]) -> Dict[str, Any]:
