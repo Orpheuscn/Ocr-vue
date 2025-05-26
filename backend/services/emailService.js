@@ -23,13 +23,17 @@ class EmailService {
    */
   initializeTransporter() {
     try {
-      // 临时保存代理设置
-      const originalHttpProxy = process.env.HTTP_PROXY;
-      const originalHttpsProxy = process.env.HTTPS_PROXY;
+      // 只在开发环境处理代理设置
+      let originalHttpProxy, originalHttpsProxy;
+      if (config.nodeEnv !== "production") {
+        // 临时保存代理设置
+        originalHttpProxy = process.env.HTTP_PROXY;
+        originalHttpsProxy = process.env.HTTPS_PROXY;
 
-      // 临时禁用代理以连接Gmail SMTP
-      delete process.env.HTTP_PROXY;
-      delete process.env.HTTPS_PROXY;
+        // 临时禁用代理以连接Gmail SMTP
+        delete process.env.HTTP_PROXY;
+        delete process.env.HTTPS_PROXY;
+      }
 
       this.transporter = nodemailer.createTransport({
         host: config.smtpHost,
@@ -42,13 +46,15 @@ class EmailService {
         tls: {
           rejectUnauthorized: false, // 允许自签名证书
         },
-        // 明确禁用代理
-        proxy: false,
+        // 在开发环境明确禁用代理
+        ...(config.nodeEnv !== "production" && { proxy: false }),
       });
 
-      // 恢复代理设置
-      if (originalHttpProxy) process.env.HTTP_PROXY = originalHttpProxy;
-      if (originalHttpsProxy) process.env.HTTPS_PROXY = originalHttpsProxy;
+      // 只在开发环境恢复代理设置
+      if (config.nodeEnv !== "production") {
+        if (originalHttpProxy) process.env.HTTP_PROXY = originalHttpProxy;
+        if (originalHttpsProxy) process.env.HTTPS_PROXY = originalHttpsProxy;
+      }
 
       logger.info("邮件服务初始化成功");
     } catch (error) {

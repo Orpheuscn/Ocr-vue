@@ -213,41 +213,39 @@ app.use(notFoundHandler);
 // 错误处理中间件
 app.use(errorHandler);
 
-app.listen(PORT, "0.0.0.0", async () => {
-  logger.info(`服务器运行在 http://0.0.0.0:${PORT}`, { version: "1.0.1" });
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✅ 服务器启动成功 - 端口: ${PORT}`);
+  console.log(`🌍 环境: ${config.nodeEnv}`);
+  console.log(`🔗 健康检查: http://0.0.0.0:${PORT}/api/health`);
 
-  if (config.swaggerEnabled) {
-    logger.info(`API 文档可在 http://0.0.0.0:${PORT}/api-docs 访问`);
-    logger.info(`API文档已配置认证`);
-  }
+  // 异步执行详细日志，避免阻塞启动
+  setImmediate(() => {
+    try {
+      logger.info(`服务器运行在 http://0.0.0.0:${PORT}`, { version: "1.0.1" });
 
-  // 打印环境变量以进行调试
-  logger.info(`当前环境: ${config.nodeEnv}`);
+      if (config.swaggerEnabled) {
+        logger.info(`API 文档可在 http://0.0.0.0:${PORT}/api-docs 访问`);
+      }
 
-  // 检查API密钥是否已配置
-  if (!config.googleVisionApiKey) {
-    logger.warn("警告: Google Vision API密钥未在环境变量中设置，服务器端OCR功能将不可用");
-  } else {
-    logger.info("Google Vision API密钥已配置");
-  }
+      // 检查API密钥是否已配置
+      if (!config.googleVisionApiKey) {
+        logger.warn("警告: Google Vision API密钥未在环境变量中设置，服务器端OCR功能将不可用");
+      } else {
+        logger.info("Google Vision API密钥已配置");
+      }
 
-  // 显示JWT配置状态
-  if (config.isConfigValid()) {
-    logger.info("JWT配置已正确加载");
-  } else {
-    logger.error("警告: JWT配置未正确加载，用户认证功能可能不可用");
-  }
+      // 显示JWT配置状态
+      if (config.isConfigValid()) {
+        logger.info("JWT配置已正确加载");
+      } else {
+        logger.error("警告: JWT配置未正确加载，用户认证功能可能不可用");
+      }
 
-  // 显示数据库状态
-  logger.info("数据库模式: MongoDB");
-
-  // 显示安全配置状态
-  logger.info("安全配置已加载:");
-  logger.info("- Helmet安全头已配置");
-  logger.info("- CSRF保护已启用");
-  logger.info("- 速率限制已启用");
-  logger.info("- HttpOnly Cookie已配置");
-  logger.info("- 安全日志已启用");
+      logger.info("服务器启动完成，所有功能已就绪");
+    } catch (error) {
+      console.error("启动后日志记录失败:", error);
+    }
+  });
 });
 
 export default app;
