@@ -5,6 +5,16 @@ import * as userService from "../services/userService.js";
 import config from "../utils/envConfig.js";
 
 /**
+ * 获取OAuth回调URL
+ */
+function getCallbackURL() {
+  if (config.nodeEnv === "production") {
+    return "https://textistext.com/api/auth/google/callback";
+  }
+  return "http://localhost:3000/api/auth/google/callback";
+}
+
+/**
  * 配置Google OAuth策略
  * 只在生产环境或明确启用OAuth时才配置
  */
@@ -26,7 +36,7 @@ export const configureGoogleOAuth = () => {
       {
         clientID: config.googleClientId,
         clientSecret: config.googleClientSecret,
-        callbackURL: "/api/auth/google/callback",
+        callbackURL: getCallbackURL(),
         scope: ["profile", "email"],
       },
       async (accessToken, refreshToken, profile, done) => {
