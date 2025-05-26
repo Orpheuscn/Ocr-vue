@@ -97,7 +97,9 @@ export default {
   // CORS配置
   corsOrigins: process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(",")
-    : ["http://localhost:8080", "https://localhost:8443"],
+    : env === "production"
+    ? ["https://textistext.com", "https://textistext-frontend-82114549685.us-central1.run.app"]
+    : ["http://localhost:8080", "http://localhost:8082", "https://localhost:8443"],
 
   // 文件上传配置
   maxFileSize: parseInt(process.env.MAX_FILE_SIZE || "25000000"),

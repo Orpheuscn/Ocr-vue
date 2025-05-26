@@ -207,11 +207,11 @@ app.use(notFoundHandler);
 // 错误处理中间件
 app.use(errorHandler);
 
-app.listen(PORT, async () => {
-  logger.info(`服务器运行在 http://localhost:${PORT}`, { version: "1.0.1" });
+app.listen(PORT, "0.0.0.0", async () => {
+  logger.info(`服务器运行在 http://0.0.0.0:${PORT}`, { version: "1.0.1" });
 
   if (config.swaggerEnabled) {
-    logger.info(`API 文档可在 http://localhost:${PORT}/api-docs 访问`);
+    logger.info(`API 文档可在 http://0.0.0.0:${PORT}/api-docs 访问`);
     logger.info(`API文档已配置认证`);
   }
 
