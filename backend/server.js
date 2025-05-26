@@ -7,8 +7,7 @@ import helmet from "helmet";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 import ocrRoutes from "./routes/ocrRoutes.js";
-import ocrQueueRoutes from "./routes/ocrQueueRoutes.js"; // 引入OCR队列路由
-import monitoringRoutes from "./routes/monitoringRoutes.js"; // 引入监控路由
+
 import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import languageRoutes from "./routes/languageRoutes.js";
@@ -20,14 +19,13 @@ import { logRequest, logResponse } from "./controllers/adminController.js";
 import connectDB from "./db/config.js"; // 导入数据库连接函数
 import swaggerSetup from "./swagger.js"; // 导入 Swagger 设置
 import config from "./utils/envConfig.js"; // 导入统一的环境变量配置
-import queueInitializer from "./services/queueInitializer.js"; // 导入队列初始化器
+
 import { mongoose, checkConnection, isConnected } from "./db/config.js"; // 导入mongoose实例和连接检查函数
 import { initializePassport } from "./middleware/passportConfig.js"; // 导入Passport配置
 import { getLogger } from "./utils/logger.js"; // 导入安全日志服务
 import { errorHandler, notFoundHandler } from "./middleware/errorMiddleware.js"; // 导入错误处理中间件
 import { csrfProtection, addCsrfToken } from "./middleware/csrfMiddleware.js"; // 导入CSRF保护中间件
 import { apiRateLimit } from "./middleware/rateLimitMiddleware.js"; // 导入速率限制中间件
-import rabbitmqManager from "./utils/rabbitmqManager.js"; // 导入RabbitMQ管理器
 
 const logger = getLogger("server");
 
@@ -44,25 +42,6 @@ const __dirname = dirname(__filename);
     console.error("数据库初始化错误:", error);
     // 不立即退出，继续启动应用，让健康检查API可以报告状态
     console.warn("应用将继续启动，但数据库功能可能不可用");
-  }
-})();
-
-// 初始化RabbitMQ连接
-(async () => {
-  if (config.enableOcrQueue) {
-    try {
-      const connected = await rabbitmqManager.connect();
-      if (connected) {
-        console.log("RabbitMQ连接成功并准备就绪");
-      } else {
-        console.warn("RabbitMQ连接失败，队列功能将不可用");
-      }
-    } catch (error) {
-      console.error("RabbitMQ初始化错误:", error);
-      console.warn("应用将继续启动，但队列功能可能不可用");
-    }
-  } else {
-    console.log("RabbitMQ队列功能已禁用");
   }
 })();
 
@@ -154,8 +133,7 @@ app.get("/api/csrf-token", (req, res) => {
 
 // 路由
 app.use("/api/ocr", ocrRoutes); // 移除CSRF保护，因为OCR路由已在csrfMiddleware.js中豁免
-app.use("/api/ocr-queue", ocrQueueRoutes); // OCR队列路由
-app.use("/api/monitoring", monitoringRoutes); // 监控路由
+
 app.use("/api/users", userRoutes); // 用户路由中已添加CSRF保护
 app.use("/api/admin", csrfProtection, adminRoutes);
 app.use("/api/languages", languageRoutes);
@@ -190,9 +168,6 @@ app.get("/api/health", async (req, res) => {
   const jwtConfigured =
     config.jwtSecret && config.jwtSecret !== "dev_jwt_secret_do_not_use_in_production";
 
-  // 检查RabbitMQ状态
-  const rabbitmqStatus = rabbitmqManager.getStatus();
-
   // 组装健康状态
   const healthStatus = {
     status: "online",
@@ -211,16 +186,7 @@ app.get("/api/health", async (req, res) => {
           : "未设置",
         isConnected: isConnected, // 添加数据库连接标志
       },
-      rabbitmq: {
-        enabled: config.enableOcrQueue,
-        status: rabbitmqStatus.connected ? "connected" : "disconnected",
-        healthy:
-          rabbitmqStatus.connected && rabbitmqStatus.hasConnection && rabbitmqStatus.hasChannel,
-        reconnectAttempts: rabbitmqStatus.reconnectAttempts,
-        maxReconnectAttempts: rabbitmqStatus.maxReconnectAttempts,
-        connectionState: rabbitmqStatus.connectionState,
-        channelState: rabbitmqStatus.channelState,
-      },
+
       jwt: {
         configured: jwtConfigured,
         expiresIn: config.jwtExpiresIn || "24h",
@@ -268,28 +234,6 @@ app.listen(PORT, async () => {
 
   // 显示数据库状态
   logger.info("数据库模式: MongoDB");
-
-  // 初始化队列服务
-  if (config.enableOcrQueue) {
-    logger.info("正在初始化RabbitMQ队列服务...");
-    try {
-      const queueInitialized = await queueInitializer.initialize();
-      if (queueInitialized) {
-        const queueStarted = await queueInitializer.start();
-        if (queueStarted) {
-          logger.info("✅ RabbitMQ队列服务启动成功");
-        } else {
-          logger.warn("⚠️ RabbitMQ队列服务启动失败");
-        }
-      } else {
-        logger.warn("⚠️ RabbitMQ队列服务初始化失败");
-      }
-    } catch (error) {
-      logger.error("❌ RabbitMQ队列服务启动异常", { error: error.message });
-    }
-  } else {
-    logger.info("RabbitMQ队列系统已禁用");
-  }
 
   // 显示安全配置状态
   logger.info("安全配置已加载:");

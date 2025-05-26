@@ -30,7 +30,11 @@ class LogClient:
         Args:
             api_endpoint: 日志收集API端点，如果为None则使用环境变量或默认值
         """
-        self.api_endpoint = api_endpoint or os.environ.get('LOG_API_ENDPOINT', DEFAULT_LOG_API_ENDPOINT)
+        # 在Cloud Run环境中禁用日志发送，避免连接localhost:3000失败
+        if os.environ.get('K_SERVICE'):  # Cloud Run环境变量
+            self.api_endpoint = None
+        else:
+            self.api_endpoint = api_endpoint or os.environ.get('LOG_API_ENDPOINT', DEFAULT_LOG_API_ENDPOINT)
         self.hostname = socket.gethostname()
 
         # 配置Python日志系统

@@ -117,19 +117,15 @@ def ocr_status():
     {
         "status": "running",
         "version": "1.0.0",
-        "tesseract_version": "4.1.1"
+        "ocr_engine": "google_vision"
     }
     """
     try:
-        import pytesseract
-
-        # 获取Tesseract版本
-        tesseract_version = pytesseract.get_tesseract_version()
-
         return jsonify({
             'status': 'running',
             'version': '1.0.0',
-            'tesseract_version': str(tesseract_version)
+            'ocr_engine': 'google_vision',
+            'service': 'Python OCR Service'
         })
     except Exception as e:
         error(f"获取OCR服务状态失败: {str(e)}")

@@ -2,12 +2,14 @@
 # -*- coding: utf-8 -*-
 
 """
-OCR服务模块 - 通过RabbitMQ与Node服务器通信使用Google Cloud Vision API
-这个模块负责处理图像OCR识别功能，完全使用Cloud Vision API
+OCR服务模块 - 直接调用Node.js后端API使用Google Cloud Vision API
+这个模块负责处理图像OCR识别功能，通过HTTP API与Node.js后端通信
 """
 
 import logging
 import traceback
+import requests
+import os
 from typing import Dict, List, Any
 
 # 导入工具模块
@@ -20,36 +22,77 @@ logging.basicConfig(
 )
 logger = logging.getLogger('ocr_service')
 
-# 全局RabbitMQ OCR服务实例（单例模式）
-_rabbitmq_ocr_service = None
-
-def get_rabbitmq_ocr_service():
-    """获取RabbitMQ OCR服务实例（单例模式）- 改进版本"""
-    global _rabbitmq_ocr_service
-    if _rabbitmq_ocr_service is None:
-        try:
-            from services.rabbitmq_ocr_service import RabbitMQOcrService
-            _rabbitmq_ocr_service = RabbitMQOcrService()
-            info("RabbitMQ OCR服务实例已创建")
-        except Exception as e:
-            error(f"创建RabbitMQ OCR服务实例失败: {e}")
-            # 如果创建失败，确保不会留下部分初始化的实例
-            _rabbitmq_ocr_service = None
-            raise
-    return _rabbitmq_ocr_service
+# Node.js后端API配置
+NODE_API_BASE_URL = os.getenv('NODE_API_BASE_URL', 'http://localhost:3000')
+NODE_OCR_ENDPOINT = f"{NODE_API_BASE_URL}/api/ocr/process"
 
 
-def cleanup_rabbitmq_ocr_service():
-    """清理RabbitMQ OCR服务实例"""
-    global _rabbitmq_ocr_service
-    if _rabbitmq_ocr_service is not None:
-        try:
-            _rabbitmq_ocr_service.shutdown()
-        except Exception as e:
-            error(f"清理RabbitMQ OCR服务时出错: {e}")
-        finally:
-            _rabbitmq_ocr_service = None
-            info("RabbitMQ OCR服务实例已清理")
+def call_node_ocr_api(image_id: str, rectangles: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    直接调用Node.js后端API进行OCR处理
+
+    Args:
+        image_id: 图片ID
+        rectangles: 矩形信息列表
+
+    Returns:
+        OCR处理结果
+    """
+    try:
+        # 准备请求数据
+        request_data = {
+            'image_id': image_id,
+            'rectangles': rectangles
+        }
+
+        info(f"调用Node.js OCR API: {NODE_OCR_ENDPOINT}")
+
+        # 发送HTTP请求到Node.js后端
+        response = requests.post(
+            NODE_OCR_ENDPOINT,
+            json=request_data,
+            timeout=30,  # 30秒超时
+            headers={'Content-Type': 'application/json'}
+        )
+
+        # 检查响应状态
+        if response.status_code == 200:
+            result = response.json()
+            info(f"Node.js OCR API调用成功")
+            return result
+        else:
+            error_msg = f"Node.js OCR API调用失败，状态码: {response.status_code}"
+            error(error_msg)
+            return {
+                'success': False,
+                'error': error_msg,
+                'image_id': image_id
+            }
+
+    except requests.exceptions.Timeout:
+        error_msg = "Node.js OCR API调用超时"
+        error(error_msg)
+        return {
+            'success': False,
+            'error': error_msg,
+            'image_id': image_id
+        }
+    except requests.exceptions.ConnectionError:
+        error_msg = "无法连接到Node.js后端服务"
+        error(error_msg)
+        return {
+            'success': False,
+            'error': error_msg,
+            'image_id': image_id
+        }
+    except Exception as e:
+        error_msg = f"调用Node.js OCR API时发生错误: {str(e)}"
+        error(error_msg)
+        return {
+            'success': False,
+            'error': error_msg,
+            'image_id': image_id
+        }
 
 
 def process_ocr_request(image_id: str, rectangles: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -99,11 +142,8 @@ def process_ocr_request(image_id: str, rectangles: List[Dict[str, Any]]) -> Dict
 
         info(f"过滤后需要OCR的矩形数量: {len(text_rectangles)}")
 
-        # 使用单例RabbitMQ OCR服务（Cloud Vision API）
-        rabbitmq_ocr = get_rabbitmq_ocr_service()
-
-        # 通过RabbitMQ发送OCR请求到Node服务器
-        result = rabbitmq_ocr.process_ocr_via_node(image_id, text_rectangles)
+        # 直接调用Node.js后端API进行OCR处理
+        result = call_node_ocr_api(image_id, text_rectangles)
 
         # 确保返回结果包含所有必要字段
         if result.get('success', False):

@@ -1,0 +1,93 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments (will be created in container)
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Uploads and downloads (too large for deployment)
+uploads/
+downloads/
+crops/
+
+# Models (too large, should be downloaded at runtime)
+models/
+*.pt
+*.pth
+*.onnx
+
+# Documentation
+*.md
+README*
+
+# Scripts (not needed in container)
+start.sh
+
+*.sh
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Environment files
+.env*
+
+# Training data and results
+train/
+results/
+
+# Cache
+.cache/
+.pytest_cache/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile*
+.dockerignore
+
+# Cloud Build
+.gcloudignore

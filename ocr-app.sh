@@ -5,10 +5,9 @@
 # ==========================================
 # 此脚本用于管理OCR应用的所有组件:
 # 1. MongoDB数据库服务
-# 2. RabbitMQ消息队列服务
-# 3. 后端API服务器
-# 4. Nginx服务器(用于提供前端静态文件并代理API请求)
-# 5. Python服务器(用于图像坐标映射功能)
+# 2. 后端API服务器
+# 3. Nginx服务器(用于提供前端静态文件并代理API请求)
+# 4. Python服务器(用于图像坐标映射功能)
 #
 # 使用方法:
 #   ./ocr-app.sh start - 启动所有服务
@@ -83,14 +82,13 @@ fi
 # 功能函数：显示帮助信息
 show_help() {
   echo -e "${GREEN}OCR Vue应用管理脚本${NC}"
-  echo -e "用法: $0 {start|stop|restart|status|monitor|cleanup|schedule-cleanup|security-check}"
+  echo -e "用法: $0 {start|stop|restart|status|monitor|security-check}"
   echo -e "  start            - 启动所有服务"
   echo -e "  stop             - 安全停止所有服务"
   echo -e "  restart          - 重启所有服务"
   echo -e "  status           - 显示服务状态"
   echo -e "  monitor          - 启动持续监控(作为守护进程运行)"
-  echo -e "  cleanup          - 立即执行清理任务(清理uploads和__pycache__)"
-  echo -e "  schedule-cleanup - 设置定时清理任务(每天凌晨3点执行)"
+
   echo -e "  security-check   - 执行安全检查"
 }
 
@@ -302,42 +300,7 @@ check_status() {
     echo -e "${RED}✗ MongoDB服务未运行${NC}"
   fi
 
-  # 检查RabbitMQ服务
-  if pgrep -f "rabbitmq" > /dev/null; then
-    RABBITMQ_PID=$(pgrep -f "rabbitmq-server")
-    echo -e "${GREEN}✓ RabbitMQ服务正在运行 (PID: $RABBITMQ_PID)${NC}"
 
-    # 测试RabbitMQ连接
-    if command -v rabbitmqctl &> /dev/null; then
-      rabbitmqctl status > /dev/null 2>&1
-      RABBITMQ_RESULT=$?
-      if [ $RABBITMQ_RESULT -eq 0 ]; then
-        echo -e "${GREEN}✓ RabbitMQ连接测试成功${NC}"
-
-        # 检查RabbitMQ端口
-        RABBITMQ_PORT_USAGE=$(check_port 5672)
-        if [ ! -z "$RABBITMQ_PORT_USAGE" ]; then
-          echo -e "${GREEN}  - 端口 5672 已绑定${NC}"
-        else
-          echo -e "${YELLOW}  - 警告: 端口 5672 未绑定${NC}"
-        fi
-
-        # 检查管理界面端口
-        RABBITMQ_MGMT_PORT_USAGE=$(check_port 15672)
-        if [ ! -z "$RABBITMQ_MGMT_PORT_USAGE" ]; then
-          echo -e "${GREEN}  - 管理界面端口 15672 已绑定${NC}"
-        else
-          echo -e "${YELLOW}  - 警告: 管理界面端口 15672 未绑定${NC}"
-        fi
-      else
-        echo -e "${YELLOW}警告: RabbitMQ服务已启动但连接测试失败${NC}"
-      fi
-    else
-      echo -e "${YELLOW}警告: rabbitmqctl命令不可用，无法测试连接${NC}"
-    fi
-  else
-    echo -e "${RED}✗ RabbitMQ服务未运行${NC}"
-  fi
 
   # 检查后端服务
   BACKEND_PID=$(ps aux | grep "node start.js" | grep -v grep | awk '{print $2}')
@@ -492,7 +455,7 @@ stop_services() {
     echo -e "${RED}Python服务停止失败，继续停止其他服务${NC}"
   fi
 
-  # 先停止后端服务，确保关闭与 MongoDB 和 RabbitMQ 的连接
+  # 先停止后端服务，确保关闭与 MongoDB 的连接
   BACKEND_PID=$(ps aux | grep "node start.js" | grep -v grep | awk '{print $2}')
   if [ ! -z "$BACKEND_PID" ]; then
     echo -e "${BLUE}正在停止后端服务 (PID: $BACKEND_PID)...${NC}"
@@ -524,14 +487,8 @@ stop_services() {
     echo -e "${YELLOW}后端服务未运行${NC}"
   fi
 
-  # 等待一秒，确保所有数据库和消息队列连接已关闭
+  # 等待一秒，确保所有数据库连接已关闭
   sleep 1
-
-  # 停止RabbitMQ服务
-  stop_rabbitmq
-  if [ $? -ne 0 ]; then
-    echo -e "${RED}RabbitMQ服务停止失败，继续停止其他服务${NC}"
-  fi
 
   # 然后停止MongoDB数据库
   stop_mongodb
@@ -713,132 +670,7 @@ start_monitor() {
   return 0
 }
 
-# 功能函数：启动RabbitMQ服务
-start_rabbitmq() {
-  echo -e "${BLUE}正在启动RabbitMQ服务...${NC}"
 
-  # 检查RabbitMQ是否已经运行
-  if pgrep -f "rabbitmq" > /dev/null; then
-    echo -e "${YELLOW}RabbitMQ已在运行，跳过启动步骤${NC}"
-    return 0
-  fi
-
-  # 检测操作系统并启动RabbitMQ
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS - 使用Homebrew
-    if command -v brew &> /dev/null; then
-      echo -e "${BLUE}使用Homebrew启动RabbitMQ...${NC}"
-      brew services start rabbitmq
-      if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✓ RabbitMQ服务已成功启动${NC}"
-      else
-        echo -e "${RED}✗ RabbitMQ启动失败${NC}"
-        return 1
-      fi
-    else
-      echo -e "${RED}错误: 未找到Homebrew，无法启动RabbitMQ${NC}"
-      return 1
-    fi
-  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    # Linux - 使用systemctl
-    if command -v systemctl &> /dev/null; then
-      echo -e "${BLUE}使用systemctl启动RabbitMQ...${NC}"
-      sudo systemctl start rabbitmq-server
-      if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✓ RabbitMQ服务已成功启动${NC}"
-      else
-        echo -e "${RED}✗ RabbitMQ启动失败${NC}"
-        return 1
-      fi
-    else
-      echo -e "${RED}错误: 未找到systemctl，无法启动RabbitMQ${NC}"
-      return 1
-    fi
-  else
-    echo -e "${RED}错误: 不支持的操作系统: $OSTYPE${NC}"
-    return 1
-  fi
-
-  # 等待RabbitMQ完全启动
-  echo -e "${BLUE}等待RabbitMQ初始化...${NC}"
-  sleep 5
-
-  # 测试RabbitMQ连接
-  if command -v rabbitmqctl &> /dev/null; then
-    rabbitmqctl status > /dev/null 2>&1
-    RABBITMQ_RESULT=$?
-    if [ $RABBITMQ_RESULT -eq 0 ]; then
-      echo -e "${GREEN}✓ RabbitMQ连接测试成功${NC}"
-      return 0
-    else
-      echo -e "${YELLOW}警告: RabbitMQ服务已启动但连接测试失败${NC}"
-      return 0
-    fi
-  else
-    echo -e "${YELLOW}警告: rabbitmqctl命令不可用，无法测试连接${NC}"
-    return 0
-  fi
-}
-
-# 功能函数：停止RabbitMQ服务
-stop_rabbitmq() {
-  echo -e "${BLUE}正在停止RabbitMQ服务...${NC}"
-
-  # 检查RabbitMQ是否在运行
-  if ! pgrep -f "rabbitmq" > /dev/null; then
-    echo -e "${YELLOW}RabbitMQ服务未运行${NC}"
-    return 0
-  fi
-
-  # 检测操作系统并停止RabbitMQ
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS - 使用Homebrew
-    if command -v brew &> /dev/null; then
-      echo -e "${BLUE}使用Homebrew停止RabbitMQ...${NC}"
-      brew services stop rabbitmq
-      if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✓ RabbitMQ服务已成功停止${NC}"
-      else
-        echo -e "${RED}✗ RabbitMQ停止失败${NC}"
-        return 1
-      fi
-    else
-      echo -e "${RED}错误: 未找到Homebrew，无法停止RabbitMQ${NC}"
-      return 1
-    fi
-  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    # Linux - 使用systemctl
-    if command -v systemctl &> /dev/null; then
-      echo -e "${BLUE}使用systemctl停止RabbitMQ...${NC}"
-      sudo systemctl stop rabbitmq-server
-      if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✓ RabbitMQ服务已成功停止${NC}"
-      else
-        echo -e "${RED}✗ RabbitMQ停止失败${NC}"
-        return 1
-      fi
-    else
-      echo -e "${RED}错误: 未找到systemctl，无法停止RabbitMQ${NC}"
-      return 1
-    fi
-  else
-    echo -e "${RED}错误: 不支持的操作系统: $OSTYPE${NC}"
-    return 1
-  fi
-
-  # 等待RabbitMQ完全停止
-  echo -e "${BLUE}等待RabbitMQ停止...${NC}"
-  sleep 3
-
-  # 验证RabbitMQ已停止
-  if ! pgrep -f "rabbitmq" > /dev/null; then
-    echo -e "${GREEN}✓ RabbitMQ已完全停止${NC}"
-    return 0
-  else
-    echo -e "${YELLOW}警告: RabbitMQ进程可能仍在运行${NC}"
-    return 0
-  fi
-}
 
 # 功能函数：启动MongoDB数据库
 start_mongodb() {
@@ -1302,12 +1134,7 @@ start_services() {
     echo -e "${YELLOW}继续启动应用，但可能会出现数据库连接错误${NC}"
   fi
 
-  # 启动RabbitMQ服务
-  start_rabbitmq
-  if [ $? -ne 0 ]; then
-    echo -e "${RED}RabbitMQ启动失败，队列功能可能无法正常工作${NC}"
-    echo -e "${YELLOW}应用将继续启动，但异步处理功能可能不可用${NC}"
-  fi
+
 
   # 检查后端服务是否已运行
   BACKEND_PID=$(ps aux | grep "node start.js" | grep -v grep | awk '{print $2}')
@@ -1430,109 +1257,7 @@ restart_services() {
   start_services
 }
 
-# 功能函数：执行清理任务
-run_cleanup() {
-  echo -e "${BLUE}正在执行清理任务...${NC}"
 
-  # 检查清理脚本是否存在
-  CLEANUP_SCRIPT="$PYTHON_SERVICE_DIR/cleanup.sh"
-  if [ ! -f "$CLEANUP_SCRIPT" ]; then
-    echo -e "${RED}错误: 清理脚本不存在: $CLEANUP_SCRIPT${NC}"
-    return 1
-  fi
-
-  # 确保脚本有执行权限
-  if [ ! -x "$CLEANUP_SCRIPT" ]; then
-    echo -e "${YELLOW}为清理脚本添加执行权限...${NC}"
-    chmod +x "$CLEANUP_SCRIPT"
-  fi
-
-  # 执行清理脚本
-  echo -e "${BLUE}执行清理脚本...${NC}"
-
-  # 解析参数
-  MAX_AGE=7  # 默认保留7天
-  DRY_RUN=false
-
-  if [ "$2" = "--dry-run" ]; then
-    DRY_RUN=true
-  fi
-
-  if [[ "$2" =~ ^--max-age=([0-9]+)$ ]]; then
-    MAX_AGE="${BASH_REMATCH[1]}"
-  fi
-
-  if [ "$DRY_RUN" = true ]; then
-    "$CLEANUP_SCRIPT" --max-age="$MAX_AGE" --dry-run
-  else
-    "$CLEANUP_SCRIPT" --max-age="$MAX_AGE"
-  fi
-
-  if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ 清理任务执行成功${NC}"
-    return 0
-  else
-    echo -e "${RED}✗ 清理任务执行失败${NC}"
-    return 1
-  fi
-}
-
-# 功能函数：设置定时清理任务
-schedule_cleanup() {
-  echo -e "${BLUE}正在设置定时清理任务...${NC}"
-
-  # 检查crontab命令是否存在
-  if ! command -v crontab &> /dev/null; then
-    echo -e "${RED}错误: crontab命令不存在，无法设置定时任务${NC}"
-    return 1
-  fi
-
-  # 检查清理脚本是否存在
-  CLEANUP_SCRIPT="$PYTHON_SERVICE_DIR/cleanup.sh"
-  if [ ! -f "$CLEANUP_SCRIPT" ]; then
-    echo -e "${RED}错误: 清理脚本不存在: $CLEANUP_SCRIPT${NC}"
-    return 1
-  fi
-
-  # 确保脚本有执行权限
-  if [ ! -x "$CLEANUP_SCRIPT" ]; then
-    echo -e "${YELLOW}为清理脚本添加执行权限...${NC}"
-    chmod +x "$CLEANUP_SCRIPT"
-  fi
-
-  # 创建临时文件
-  TEMP_CRON=$(mktemp)
-
-  # 导出当前的crontab
-  crontab -l > "$TEMP_CRON" 2>/dev/null
-
-  # 检查是否已经存在清理任务
-  if grep -q "$CLEANUP_SCRIPT" "$TEMP_CRON"; then
-    echo -e "${YELLOW}清理任务已存在于crontab中，将更新...${NC}"
-    # 删除现有的清理任务
-    sed -i.bak "/.*$CLEANUP_SCRIPT.*/d" "$TEMP_CRON"
-  fi
-
-  # 添加新的清理任务（每天凌晨3点执行）
-  echo "0 3 * * * $CLEANUP_SCRIPT --max-age=7 >> $LOG_DIR/system/cleanup.log 2>&1" >> "$TEMP_CRON"
-
-  # 安装新的crontab
-  crontab "$TEMP_CRON"
-
-  if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ 定时清理任务已设置成功${NC}"
-    echo -e "${BLUE}清理任务将在每天凌晨3点执行${NC}"
-    echo -e "${BLUE}清理日志将写入: $LOG_DIR/system/cleanup.log${NC}"
-  else
-    echo -e "${RED}✗ 定时清理任务设置失败${NC}"
-    return 1
-  fi
-
-  # 清理临时文件
-  rm -f "$TEMP_CRON" "$TEMP_CRON.bak"
-
-  return 0
-}
 
 # 主逻辑：解析命令行参数
 case "$1" in
@@ -1556,12 +1281,7 @@ case "$1" in
   monitor)
     start_monitor
     ;;
-  cleanup)
-    run_cleanup "$@"
-    ;;
-  schedule-cleanup)
-    schedule_cleanup
-    ;;
+
   security-check)
     security_check
     ;;

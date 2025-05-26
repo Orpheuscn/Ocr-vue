@@ -10,16 +10,10 @@
     "test": "node start.js test",
     "migrate": "node ../tools/migrate-to-mongodb.js",
     "check-mongodb": "node ../tools/check-mongodb-config.js",
-    "normalize-data": "node ../tools/normalize-mongodb-data.js",
-    "build:ts": "tsc",
-    "start:ts": "node dist/app.js",
-    "dev:ts": "ts-node-dev --respawn --transpile-only src/app.ts",
-    "queue:worker": "ts-node-dev src/workers/queueWorker.ts",
-    "queue:monitor": "ts-node-dev src/scripts/queueMonitor.ts"
+    "normalize-data": "node ../tools/normalize-mongodb-data.js"
   },
   "dependencies": {
     "@google-cloud/vision": "^5.1.0",
-    "amqplib": "^0.10.3",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
     "cookie-parser": "^1.4.7",
@@ -42,7 +36,6 @@
     "winston": "^3.17.0"
   },
   "devDependencies": {
-    "@types/amqplib": "^0.10.1",
     "@types/cors": "^2.8.13",
     "@types/express": "^4.17.17",
     "@types/node": "^20.4.5",

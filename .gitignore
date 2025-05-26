@@ -94,3 +94,10 @@ python-service/logs/
 
 # windsurf rules
 .windsurfrules
+
+# 项目特定忽略文件夹和文件
+/backup/
+/docs/
+/scripts/
+/cloud-run/
+url-map-config.yaml

@@ -21,14 +21,7 @@ DOWNLOADS_FOLDER = BASE_DIR / 'downloads'
 for folder in [CROPS_FOLDER, TEMP_FOLDER, DOWNLOADS_FOLDER]:
     folder.mkdir(exist_ok=True)
 
-# RabbitMQ配置
-RABBITMQ_CONFIG = {
-    'host': os.getenv('RABBITMQ_HOST', 'localhost'),
-    'port': int(os.getenv('RABBITMQ_PORT', '5672')),
-    'username': os.getenv('RABBITMQ_USERNAME', 'guest'),
-    'password': os.getenv('RABBITMQ_PASSWORD', 'guest'),
-    'vhost': os.getenv('RABBITMQ_VHOST', '/'),
-}
+
 
 # 日志配置 - 统一到根目录的logs/python-service文件夹
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')

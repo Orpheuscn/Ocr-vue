@@ -14,21 +14,11 @@ from typing import Optional
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-
-# 创建全局limiter实例
-limiter = Limiter(
-    get_remote_address,
-    default_limits=["500 per day", "60 per minute"],
-    storage_uri="memory://",
-    strategy="fixed-window"
-)
 
 # 导入路由
 from api.routes.ocr_routes import ocr_bp
-from api.routes.upload_routes import upload_bp
-from api.routes.image_proxy_routes import image_proxy_bp
+# from api.routes.upload_routes import upload_bp  # 暂时禁用上传路由
+# from api.routes.image_proxy_routes import image_proxy_bp  # 暂时禁用图像代理路由
 from utils.log_client import info, error
 
 def create_app(config: Optional[dict] = None) -> Flask:
@@ -48,9 +38,6 @@ def create_app(config: Optional[dict] = None) -> Flask:
     # 从环境变量获取允许的域名，默认允许本地和生产域名
     allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:8080,http://127.0.0.1:8080,https://localhost:8443,https://textistext.com,https://textistext-frontend-82114549685.us-central1.run.app').split(',')
     CORS(app, resources={r"/*": {"origins": allowed_origins}}, supports_credentials=True)
-
-    # 配置速率限制器
-    limiter.init_app(app)
 
     # 加载默认配置
     base_dir = os.path.dirname(os.path.dirname(__file__))
@@ -102,10 +89,10 @@ def create_app(config: Optional[dict] = None) -> Flask:
         except Exception as e:
             error(f"尝试删除results目录时出错: {e}")
 
-    # 注册蓝图 - 不使用前缀
+    # 注册蓝图
     app.register_blueprint(ocr_bp)
-    app.register_blueprint(upload_bp)
-    app.register_blueprint(image_proxy_bp)
+    # app.register_blueprint(upload_bp)  # 暂时禁用上传路由
+    # app.register_blueprint(image_proxy_bp)  # 暂时禁用图像代理路由
 
     # 健康检查端点
     @app.route('/health')
@@ -170,25 +157,33 @@ def create_app(config: Optional[dict] = None) -> Flask:
 
     # 旧的健康检查端点已删除，避免路由冲突
 
-    # 配置日志轮转 - 统一到根目录的logs/python-service文件夹
-    log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs', 'python-service')
-    os.makedirs(log_dir, exist_ok=True)
-    log_file = os.path.join(log_dir, 'app.log')
+    # 配置日志轮转 - 在Cloud Run环境中使用相对路径
+    try:
+        # 尝试在应用目录下创建logs文件夹
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        log_dir = os.path.join(base_dir, 'logs')
+        os.makedirs(log_dir, exist_ok=True)
+        log_file = os.path.join(log_dir, 'app.log')
 
-    # 配置日志处理器
-    from logging.handlers import RotatingFileHandler
-    file_handler = RotatingFileHandler(
-        log_file,
-        maxBytes=10 * 1024 * 1024,  # 10MB
-        backupCount=5,  # 保留5个备份文件
-        encoding='utf-8'
-    )
-    file_handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    ))
-    file_handler.setLevel(logging.INFO)
-    app.logger.addHandler(file_handler)
-    app.logger.setLevel(logging.INFO)
+        # 配置日志处理器
+        from logging.handlers import RotatingFileHandler
+        file_handler = RotatingFileHandler(
+            log_file,
+            maxBytes=10 * 1024 * 1024,  # 10MB
+            backupCount=5,  # 保留5个备份文件
+            encoding='utf-8'
+        )
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        ))
+        file_handler.setLevel(logging.INFO)
+        app.logger.addHandler(file_handler)
+        app.logger.setLevel(logging.INFO)
+        info(f"日志文件配置成功: {log_file}")
+    except Exception as e:
+        # 如果无法创建日志文件，只使用控制台日志
+        app.logger.setLevel(logging.INFO)
+        error(f"无法配置日志文件，将只使用控制台日志: {e}")
 
     # 记录应用启动信息
     app.logger.info("Flask应用已创建并配置")

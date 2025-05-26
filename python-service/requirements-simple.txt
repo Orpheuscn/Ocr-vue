@@ -1,0 +1,7 @@
+# 最简化的依赖，仅用于基本的Flask应用
+Flask==2.3.3
+Flask-Cors==4.0.0
+gunicorn==20.1.0
+python-dotenv==1.0.0
+requests==2.32.3
+colorlog==6.8.0

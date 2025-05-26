@@ -52,9 +52,9 @@ atexit.register(cleanup_resources)
 def create_app():
     """创建Flask应用，供Gunicorn调用"""
     try:
-        # 获取环境变量
+        # 获取环境变量 - 优先使用Cloud Run的PORT环境变量
         host = os.environ.get('FLASK_HOST', '0.0.0.0')
-        port = int(os.environ.get('FLASK_PORT', 5001))
+        port = int(os.environ.get('PORT', os.environ.get('FLASK_PORT', 8080)))
         debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
 
         # 创建Flask应用

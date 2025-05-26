@@ -1,0 +1,73 @@
+# Python虚拟环境
+venv/
+env/
+.env/
+.venv/
+
+# Python缓存文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# 开发和测试文件
+.pytest_cache/
+.coverage
+.tox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件和缓存
+temp/
+tmp/
+.tmp/
+
+# 上传的文件（测试数据）
+uploads/
+downloads/
+crops/
+
+# 训练相关文件
+train/
+models/models--*/
+
+# 文档和说明文件
+*.md
+README*
+环境迁移文档.md
+python服务器升级方案.md
+
+# 脚本文件
+*.sh
+
+start.sh
+test_*.py
+
+
+# 备份文件
+*.bak
+*.backup
+
+# Git文件
+.git/
+.gitignore

@@ -34,7 +34,7 @@ fi
 # 函数：创建项目
 create_project() {
     echo -e "${BLUE}步骤 1: 创建 Google Cloud 项目${NC}"
-    
+
     # 检查项目是否已存在
     if gcloud projects describe $PROJECT_ID &>/dev/null; then
         echo -e "${YELLOW}项目 $PROJECT_ID 已存在${NC}"
@@ -42,7 +42,7 @@ create_project() {
         echo -e "${BLUE}创建项目 $PROJECT_ID...${NC}"
         gcloud projects create $PROJECT_ID --name="TextIsText OCR App"
     fi
-    
+
     # 设置当前项目
     gcloud config set project $PROJECT_ID
     echo -e "${GREEN}✓ 项目设置完成${NC}"
@@ -51,26 +51,26 @@ create_project() {
 # 函数：启用 API
 enable_apis() {
     echo -e "${BLUE}步骤 2: 启用必要的 API${NC}"
-    
+
     apis=(
         "compute.googleapis.com"
         "vision.googleapis.com"
         "dns.googleapis.com"
         "monitoring.googleapis.com"
     )
-    
+
     for api in "${apis[@]}"; do
         echo -e "${BLUE}启用 $api...${NC}"
         gcloud services enable $api
     done
-    
+
     echo -e "${GREEN}✓ API 启用完成${NC}"
 }
 
 # 函数：创建防火墙规则
 create_firewall_rules() {
     echo -e "${BLUE}步骤 3: 创建防火墙规则${NC}"
-    
+
     # HTTP/HTTPS 规则
     if ! gcloud compute firewall-rules describe allow-http-https &>/dev/null; then
         gcloud compute firewall-rules create allow-http-https \
@@ -79,7 +79,7 @@ create_firewall_rules() {
             --target-tags http-server,https-server \
             --description "Allow HTTP and HTTPS traffic"
     fi
-    
+
     # 自定义端口规则 (开发用)
     if ! gcloud compute firewall-rules describe allow-custom-ports &>/dev/null; then
         gcloud compute firewall-rules create allow-custom-ports \
@@ -88,20 +88,20 @@ create_firewall_rules() {
             --target-tags http-server \
             --description "Allow custom application ports"
     fi
-    
+
     echo -e "${GREEN}✓ 防火墙规则创建完成${NC}"
 }
 
 # 函数：创建 VM 实例
 create_vm() {
     echo -e "${BLUE}步骤 4: 创建 VM 实例${NC}"
-    
+
     # 检查 VM 是否已存在
     if gcloud compute instances describe $VM_NAME --zone=$ZONE &>/dev/null; then
         echo -e "${YELLOW}VM $VM_NAME 已存在${NC}"
         return
     fi
-    
+
     # 创建启动脚本
     startup_script='#!/bin/bash
 apt-get update
@@ -122,11 +122,7 @@ apt-get install -y mongodb-org
 systemctl start mongod
 systemctl enable mongod
 
-# 安装 RabbitMQ
-apt-get install -y rabbitmq-server
-systemctl start rabbitmq-server
-systemctl enable rabbitmq-server
-rabbitmq-plugins enable rabbitmq_management
+
 
 # 安装 Nginx
 apt-get install -y nginx
@@ -138,7 +134,7 @@ apt-get install -y certbot python3-certbot-nginx
 
 echo "服务器初始化完成" > /var/log/startup-complete.log
 '
-    
+
     echo -e "${BLUE}创建 VM 实例 $VM_NAME...${NC}"
     gcloud compute instances create $VM_NAME \
         --zone=$ZONE \
@@ -149,16 +145,16 @@ echo "服务器初始化完成" > /var/log/startup-complete.log
         --image-project=ubuntu-os-cloud \
         --tags=http-server,https-server \
         --metadata=startup-script="$startup_script"
-    
+
     echo -e "${GREEN}✓ VM 实例创建完成${NC}"
 }
 
 # 函数：获取 VM IP
 get_vm_ip() {
     echo -e "${BLUE}步骤 5: 获取 VM 外部 IP${NC}"
-    
+
     VM_IP=$(gcloud compute instances describe $VM_NAME --zone=$ZONE --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
-    
+
     echo -e "${GREEN}✓ VM 外部 IP: $VM_IP${NC}"
     echo -e "${YELLOW}请在 GoDaddy 中设置以下 DNS 记录:${NC}"
     echo -e "${YELLOW}类型: A, 名称: @, 值: $VM_IP${NC}"
@@ -168,9 +164,9 @@ get_vm_ip() {
 # 函数：等待 VM 启动完成
 wait_for_vm() {
     echo -e "${BLUE}步骤 6: 等待 VM 启动完成${NC}"
-    
+
     echo -e "${YELLOW}等待 VM 启动和初始化脚本完成...${NC}"
-    
+
     for i in {1..30}; do
         if gcloud compute ssh $VM_NAME --zone=$ZONE --command="test -f /var/log/startup-complete.log" &>/dev/null; then
             echo -e "${GREEN}✓ VM 启动完成${NC}"
@@ -179,7 +175,7 @@ wait_for_vm() {
         echo -e "${YELLOW}等待中... ($i/30)${NC}"
         sleep 30
     done
-    
+
     echo -e "${RED}警告: VM 可能仍在初始化中${NC}"
 }
 
@@ -217,7 +213,7 @@ show_next_steps() {
 # 主函数
 main() {
     echo -e "${BLUE}开始部署流程...${NC}"
-    
+
     create_project
     enable_apis
     create_firewall_rules
@@ -225,7 +221,7 @@ main() {
     get_vm_ip
     wait_for_vm
     show_next_steps
-    
+
     echo -e "${GREEN}部署脚本执行完成！${NC}"
 }
 

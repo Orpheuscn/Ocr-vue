@@ -15,9 +15,9 @@ NC='\033[0m' # 无颜色
 
 # 创建必要的目录
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_DIR="../logs/python-service"
+LOG_DIR="./logs"
 TEMP_DIR="./temp"
-SECURITY_LOG="../logs/system/python_security.log"
+SECURITY_LOG="./logs/python_security.log"
 
 mkdir -p $LOG_DIR
 mkdir -p $TEMP_DIR
