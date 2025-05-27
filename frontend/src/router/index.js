@@ -12,6 +12,7 @@ import DocDetection from '@/components/doc-detection/DocDetection.vue'
 import ImageRecognitionTool from '@/components/recognition/ImageRecognitionTool.vue'
 import PrivacyPage from '@/views/PrivacyPage.vue'
 import TermsPage from '@/views/TermsPage.vue'
+import EnvironmentTestPage from '@/views/EnvironmentTestPage.vue'
 
 const routes = [
   {
@@ -105,6 +106,13 @@ const routes = [
     path: '/terms',
     name: 'Terms',
     component: TermsPage,
+    // 无需登录即可访问
+  },
+  // 环境测试页面（仅开发环境）
+  {
+    path: '/environment-test',
+    name: 'EnvironmentTest',
+    component: EnvironmentTestPage,
     // 无需登录即可访问
   },
   {

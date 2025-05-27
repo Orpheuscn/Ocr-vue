@@ -100,4 +100,5 @@ python-service/logs/
 /docs/
 /scripts/
 /cloud-run/
+/Test/
 url-map-config.yaml

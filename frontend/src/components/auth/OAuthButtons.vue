@@ -115,14 +115,17 @@ export default {
   methods: {
     async checkOAuthAvailability() {
       try {
+        // 导入统一环境检测器
+        const { getConfig } = await import('@/utils/environment')
+        const apiConfig = getConfig('api')
+
         // 检查后端健康状态来判断OAuth是否可用
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
-        const response = await fetch(`${apiBaseUrl}/api/health`)
+        const response = await fetch(`${apiConfig.baseUrl}/api/health`)
 
         if (response.ok) {
           const healthData = await response.json()
-          // 检查健康检查响应中是否包含OAuth配置信息
-          this.isOAuthEnabled = true // 生产环境默认启用
+          // 检查健康检查响应中的OAuth配置信息
+          this.isOAuthEnabled = healthData.services?.oauth?.enabled || false
         } else {
           this.isOAuthEnabled = false
         }
@@ -133,8 +136,8 @@ export default {
         })
       } catch (error) {
         console.warn('检查OAuth可用性失败:', error)
-        // 生产环境默认启用OAuth
-        this.isOAuthEnabled = true
+        // 发生错误时默认禁用OAuth
+        this.isOAuthEnabled = false
       }
     },
     checkAppleSupport() {
@@ -145,7 +148,7 @@ export default {
 
       this.isAppleSupported = isAppleDevice || isSafari
     },
-    handleGoogleLogin() {
+    async handleGoogleLogin() {
       if (!this.isOAuthEnabled) {
         this.errorMessage = 'OAuth功能在当前环境中不可用'
         return
@@ -156,9 +159,10 @@ export default {
       this.successMessage = ''
 
       try {
-        // 重定向到Google OAuth
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
-        window.location.href = `${apiBaseUrl}/api/auth/google`
+        // 导入统一环境检测器并重定向到Google OAuth
+        const { getConfig } = await import('@/utils/environment')
+        const apiConfig = getConfig('api')
+        window.location.href = `${apiConfig.baseUrl}/api/auth/google`
       } catch (error) {
         console.error('Google登录错误:', error)
         this.errorMessage = 'Google登录失败，请稍后再试'

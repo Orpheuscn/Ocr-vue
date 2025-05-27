@@ -15,6 +15,9 @@ from typing import Optional
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
+# 导入统一环境检测器
+from utils.environment import environment, is_development, is_production, get_config
+
 # 导入路由
 from api.routes.ocr_routes import ocr_bp
 # from api.routes.upload_routes import upload_bp  # 暂时禁用上传路由
@@ -34,42 +37,40 @@ def create_app(config: Optional[dict] = None) -> Flask:
     # 创建Flask应用
     app = Flask(__name__)
 
-    # 配置CORS - 根据环境变量动态配置
-    # 从环境变量获取允许的域名，根据开发/生产环境设置不同的默认值
-    node_env = os.environ.get('NODE_ENV', 'development')
-    if node_env == 'production':
-        default_origins = 'https://textistext.com,https://textistext-frontend-82114549685.us-central1.run.app,https://textistext-backend-cogbmejklq-uc.a.run.app'
-    else:
-        default_origins = 'http://localhost:8082,http://localhost:3000,http://127.0.0.1:8082,http://127.0.0.1:3000'
+    # 配置CORS - 使用统一环境检测
+    cors_config = get_config('cors')
+    CORS(app,
+         resources={r"/*": {
+             "origins": cors_config['origins'],
+             "methods": cors_config['methods'],
+             "allow_headers": cors_config['allow_headers']
+         }},
+         supports_credentials=cors_config['supports_credentials'])
 
-    allowed_origins = os.environ.get('ALLOWED_ORIGINS', default_origins).split(',')
-    # 清理空白字符
-    allowed_origins = [origin.strip() for origin in allowed_origins if origin.strip()]
-    CORS(app, resources={r"/*": {"origins": allowed_origins}}, supports_credentials=True)
+    # 使用统一环境检测加载配置
+    flask_config = get_config('flask')
+    upload_config = get_config('upload')
 
-    # 加载默认配置
+    # 基础目录
     base_dir = os.path.dirname(os.path.dirname(__file__))
+
+    # 加载Flask配置
     app.config.update({
-        'UPLOAD_FOLDER': os.path.join(base_dir, 'uploads'),
-        'RESULTS_FOLDER': os.path.join(base_dir, 'results'),
-        'CROPS_FOLDER': os.path.join(base_dir, 'crops'),
-        'DOWNLOADS_FOLDER': os.path.join(base_dir, 'downloads'),
-        'TEMP_FOLDER': os.path.join(base_dir, 'temp'),
-        'MAX_CONTENT_LENGTH': 25 * 1024 * 1024,  # 25MB
-        'DEBUG': os.environ.get('FLASK_DEBUG', 'False').lower() == 'true',
-        'TESTING': False,
+        'DEBUG': flask_config['DEBUG'],
+        'TESTING': flask_config['TESTING'],
+        'MAX_CONTENT_LENGTH': flask_config['MAX_CONTENT_LENGTH'],
         'JSON_AS_ASCII': False,
         'JSON_SORT_KEYS': False
     })
 
-    # 加载环境变量配置
+    # 加载文件上传配置
     app.config.update({
-        'UPLOAD_FOLDER': os.environ.get('UPLOAD_FOLDER', app.config['UPLOAD_FOLDER']),
-        'RESULTS_FOLDER': os.environ.get('RESULTS_FOLDER', app.config['RESULTS_FOLDER']),
-        'CROPS_FOLDER': os.environ.get('CROPS_FOLDER', app.config['CROPS_FOLDER']),
-        'DOWNLOADS_FOLDER': os.environ.get('DOWNLOADS_FOLDER', app.config['DOWNLOADS_FOLDER']),
-        'TEMP_FOLDER': os.environ.get('TEMP_FOLDER', app.config['TEMP_FOLDER']),
-        'MAX_CONTENT_LENGTH': int(os.environ.get('MAX_CONTENT_LENGTH', app.config['MAX_CONTENT_LENGTH'])),
+        'UPLOAD_FOLDER': upload_config['upload_folder'],
+        'RESULTS_FOLDER': upload_config['results_folder'],
+        'CROPS_FOLDER': os.path.join(base_dir, 'crops'),
+        'DOWNLOADS_FOLDER': os.path.join(base_dir, 'downloads'),
+        'TEMP_FOLDER': upload_config['results_folder'],  # 使用results_folder作为temp
+        'ALLOWED_EXTENSIONS': upload_config['allowed_extensions']
     })
 
     # 加载自定义配置
@@ -165,36 +166,45 @@ def create_app(config: Optional[dict] = None) -> Flask:
 
     # 旧的健康检查端点已删除，避免路由冲突
 
-    # 配置日志轮转 - 在Cloud Run环境中使用相对路径
-    try:
-        # 尝试在应用目录下创建logs文件夹
-        base_dir = os.path.dirname(os.path.dirname(__file__))
-        log_dir = os.path.join(base_dir, 'logs')
-        os.makedirs(log_dir, exist_ok=True)
-        log_file = os.path.join(log_dir, 'app.log')
+    # 配置日志 - 使用统一环境检测
+    log_config = get_config('log')
 
-        # 配置日志处理器
-        from logging.handlers import RotatingFileHandler
-        file_handler = RotatingFileHandler(
-            log_file,
-            maxBytes=10 * 1024 * 1024,  # 10MB
-            backupCount=5,  # 保留5个备份文件
-            encoding='utf-8'
-        )
-        file_handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        ))
-        file_handler.setLevel(logging.INFO)
-        app.logger.addHandler(file_handler)
-        app.logger.setLevel(logging.INFO)
-        info(f"日志文件配置成功: {log_file}")
+    try:
+        # 在开发环境中创建日志文件，生产环境使用控制台日志
+        if is_development():
+            # 尝试在应用目录下创建logs文件夹
+            log_dir = os.path.join(base_dir, 'logs')
+            os.makedirs(log_dir, exist_ok=True)
+            log_file = os.path.join(log_dir, 'app.log')
+
+            # 配置日志处理器
+            from logging.handlers import RotatingFileHandler
+            file_handler = RotatingFileHandler(
+                log_file,
+                maxBytes=10 * 1024 * 1024,  # 10MB
+                backupCount=5,  # 保留5个备份文件
+                encoding='utf-8'
+            )
+            file_handler.setFormatter(logging.Formatter(log_config['format']))
+            file_handler.setLevel(getattr(logging, log_config['level']))
+            app.logger.addHandler(file_handler)
+            info(f"日志文件配置成功: {log_file}")
+
+        # 设置应用日志级别
+        app.logger.setLevel(getattr(logging, log_config['level']))
+
     except Exception as e:
         # 如果无法创建日志文件，只使用控制台日志
         app.logger.setLevel(logging.INFO)
         error(f"无法配置日志文件，将只使用控制台日志: {e}")
 
     # 记录应用启动信息
-    app.logger.info("Flask应用已创建并配置")
-    info("Flask应用已创建并配置")
+    app.logger.info(f"Flask应用已创建并配置 - 环境: {environment.get_environment()}, 平台: {environment.get_platform()}")
+    info(f"Flask应用已创建并配置 - 环境: {environment.get_environment()}, 平台: {environment.get_platform()}")
+
+    if is_development():
+        app.logger.info("开发模式: 启用调试功能和详细日志")
+    elif is_production():
+        app.logger.info("生产模式: 优化性能和安全设置")
 
     return app

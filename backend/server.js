@@ -21,7 +21,7 @@ import connectDB from "./db/config.js"; // 导入数据库连接函数
 import swaggerSetup from "./swagger.js"; // 导入 Swagger 设置
 import config from "./utils/envConfig.js"; // 导入统一的环境变量配置
 
-import { mongoose, checkConnection, isConnected } from "./db/config.js"; // 导入mongoose实例和连接检查函数
+import { mongoose, checkConnection, getConnectionStatus } from "./db/config.js"; // 导入mongoose实例和连接检查函数
 import { initializePassport } from "./middleware/passportConfig.js"; // 导入Passport配置
 import { getLogger } from "./utils/logger.js"; // 导入安全日志服务
 import { errorHandler, notFoundHandler } from "./middleware/errorMiddleware.js"; // 导入错误处理中间件
@@ -190,7 +190,7 @@ app.get("/api/health", async (req, res) => {
         uri: config.mongodbUri
           ? config.mongodbUri.replace(/\/\/[^:]+:[^@]+@/, "//***:***@")
           : "未设置",
-        isConnected: isConnected, // 添加数据库连接标志
+        isConnected: getConnectionStatus(), // 添加数据库连接标志
       },
 
       jwt: {
@@ -200,6 +200,12 @@ app.get("/api/health", async (req, res) => {
       },
       api: {
         googleVision: !!config.googleVisionApiKey,
+      },
+      oauth: {
+        enabled: config.enableOAuth === "true" || config.enableOAuth === true,
+        google: {
+          configured: !!(config.googleClientId && config.googleClientSecret),
+        },
       },
     },
   };

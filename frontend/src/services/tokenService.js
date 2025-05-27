@@ -310,9 +310,12 @@ export const clearAuth = () => {
  * @param {string} message - 错误消息
  * @param {Error} error - 错误对象
  */
-const logSecureError = (message, error) => {
+const logSecureError = async (message, error) => {
+  // 导入统一环境检测器
+  const { environment } = await import('@/utils/environment')
+
   // 在生产环境中，不记录详细错误信息
-  if (import.meta.env.PROD) {
+  if (!environment.shouldShowDetailedErrors()) {
     console.error(`${message}：出现错误`)
     return
   }

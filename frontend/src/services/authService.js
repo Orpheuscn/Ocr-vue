@@ -11,8 +11,12 @@ import {
 import { generateCsrfToken } from './routeSecurityService'
 import { useOcrStore } from '@/stores/ocrStore'
 
-// 使用环境变量配置API基础URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin
+// 导入统一环境检测器
+import { getConfig } from '@/utils/environment'
+
+// 使用统一环境检测获取API配置
+const apiConfig = getConfig('api')
+const API_BASE_URL = apiConfig.baseUrl
 const API_URL = `${API_BASE_URL}/api/users`
 
 /**
@@ -54,7 +58,7 @@ export const handleAuthError = (error, operation, notify) => {
 export const register = async (userData, rememberMe = false) => {
   try {
     // 生成CSRF令牌
-    const csrfToken = generateCsrfToken()
+    const csrfToken = await generateCsrfToken()
 
     const response = await fetch(`${API_URL}/register`, {
       method: 'POST',
@@ -103,7 +107,7 @@ export const register = async (userData, rememberMe = false) => {
 export const login = async (credentials, rememberMe = false) => {
   try {
     // 生成CSRF令牌
-    const csrfToken = generateCsrfToken()
+    const csrfToken = await generateCsrfToken()
 
     const response = await fetch(`${API_URL}/login`, {
       method: 'POST',

@@ -798,40 +798,44 @@ export const useOcrStore = defineStore('ocr', () => {
             console.log('图像处理完成，返回处理后的图像')
 
             // 增加调试，在页面上创建一个元素显示处理前后的图像
-            if (import.meta.env.DEV) {
-              // 修复process未定义的错误，使用import.meta.env.DEV代替
-              const debugDiv = document.createElement('div')
-              debugDiv.style.position = 'fixed'
-              debugDiv.style.bottom = '0'
-              debugDiv.style.right = '0'
-              debugDiv.style.zIndex = '9999'
-              debugDiv.style.background = 'rgba(0,0,0,0.5)'
-              debugDiv.style.padding = '5px'
-              debugDiv.style.display = 'none' // 默认隐藏，通过点击特定键组合显示
+            // 导入统一环境检测器 - 使用动态导入但不在这里await
+            import('@/utils/environment').then(({ environment }) => {
+              if (environment.shouldEnableDevTools()) {
+                const debugDiv = document.createElement('div')
+                debugDiv.style.position = 'fixed'
+                debugDiv.style.bottom = '0'
+                debugDiv.style.right = '0'
+                debugDiv.style.zIndex = '9999'
+                debugDiv.style.background = 'rgba(0,0,0,0.5)'
+                debugDiv.style.padding = '5px'
+                debugDiv.style.display = 'none' // 默认隐藏，通过点击特定键组合显示
 
-              debugDiv.innerHTML = `
-                <div style="font-size:10px;color:white;margin-bottom:5px;">原始图像与遮挡后图像对比(仅用于调试)</div>
-                <img src="data:image/png;base64,${base64Image}" style="max-width:200px;max-height:150px;margin:3px;">
-                <img src="${processedImageData}" style="max-width:200px;max-height:150px;margin:3px;">
-              `
+                debugDiv.innerHTML = `
+                  <div style="font-size:10px;color:white;margin-bottom:5px;">原始图像与遮挡后图像对比(仅用于调试)</div>
+                  <img src="data:image/png;base64,${base64Image}" style="max-width:200px;max-height:150px;margin:3px;">
+                  <img src="${processedImageData}" style="max-width:200px;max-height:150px;margin:3px;">
+                `
 
-              document.body.appendChild(debugDiv)
+                document.body.appendChild(debugDiv)
 
-              // 添加键盘快捷键监听，按Ctrl+Shift+D显示/隐藏调试信息
-              const debugKeyHandler = (event) => {
-                if (event.ctrlKey && event.shiftKey && event.key === 'D') {
-                  debugDiv.style.display = debugDiv.style.display === 'none' ? 'block' : 'none'
+                // 添加键盘快捷键监听，按Ctrl+Shift+D显示/隐藏调试信息
+                const debugKeyHandler = (event) => {
+                  if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+                    debugDiv.style.display = debugDiv.style.display === 'none' ? 'block' : 'none'
+                  }
                 }
+
+                document.addEventListener('keydown', debugKeyHandler)
+
+                // 5分钟后自动移除
+                setTimeout(() => {
+                  document.removeEventListener('keydown', debugKeyHandler)
+                  debugDiv.remove()
+                }, 300000)
               }
-
-              document.addEventListener('keydown', debugKeyHandler)
-
-              // 5分钟后自动移除
-              setTimeout(() => {
-                document.removeEventListener('keydown', debugKeyHandler)
-                debugDiv.remove()
-              }, 300000)
-            }
+            }).catch(error => {
+              console.warn('无法加载环境检测器进行调试:', error)
+            })
 
             resolve(processedBase64)
           } catch (error) {

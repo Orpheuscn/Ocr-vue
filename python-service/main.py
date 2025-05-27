@@ -11,31 +11,22 @@ import sys
 import signal
 import atexit
 import logging
-from pathlib import Path
-from dotenv import load_dotenv
-
-# 加载环境变量文件 - 开发环境专用，生产环境由Cloud Run管理
-# 开发环境使用.env.local，生产环境不需要启动脚本
-env_file = '.env.local'
-if os.path.exists(env_file):
-    load_dotenv(env_file)
-    print(f"已加载开发环境配置文件: {env_file}")
-else:
-    # 回退到默认的.env文件
-    load_dotenv()
-    print("使用默认环境变量配置")
 
 # 确保能够导入自定义模块
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# 导入统一环境检测器（这会自动加载环境配置）
+from utils.environment import environment, is_development, is_production, get_config
+
 # 导入Flask应用
 from api.app import create_app as create_flask_app
-from utils.log_client import info, error
+from utils.log_client import error
 
-# 配置日志
+# 配置日志 - 使用统一环境检测
+log_config = get_config('log')
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=getattr(logging, log_config['level']),
+    format=log_config['format']
 )
 logger = logging.getLogger(__name__)
 
@@ -46,7 +37,7 @@ def cleanup_resources():
     except Exception as e:
         logger.error(f"清理应用资源时出错: {e}")
 
-def signal_handler(signum, frame):
+def signal_handler(signum, _):
     """信号处理器"""
     logger.info(f"接收到信号 {signum}，开始清理资源...")
     cleanup_resources()
@@ -60,17 +51,26 @@ atexit.register(cleanup_resources)
 def create_app():
     """创建Flask应用，供Gunicorn调用"""
     try:
+        # 使用统一环境检测获取配置
+        flask_config = get_config('flask')
+
         # 获取环境变量 - 优先使用Cloud Run的PORT环境变量
-        host = os.environ.get('FLASK_HOST', '0.0.0.0')
-        port = int(os.environ.get('PORT', os.environ.get('FLASK_PORT', 8080)))
-        debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+        host = flask_config['HOST']
+        port = int(os.environ.get('PORT', flask_config['PORT']))
+        debug = flask_config['DEBUG']
 
         # 创建Flask应用
         app = create_flask_app()
 
         # 记录启动信息
-        logger.info(f"创建Flask应用，配置为监听 {host}:{port}，调试模式: {debug}")
-        info(f"创建Flask应用，配置为监听 {host}:{port}，调试模式: {debug}")
+        logger.info(f"创建Flask应用成功")
+        logger.info(f"环境: {environment.get_environment()}, 平台: {environment.get_platform()}")
+        logger.info(f"配置: {host}:{port}, 调试模式: {debug}")
+
+        if is_development():
+            logger.info("开发模式: 启用调试功能和详细日志")
+        elif is_production():
+            logger.info("生产模式: 优化性能和安全设置")
 
         return app
 
@@ -82,17 +82,24 @@ def create_app():
 def main():
     """主函数，直接启动Flask应用（开发环境）"""
     try:
-        # 获取环境变量
-        host = os.environ.get('FLASK_HOST', '0.0.0.0')
-        port = int(os.environ.get('FLASK_PORT', 5001))
-        debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+        # 使用统一环境检测获取配置
+        flask_config = get_config('flask')
+
+        # 获取配置
+        host = flask_config['HOST']
+        port = flask_config['PORT']
+        debug = flask_config['DEBUG']
 
         # 创建Flask应用
         app = create_app()
 
         # 记录启动信息
         logger.info(f"直接启动Flask应用，监听 {host}:{port}，调试模式: {debug}")
-        info(f"直接启动Flask应用，监听 {host}:{port}，调试模式: {debug}")
+
+        if is_development():
+            logger.info("开发环境: 使用Flask内置服务器")
+        else:
+            logger.warning("非开发环境不建议使用Flask内置服务器，请使用Gunicorn")
 
         # 启动应用（仅开发环境使用）
         app.run(host=host, port=port, debug=debug)

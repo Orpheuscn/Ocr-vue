@@ -6,8 +6,11 @@ import { refreshUserInfo, isAuthenticated, isAdmin, logout } from './authService
 import { useOcrStore } from '@/stores/ocrStore'
 import { useI18nStore } from '@/stores/i18nStore'
 
+// 导入统一环境检测器
+import { environment } from '@/utils/environment'
+
 // 开发环境警告
-if (import.meta.env.DEV) {
+if (environment.shouldShowSecurityWarnings()) {
   console.warn(
     '警告: 前端路由守卫和权限检查仅用于改善用户体验，不能替代后端安全验证。' +
       '所有敏感操作必须在服务器端进行权限验证。',

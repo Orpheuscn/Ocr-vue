@@ -5,19 +5,21 @@
  * 提供安全的日志记录功能，避免泄露敏感信息
  */
 
+// 导入统一环境检测器
+import { environment, getConfig } from '@/utils/environment'
+
 // 日志级别
 const LOG_LEVELS = {
   DEBUG: 0,
   INFO: 1,
   WARN: 2,
   ERROR: 3,
-  NONE: 4
+  NONE: 4,
 }
 
-// 当前环境的日志级别
-// 生产环境默认只显示警告和错误
-// 开发环境显示所有日志
-const currentLogLevel = import.meta.env.PROD ? LOG_LEVELS.WARN : LOG_LEVELS.DEBUG
+// 使用统一环境检测获取日志配置
+const logConfig = getConfig('log')
+const currentLogLevel = LOG_LEVELS[logConfig.level] || LOG_LEVELS.INFO
 
 // 敏感字段列表，这些字段的值将被屏蔽
 const SENSITIVE_FIELDS = [
@@ -36,7 +38,7 @@ const SENSITIVE_FIELDS = [
   'cvv',
   'ssn',
   'creditCard',
-  'cardNumber'
+  'cardNumber',
 ]
 
 /**
@@ -46,9 +48,9 @@ const SENSITIVE_FIELDS = [
  */
 const isSensitiveKey = (key) => {
   if (typeof key !== 'string') return false
-  
+
   const lowerKey = key.toLowerCase()
-  return SENSITIVE_FIELDS.some(field => lowerKey.includes(field.toLowerCase()))
+  return SENSITIVE_FIELDS.some((field) => lowerKey.includes(field.toLowerCase()))
 }
 
 /**
@@ -59,21 +61,22 @@ const isSensitiveKey = (key) => {
 const maskSensitiveData = (data) => {
   // 如果是null或undefined，直接返回
   if (data == null) return data
-  
+
   // 如果是基本类型，直接返回
   if (typeof data !== 'object') return data
-  
+
   // 如果是数组，递归处理每个元素
   if (Array.isArray(data)) {
-    return data.map(item => maskSensitiveData(item))
+    return data.map((item) => maskSensitiveData(item))
   }
-  
+
   // 如果是对象，递归处理每个属性
   const maskedData = {}
   for (const [key, value] of Object.entries(data)) {
     if (isSensitiveKey(key)) {
       // 屏蔽敏感信息
-      maskedData[key] = typeof value === 'string' ? '***MASKED***' : { type: typeof value, masked: true }
+      maskedData[key] =
+        typeof value === 'string' ? '***MASKED***' : { type: typeof value, masked: true }
     } else if (typeof value === 'object' && value !== null) {
       // 递归处理嵌套对象
       maskedData[key] = maskSensitiveData(value)
@@ -82,7 +85,7 @@ const maskSensitiveData = (data) => {
       maskedData[key] = value
     }
   }
-  
+
   return maskedData
 }
 
@@ -93,7 +96,7 @@ const maskSensitiveData = (data) => {
  */
 export const debug = (message, ...args) => {
   if (currentLogLevel <= LOG_LEVELS.DEBUG) {
-    const safeArgs = args.map(arg => maskSensitiveData(arg))
+    const safeArgs = args.map((arg) => maskSensitiveData(arg))
     console.debug(`[DEBUG] ${message}`, ...safeArgs)
   }
 }
@@ -105,7 +108,7 @@ export const debug = (message, ...args) => {
  */
 export const info = (message, ...args) => {
   if (currentLogLevel <= LOG_LEVELS.INFO) {
-    const safeArgs = args.map(arg => maskSensitiveData(arg))
+    const safeArgs = args.map((arg) => maskSensitiveData(arg))
     console.info(`[INFO] ${message}`, ...safeArgs)
   }
 }
@@ -117,7 +120,7 @@ export const info = (message, ...args) => {
  */
 export const warn = (message, ...args) => {
   if (currentLogLevel <= LOG_LEVELS.WARN) {
-    const safeArgs = args.map(arg => maskSensitiveData(arg))
+    const safeArgs = args.map((arg) => maskSensitiveData(arg))
     console.warn(`[WARN] ${message}`, ...safeArgs)
   }
 }
@@ -132,24 +135,26 @@ export const error = (message, error, ...args) => {
   if (currentLogLevel <= LOG_LEVELS.ERROR) {
     // 特殊处理错误对象
     let safeError = error
-    
+
     if (error instanceof Error) {
       // 只保留错误的名称和消息，不包含堆栈跟踪
       safeError = {
         name: error.name,
         message: error.message,
         // 在开发环境中可以包含更多信息
-        ...(import.meta.env.DEV ? { 
-          code: error.code,
-          cause: error.cause
-        } : {})
+        ...(import.meta.env.DEV
+          ? {
+              code: error.code,
+              cause: error.cause,
+            }
+          : {}),
       }
     } else {
       // 如果不是Error对象，按普通参数处理
       safeError = maskSensitiveData(error)
     }
-    
-    const safeArgs = args.map(arg => maskSensitiveData(arg))
+
+    const safeArgs = args.map((arg) => maskSensitiveData(arg))
     console.error(`[ERROR] ${message}`, safeError, ...safeArgs)
   }
 }
@@ -161,7 +166,7 @@ export const error = (message, error, ...args) => {
  * @param {Object} options - 请求选项
  */
 export const logApiRequest = (method, url, options) => {
-  if (import.meta.env.DEV && currentLogLevel <= LOG_LEVELS.DEBUG) {
+  if (logConfig.enableApiLogging && currentLogLevel <= LOG_LEVELS.DEBUG) {
     // 创建URL对象以移除查询参数中的敏感信息
     let safeUrl = url
     try {
@@ -176,10 +181,10 @@ export const logApiRequest = (method, url, options) => {
     } catch (e) {
       // 如果URL解析失败，使用原始URL
     }
-    
+
     // 屏蔽请求选项中的敏感信息
     const safeOptions = maskSensitiveData(options)
-    
+
     console.debug(`[API] ${method} ${safeUrl}`, safeOptions)
   }
 }
@@ -192,7 +197,7 @@ export const logApiRequest = (method, url, options) => {
  * @param {Object} responseData - 响应数据
  */
 export const logApiResponse = (method, url, response, responseData) => {
-  if (import.meta.env.DEV && currentLogLevel <= LOG_LEVELS.DEBUG) {
+  if (logConfig.enableApiLogging && currentLogLevel <= LOG_LEVELS.DEBUG) {
     // 创建URL对象以移除查询参数中的敏感信息
     let safeUrl = url
     try {
@@ -207,10 +212,10 @@ export const logApiResponse = (method, url, response, responseData) => {
     } catch (e) {
       // 如果URL解析失败，使用原始URL
     }
-    
+
     // 屏蔽响应数据中的敏感信息
     const safeResponseData = maskSensitiveData(responseData)
-    
+
     console.debug(`[API] ${method} ${safeUrl} - ${response.status}`, safeResponseData)
   }
 }
@@ -222,5 +227,5 @@ export default {
   warn,
   error,
   logApiRequest,
-  logApiResponse
+  logApiResponse,
 }
